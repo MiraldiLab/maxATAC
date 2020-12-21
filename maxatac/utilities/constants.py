@@ -1,6 +1,5 @@
 from logging import FATAL, ERROR, WARNING, INFO, DEBUG
 
-
 # Internal use
 
 LOG_LEVELS = {

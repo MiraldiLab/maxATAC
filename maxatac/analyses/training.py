@@ -1,9 +1,4 @@
 
-######
-'''Making Changes for DCNN'''
-
-######
-
 import random
 import numpy as np
 import pandas as pd
@@ -17,7 +12,7 @@ from maxatac.utilities.helpers import (
     get_dir,
     get_rootname,
     replace_extension,
-    remove_tags
+    remove_tags, load_bigwig, safe_load_bigwig, load_2bit, Mute
 )
 from maxatac.utilities.constants import (
     INPUT_CHANNELS,
@@ -43,16 +38,13 @@ from maxatac.utilities.constants import (
     TRAIN_MONITOR,
     TRAIN_SCALE_SIGNAL
 )
-from maxatac.utilities.bigwig import load_bigwig, safe_load_bigwig
-from maxatac.utilities.twobit import load_2bit
 
-from maxatac.utilities.pc_prepare import (
+from maxatac.utilities.prepare import (
     get_roi_pool,
     pc_train_generator,
     create_val_generator
 )
 
-from maxatac.utilities.mute import Mute
 from maxatac.utilities.session import configure_session
 from maxatac.utilities.plot import (
     export_model_loss,
@@ -62,12 +54,8 @@ from maxatac.utilities.plot import (
 )
 
 with Mute():  # hide stdout from loading the modules
-    from maxatac.utilities.unet import (
-        get_unet,
-        get_callbacks
-    )
     from maxatac.utilities.d_cnn import (
-        get_dilated_cnn, tp, tn, fp, fn, acc
+        get_dilated_cnn, tp, tn, fp, fn, acc, get_callbacks
 
     )
     from maxatac.utilities.res_dcnn import (
@@ -75,7 +63,7 @@ with Mute():  # hide stdout from loading the modules
 
     )
 
-def run_pc_training(args):
+def run_training(args):
 
     # TODO Random() object might be the same for all sub processes.
     random.seed(args.seed)

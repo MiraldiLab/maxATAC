@@ -4,8 +4,7 @@ import numpy as np
 from multiprocessing import Pool, Manager
 from os import path
 
-from maxatac.utilities.helpers import get_dir, get_rootname
-from maxatac.utilities.bigwig import load_bigwig, dump_bigwig
+from maxatac.utilities.helpers import get_dir, get_rootname, load_bigwig, dump_bigwig
 from maxatac.utilities.plot import export_boxplot
 
 

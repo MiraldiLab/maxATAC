@@ -8,8 +8,7 @@ from sklearn.metrics import (
     plot_precision_recall_curve
 )
 
-from maxatac.utilities.helpers import get_dir, get_rootname
-from maxatac.utilities.bigwig import load_bigwig
+from maxatac.utilities.helpers import get_dir, get_rootname, load_bigwig
 from maxatac.utilities.plot import export_prc
 
 

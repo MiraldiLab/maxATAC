@@ -1,4 +1,3 @@
-import logging
 import tensorflow as tf
 import numpy as np
 from keras.models import Model
@@ -13,7 +12,11 @@ from keras.layers import (
 )
 from keras.layers.core import Reshape
 from keras.optimizers import Adam
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import (
+    ModelCheckpoint,
+    CSVLogger,
+    TensorBoard
+)
 from keras import backend as K
 import keras
 
@@ -260,17 +263,29 @@ def get_dilated_cnn(
 
 
 def get_callbacks(
-    location,
+    model_location,
+    log_location,
+    tensor_board_log_dir,
     monitor,
     save_weights_only=False,
-    save_best_only=True
+    save_best_only=False,
+    append_log=False,
+    tensor_board_write_images=False,
+    tensor_board_write_graph=True,
 ):
     callbacks = [
         ModelCheckpoint(
-            filepath=location,
+            filepath=model_location,
             save_weights_only=save_weights_only,
             save_best_only=save_best_only,
             monitor=monitor
+        ),
+        CSVLogger(log_location, separator=",", append=append_log),
+        TensorBoard(
+            tensor_board_log_dir,
+            write_images=tensor_board_write_images,
+            write_graph=tensor_board_write_graph,
+            update_freq="batch"
         )
     ]
     return callbacks

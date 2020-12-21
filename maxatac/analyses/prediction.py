@@ -9,7 +9,7 @@ from uuid import uuid4
 from multiprocessing import Pool
 
 from keras.models import load_model
-from maxatac.utilities.helpers import get_dir, get_rootname
+from maxatac.utilities.helpers import get_dir, get_rootname, load_bigwig, dump_bigwig, load_2bit, Mute
 from maxatac.utilities.constants import (
     INPUT_CHANNELS,
     INPUT_LENGTH,
@@ -34,22 +34,16 @@ from maxatac.utilities.constants import (
     TRAIN_SCALE_SIGNAL
 )
 
-from maxatac.utilities.bigwig import load_bigwig, dump_bigwig
-from maxatac.utilities.twobit import load_2bit
 from maxatac.utilities.prepare import (
     get_input_matrix,
     get_significant
 )
-from maxatac.utilities.pc_prepare import (
+from maxatac.utilities.prepare import (
     get_roi_pool,
     get_roi_pool_predict,
     make_pc_pred_batch
 )
 from maxatac.utilities.session import configure_session
-from maxatac.utilities.mute import Mute
-with Mute():  # hide stdout from loading the modules  #TODO maybe wo Mute()
-    from maxatac.utilities.unet import get_unet
-
 
 def do_pc_prediction(
     job_id,
@@ -198,7 +192,7 @@ def get_scattered_smart_params(args):
             job_id += 1
     return scattered_params
 '''
-def run_pc_prediction(args, save_preds=True):
+def run_prediction(args, save_preds=True):
     '''
     logging.error(
         "Prediction" +

@@ -1,10 +1,15 @@
 import pkg_resources
+import pyBigWig
+import py2bit
+import os
+import logging
 
 from multiprocessing import cpu_count
-from os import path, getcwd, makedirs, error, walk
+from os import path, getcwd, makedirs, error, walk, environ
 from re import match
+from maxatac.utilities.constants import CPP_LOG_LEVEL
 
-
+### General Helpers ###
 def get_absolute_path(p, cwd_abs_path=None):
     cwd_abs_path = getcwd() if cwd_abs_path is None else cwd_abs_path
     return p if path.isabs(p) else path.normpath(path.join(cwd_abs_path, p))
@@ -58,3 +63,63 @@ def get_files(current_dir, filename_pattern=None):
             {filename: path.join(root, filename) for filename in files if match(filename_pattern, filename)}
         )
     return files_dict
+
+
+class Mute():
+    NULL_FDS = []
+    BACKUP_FDS = []
+
+    def __enter__(self):
+        self.suppress_stdout()
+
+    def __exit__(self, type, value, traceback):
+        self.restore_stdout()
+
+    def suppress_stdout(self):
+        self.NULL_FDS = [os.open(os.devnull, os.O_RDWR) for x in range(2)]
+        self.BACKUP_FDS = os.dup(1), os.dup(2)
+        os.dup2(self.NULL_FDS[0], 1)
+        os.dup2(self.NULL_FDS[1], 2)
+
+    def restore_stdout(self):
+        os.dup2(self.BACKUP_FDS[0], 1)
+        os.dup2(self.BACKUP_FDS[1], 2)
+        os.close(self.NULL_FDS[0])
+        os.close(self.NULL_FDS[1])
+
+def setup_logger(log_level, log_format):
+    for log_handler in logging.root.handlers:
+        logging.root.removeHandler(log_handler)
+    for log_filter in logging.root.filters:
+        logging.root.removeFilter(log_filter)
+    logging.basicConfig(level=log_level, format=log_format)
+    environ["TF_CPP_MIN_LOG_LEVEL"] = str(CPP_LOG_LEVEL[log_level])
+
+##### Bigwigs Helpers #####
+
+class EmptyStream():
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+
+def safe_load_bigwig(location):
+    try:
+        return pyBigWig.open(get_absolute_path(location))
+    except (RuntimeError, TypeError):
+        return EmptyStream()
+
+
+def load_bigwig(location):
+    return pyBigWig.open(get_absolute_path(location))
+
+
+def dump_bigwig(location):
+    return pyBigWig.open(get_absolute_path(location), "w")
+
+
+def load_2bit(location):
+    return py2bit.open(get_absolute_path(location))
