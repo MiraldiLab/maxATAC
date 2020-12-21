@@ -1,0 +1,22 @@
+#!/usr/bin/env python3
+import sys
+import logging
+
+from maxatac.utilities.logger import setup_logger
+from maxatac.utilities.pc_parser import parse_arguments, print_args
+from maxatac.utilities.constants import LOG_FORMAT
+import pdb
+
+def main(argsl=None):
+    if argsl is None:
+        argsl = sys.argv[1:]
+    
+    args = parse_arguments(argsl)
+    print(args)
+    setup_logger(args.loglevel, LOG_FORMAT)
+    print_args(args, logging.debug)
+    args.func(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
