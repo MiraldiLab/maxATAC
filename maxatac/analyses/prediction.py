@@ -7,9 +7,17 @@ import os
 from math import ceil
 from uuid import uuid4
 from multiprocessing import Pool
-
 from keras.models import load_model
-from maxatac.utilities.helpers import get_dir, get_rootname, load_bigwig, dump_bigwig, load_2bit, Mute
+
+from maxatac.utilities.helpers import (
+    get_dir, 
+    get_rootname, 
+    load_bigwig, 
+    dump_bigwig, 
+    load_2bit, 
+    Mute
+    )
+
 from maxatac.utilities.constants import (
     INPUT_CHANNELS,
     INPUT_LENGTH,
@@ -35,13 +43,11 @@ from maxatac.utilities.constants import (
 )
 
 from maxatac.utilities.prepare import (
-    get_input_matrix,
-    get_significant
-)
-from maxatac.utilities.prepare import (
     get_roi_pool,
     get_roi_pool_predict,
-    make_pc_pred_batch
+    make_pc_pred_batch,
+    get_input_matrix,
+    get_significant
 )
 from maxatac.utilities.session import configure_session
 
@@ -55,23 +61,6 @@ def do_pc_prediction(
     tmp,
     threads
 ):
-    
-    
-    
-    #logging.error(
-    #"Start job [" + str(job_id) + "]" +
-    #    "\n  Input signal: " + signal +
-    #    "\n  Average signal: " + average +
-    #    "\n  Sequence data: " + sequence +
-    #    "\n  Model: " + model +
-    #    "\n  Chromosome: " + \
-    #         chrom[0] + ":" + \
-    #         str(region[0]) + "-" + \
-    #         str(region[1]) + " (" + \
-    #         str(chrom[1]) + ")" +
-    #    "\n  Results location: " + results_location
-    #)
-    
     configure_session(threads)
 
     nn_model = load_model(model, compile=False)
@@ -163,35 +152,6 @@ def export_prediction_results(prediction_results, args):
         shutil.rmtree(args.tmp, ignore_errors=False)
 
 
-'''
-def get_scattered_smart_params(args):
-    scattered_params = []
-    job_id = 1
-    
-    roi_df = get_roi_pool_predict(
-                                seq_len=INPUT_LENGTH,
-                                roi=args.predict_roi,
-                                shuffle=False
-                                )
-            
-    for model in args.models:
-        for chrom_name, chrom_data in args.chroms.items():
-            chrom_roi_df = roi_df.loc[chrom_name, :]
-            scattered_params.append(
-                (
-                    job_id,
-                    args.signal,
-                    args.average,
-                    args.sequence,
-                    model,
-                    chrom_roi_df,
-                    args.tmp,
-                    args.threads
-                )
-            )
-            job_id += 1
-    return scattered_params
-'''
 def run_prediction(args, save_preds=True):
     '''
     logging.error(
@@ -238,14 +198,6 @@ def run_prediction(args, save_preds=True):
                                         threads
                                         )
     
-    '''
-    results_filename = get_rootname(model) + \
-        "_" + get_rootname(signal) + \
-        "_" + get_rootname(average) + \
-        "_" + str(uuid4()) + ".npy"  # TODO: think again why do we need uuid here
-    
-    results_location = path.join(get_dir(tmp), results_filename)
-    '''
     if save_preds:
         #out = pred_results_df['chr'].unique()
         #outname='_'.join(map(str, out))
@@ -257,12 +209,3 @@ def run_prediction(args, save_preds=True):
         out_path = os.path.join(args.output, "pcpc_gold.bed")
         gold_df.to_csv(out_path, sep='\t')
     
-
-    '''
-    with Pool(args.threads) as p:
-        prediction_results = p.starmap(
-            run_model_prediction,
-            get_scattered_params(args)
-        )
-    export_prediction_results(prediction_results, args)
-    '''

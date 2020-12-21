@@ -15,14 +15,14 @@ def get_description():
 
 setup(
     name="maxatac",
-    description="maxATAC - DeepCNN for motif binding prediction",
+    description="maxATAC - DeepCNN for TF binding prediction from ATAC-seq",
     long_description=get_description(),
     long_description_content_type="text/markdown",
     version=VERSION,
-    url="https://bitbucket.org/miraldilab/maxatac/src",
-    download_url="https://bitbucket.org/miraldilab/maxatac/src",
-    author="Michael Kotliar",
-    author_email="misha.kotliar@gmail.com",
+    url="https://github.com/MiraldiLab/maxATAC.git",
+    download_url="https://github.com/MiraldiLab/maxATAC.git",
+    author="Miraldi Lab",
+    author_email="emily.miraldi@cchmc.org",
     license="Apache-2.0",
     include_package_data=True,
     packages=find_packages(),
@@ -35,6 +35,7 @@ setup(
         "pydot==1.4.1",
         "matplotlib==3.2.1",
         "scikit-learn==0.22.2",
+        "enum34>=1.0.4",
         "pandas==1.0.3"
     ],
     zip_safe=False,

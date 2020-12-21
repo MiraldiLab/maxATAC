@@ -27,7 +27,9 @@ from maxatac.utilities.constants import (
     DEFAULT_ADAM_LEARNING_RATE,
     DEFAULT_ADAM_DECAY,
     DEFAULT_NORMALIZATION_BIN,
-    DEFAULT_MIN_PREDICTION
+    DEFAULT_MIN_PREDICTION,
+    INPUT_KERNEL_SIZE,
+    INPUT_FILTERS
 )
 
 
@@ -125,17 +127,12 @@ def assert_and_fix_args_for_training(args):
 
     setattr(args, "preferences", None)
     setattr(args, "signal", None)
-    #setattr(args, "filters", None)
     setattr(args, "tsites", None)
     synced_tchroms = get_synced_chroms(
         args.tchroms,
         [
             args.sequence,
-            args.average,
-            #args.filters,
-            #args.preferences,
-            #args.signal,
-            #args.tsites
+            args.average
         ],
         True
     )
@@ -143,11 +140,7 @@ def assert_and_fix_args_for_training(args):
         args.vchroms,
         [
             args.sequence,
-            args.average,
-            #args.filters,
-            #args.preferences,
-            #args.validation,
-            #args.vsites
+            args.average
         ],
         True
     )
@@ -159,9 +152,7 @@ def assert_and_fix_args_for_training(args):
         args.chroms,
         [
             args.sequence,
-            args.average,
-            #args.filters,
-            #args.preferences
+            args.average
         ],
         True
     )
@@ -173,13 +164,7 @@ def assert_and_fix_args_for_training(args):
         set(synced_chroms) - set(synced_tchroms) - set(synced_vchroms),
         [
             args.sequence,
-            args.average,
-            #args.filters,
-            #args.preferences,
-            #args.signal,
-            #args.validation,
-            #args.tsites,
-            #args.vsites
+            args.average
         ],
         True
     )
@@ -228,7 +213,6 @@ def assert_and_fix_args(args):
 
     args.loglevel = LOG_LEVELS[args.loglevel]
     if args.func == run_prediction:
-        #assert_and_fix_args_for_prediction(args)
         pass
     elif args.func == run_training:
         assert_and_fix_args_for_training(args)
@@ -242,7 +226,7 @@ def get_parser():
     # Parent (general) parser
     parent_parser = argparse.ArgumentParser(add_help=False)
     general_parser = argparse.ArgumentParser(description="maxATAC: \
-        DeepCNN for motif binding prediction")
+        DeepCNN for predicting TF binding from ATAC-seq")
     subparsers = general_parser.add_subparsers()
     subparsers.required = True
 
@@ -257,79 +241,109 @@ def get_parser():
         parents=[parent_parser],
         help="Run maxATAC prediction",
     )
+
     predict_parser.set_defaults(func=run_prediction)
 
     predict_parser.add_argument(
-        "--models", dest="models", type=str, nargs="+",
+        "--models", 
+        dest="models", 
+        type=str, 
+        nargs="+",
         required=True,
         help="Trained model file(s)"
     )
+
     predict_parser.add_argument(
-        "--train_tf", dest="train_tf", type=str,
+        "--train_tf", 
+        dest="train_tf", 
+        type=str,
         required=True,
         help="Transcription Factor to train on. Restricted to only 1 TF."
     )
 
     predict_parser.add_argument(
-        "--test_cell_lines", dest="test_cell_lines", type=str, nargs="+",
+        "--test_cell_lines", 
+        dest="test_cell_lines", 
+        type=str, 
+        nargs="+",
         required=True,
         help="Cell lines for model testing. These cell lines will not be used in model training. cell lines must be delimited with , "
     )
 
     predict_parser.add_argument(
-        "--average", dest="average", type=str,
+        "--average", 
+        dest="average", 
+        type=str,
         required=True,
         help="Average signal bigWig file"
     )
 
     predict_parser.add_argument(
-        "--sequence", dest="sequence", type=str,
+        "--sequence", 
+        dest="sequence", 
+        type=str,
         required=True,
         help="Genome sequence 2bit file"
     )
 
     predict_parser.add_argument(
-        "--meta_file", dest="meta_file", type=str,
+        "--meta_file", 
+        dest="meta_file", 
+        type=str,
         required=True,
         help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
     )
 
     predict_parser.add_argument(
-        "--minimum", dest="minimum", type=float,
+        "--minimum", 
+        dest="minimum", 
+        type=float,
         default=DEFAULT_MIN_PREDICTION,
         help="Minimum prediction value to be reported. Default: " + str(DEFAULT_MIN_PREDICTION)
     )
 
     predict_parser.add_argument(
-        "--tmp", dest="tmp", type=str,
+        "--tmp", 
+        dest="tmp", 
+        type=str,
         default="./temp",
         help="Folder to save temporary data. Default: ./temp")
 
     predict_parser.add_argument(
-        "--output", dest="output", type=str,
+        "--output", 
+        dest="output", 
+        type=str,
         default="./prediction_results",
         help="Folder for prediction results. Default: ./prediction_results")
 
     predict_parser.add_argument(
-        "--keep", dest="keep", action="store_true",
+        "--keep", 
+        dest="keep", 
+        action="store_true",
         help="Keep temporary files. Default: False"
     )
 
     predict_parser.add_argument(
-        "--threads", dest="threads", type=int,
+        "--threads", 
+        dest="threads", 
+        type=int,
         help="# of processes to run prediction in parallel. \
             Default: # of --models multiplied by # of --chroms"
     )
 
     predict_parser.add_argument(
-        "--loglevel", dest="loglevel", type=str,
+        "--loglevel", 
+        dest="loglevel", 
+        type=str,
         default=DEFAULT_LOG_LEVEL,
         choices=LOG_LEVELS.keys(),
         help="Logging level. Default: " + DEFAULT_LOG_LEVEL
     )
     
     predict_parser.add_argument(
-        "--predict_roi", dest="predict_roi", type=str,
+        "--predict_roi", 
+        dest="predict_roi", 
+        type=str,
         help="Bed file with ranges for input sequences to be predicted. \
             Default: None, predictions are done on the whole chromosome length"
     )
@@ -343,43 +357,58 @@ def get_parser():
     train_parser.set_defaults(func=run_training)
 
     train_parser.add_argument(
-        "--sequence", dest="sequence", type=str,
+        "--sequence", 
+        dest="sequence", 
+        type=str,
         required=True,
         help="Genome sequence 2bit file"
     )
 
     train_parser.add_argument(
-        "--average", dest="average", type=str,
+        "--average", 
+        dest="average", 
+        type=str,
         required=True,
         help="Average signal bigWig file"
     )
 
     train_parser.add_argument(
-        "--meta_file", dest="meta_file", type=str,
+        "--meta_file", 
+        dest="meta_file", 
+        type=str,
         required=True,
         help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
     )
 
     train_parser.add_argument(
-        "--train_roi", dest="train_roi", type=str,
+        "--train_roi", 
+        dest="train_roi", 
+        type=str,
         required=True,
         help="Bed file with ranges for input sequences. Required for peak-centric training of the model."
     )
 
     train_parser.add_argument(
-        "--validate_roi", dest="validate_roi", type=str,
+        "--validate_roi", 
+        dest="validate_roi", 
+        type=str,
         required=True,
         help="Bed file  with ranges for input sequences to validate the model"
     )
 
     train_parser.add_argument(
-        "--eval_roi", dest="eval_roi", type=str,
+        "--eval_roi", 
+        dest="eval_roi", 
+        type=str,
         required=True,
         help="Bed file  with ranges for input sequences to evaluate the model performance"
     )
     
     train_parser.add_argument(
-        "--chroms", dest="chroms", type=str, nargs="+",
+        "--chroms", 
+        dest="chroms", 
+        type=str, 
+        nargs="+",
         required=True,
         help="Chromosome list for analysis. \
             Regions in a form of chrN:start-end are ignored. \
@@ -388,7 +417,10 @@ def get_parser():
     )
     
     train_parser.add_argument(
-        "--tchroms", dest="tchroms", type=str, nargs="+",
+        "--tchroms", 
+        dest="tchroms", 
+        type=str, 
+        nargs="+",
         required=True,
         help="Chromosomes from --chroms fixed for training. \
             Regions in a form of chrN:start-end are ignored. \
@@ -397,7 +429,10 @@ def get_parser():
     )
 
     train_parser.add_argument(
-        "--vchroms", dest="vchroms", type=str, nargs="+",
+        "--vchroms", 
+        dest="vchroms", 
+        type=str, 
+        nargs="+",
         required=True,
         help="Chromosomes from --chroms fixed for validation. \
             Regions in a form of chrN:start-end are ignored. \
@@ -406,91 +441,140 @@ def get_parser():
     )
     
     train_parser.add_argument(
-        "--train_tf", dest="train_tf", type=str,
+        "--train_tf", 
+        dest="train_tf", 
+        type=str,
         required=True,
         help="Transcription Factor to train on. Restricted to only 1 TF."
     )
 
     train_parser.add_argument(
-        "--arch", dest="arch", type=str,
+        "--arch", 
+        dest="arch", 
+        type=str,
         required=True,
         help="Specify the model architecture. Currently support DCNN_V2 or RES_DCNN_V2"
     )
 
     train_parser.add_argument(
-        "--test_cell_lines", dest="test_cell_lines", type=str, nargs="+",
+        "--test_cell_lines", 
+        dest="test_cell_lines", 
+        type=str, 
+        nargs="+",
         required=True,
         help="Cell lines for model testing. These cell lines will not be used in model training. cell lines must be delimited with , "
     )
 
     train_parser.add_argument(
-        "--rand_ratio", dest="rand_ratio", type=float,
+        "--rand_ratio", 
+        dest="rand_ratio", 
+        type=float,
         required=True,
         help="Ratio for controlling fraction of random seqeuences in each traning batch. float [0, 1]"
     )
 
 
     train_parser.add_argument(
-        "--seed", dest="seed", type=int,
+        "--seed", 
+        dest="seed", 
+        type=int,
         default=random.randint(1, 99999),
         help="Seed for pseudo-random generanor. Default: random int [1, 99999]"
     )
 
     train_parser.add_argument(
-        "--weights", dest="weights", type=str,
+        "--weights", 
+        dest="weights", 
+        type=str,
         help="Weights to initialize model before training. Default: do not load"
     )
 
     train_parser.add_argument(
-        "--epochs", dest="epochs", type=int,
+        "--epochs", 
+        dest="epochs", 
+        type=int,
         default=DEFAULT_TRAIN_EPOCHS,
         help="# of training epochs. Default: " + str(DEFAULT_TRAIN_EPOCHS)
     )
 
     train_parser.add_argument(
-        "--batches", dest="batches", type=int,
+        "--batches", 
+        dest="batches", 
+        type=int,
         default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
         help="# of training batches per epoch. \
             Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH)
     )
 
     train_parser.add_argument(
-        "--lrate", dest="lrate", type=float,
+        "--filter_number", 
+        dest="FILTER_NUMBER", 
+        type=int,
+        default=INPUT_FILTERS,
+        help="# of filters to use for training. \
+            Default: " + str(INPUT_FILTERS)
+    )
+
+    train_parser.add_argument(
+        "--kernel_size", 
+        dest="KERNEL_SIZE", 
+        type=int,
+        default=INPUT_KERNEL_SIZE,
+        help="Size of the kernel to use in BP. \
+            Default: " + str(INPUT_KERNEL_SIZE)
+    )
+
+    train_parser.add_argument(
+        "--lrate", 
+        dest="lrate", 
+        type=float,
         default=DEFAULT_ADAM_LEARNING_RATE,
         help="Learning rate. Default: " + str(DEFAULT_ADAM_LEARNING_RATE)
     )
 
     train_parser.add_argument(
-        "--decay", dest="decay", type=float,
+        "--decay", 
+        dest="decay", 
+        type=float,
         default=DEFAULT_ADAM_DECAY,
         help="Learning rate decay. Default: " + str(DEFAULT_ADAM_DECAY)
     )
 
     train_parser.add_argument(
-        "--prefix", dest="prefix", type=str,
+        "--prefix", 
+        dest="prefix", 
+        type=str,
         default="weights",
         help="Output prefix. Default: weights")
 
     train_parser.add_argument(
-        "--output", dest="output", type=str,
+        "--output", 
+        dest="output", 
+        type=str,
         default="./training_results",
         help="Folder for training results. Default: ./training_results")
 
     train_parser.add_argument(
-        "--plot", dest="plot", action="store_true",
+        "--plot", 
+        dest="plot", 
+        action="store_true",
         default=True,
         help="Plot model structure and training history. \
             Default: False"
     )
 
     train_parser.add_argument(
-        "--threads", dest="threads", type=int,
+        "--threads", 
+        dest="threads", 
+        type=int,
         help="# of processes to run training in parallel. \
             Default: 1"
     )
 
     train_parser.add_argument(
-        "--loglevel", dest="loglevel", type=str,
+        "--loglevel", 
+        dest="loglevel", 
+        type=str,
         default=DEFAULT_LOG_LEVEL,
         choices=LOG_LEVELS.keys(),
         help="Logging level. Default: " + DEFAULT_LOG_LEVEL
@@ -505,19 +589,27 @@ def get_parser():
     normalize_parser.set_defaults(func=run_normalization)
 
     normalize_parser.add_argument(
-        "--signal", dest="signal", type=str, nargs="+",
+        "--signal", 
+        dest="signal", 
+        type=str, 
+        nargs="+",
         required=False,
         help="Input signal bigWig file(s) to be normalized by reference"
     )
 
     normalize_parser.add_argument(
-        "--average", dest="average", type=str,
+        "--average", 
+        dest="average", 
+        type=str,
         required=True,
         help="Average signal bigWig file to be used as reference for normalization"
     )
 
     normalize_parser.add_argument(
-        "--chroms", dest="chroms", type=str, nargs="+",
+        "--chroms", 
+        dest="chroms", 
+        type=str, 
+        nargs="+",
         default=DEFAULT_CHRS,
         help="Chromosomes list for analysis. \
             Regions in a form of chrN:start-end are ignored. \
@@ -525,7 +617,9 @@ def get_parser():
     )
 
     normalize_parser.add_argument(
-        "--bin", dest="bin", type=int,
+        "--bin", 
+        dest="bin", 
+        type=int,
         default=DEFAULT_NORMALIZATION_BIN,
         help="Normalization bin size. \
             Default: " + str(DEFAULT_NORMALIZATION_BIN)
@@ -647,7 +741,7 @@ def parse_arguments(argsl, cwd_abs_path=None):
                 "chroms", "keep", "epochs", "batches",
                 "prefix", "plot", "lrate", "decay", "bin",
                 "minimum", "test_cell_lines", "rand_ratio", 
-                "train_tf", "arch"
+                "train_tf", "arch", "FILTER_NUMBER", "KERNEL_SIZE"
             ],
             cwd_abs_path
         )

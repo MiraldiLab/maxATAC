@@ -25,10 +25,8 @@ from maxatac.utilities.constants import (
     DILATION_RATE,
     OUTPUT_LENGTH,
     BP_RESOLUTION,
-    INPUT_FILTERS,
     POOL_SIZE,
     FILTERS_SCALING_FACTOR,
-    INPUT_KERNEL_SIZE,
     OUTPUT_KERNEL_SIZE,
     INPUT_ACTIVATION,
     OUTPUT_ACTIVATION,
@@ -37,6 +35,7 @@ from maxatac.utilities.constants import (
     ADAM_BETA_2,
     TRAIN_MONITOR,
     TRAIN_SCALE_SIGNAL
+
 )
 
 from maxatac.utilities.prepare import (
@@ -84,57 +83,12 @@ def run_training(args):
     )
     tensor_board_log_dir = get_dir(path.join(out_dir, "tensorboard"))
     
-##############################################################################
-    # logging.error(
-    #     "Training" +
-    #     "\n  Training signal: " + args.signal +
-    #     "\n  Training binding sites: " + args.tsites +
-    #     "\n  Validation signal: " + args.validation +
-    #     "\n  Validation binding sites: " + args.vsites +
-    #     "\n  Average signal: " + args.average +
-    #     "\n  Sequence data: " + args.sequence +
-    #     "\n  Limit training regions selection to: " + str(args.preferences) +
-    #     "\n  Filters training regions signal based on: " + str(args.filters) +
-    #     "\n  All chromosomes: \n   - " + "\n   - ".join(
-    #             str(k) + ":" + \
-    #             str(v["region"][0])+ "-" + \
-    #             str(v["region"][1])+ " (" + \
-    #             str(v["length"])+ ")" for k, v in args.chroms.items()
-    #         ) +
-    #     "\n  Training chromosomes: \n   - " + "\n   - ".join(
-    #             str(k) + ":" + \
-    #             str(v["region"][0])+ "-" + \
-    #             str(v["region"][1])+ " (" + \
-    #             str(v["length"])+ ")" for k, v in train_chroms.items()
-    #         ) +
-    #     "\n  Validation chromosomes: \n   - " + "\n   - ".join(
-    #             str(k) + ":" + \
-    #             str(v["region"][0])+ "-" + \
-    #             str(v["region"][1])+ " (" + \
-    #             str(v["length"])+ ")" for k, v in validate_chroms.items()
-    #         ) +
-    #     "\n  Load weights from: " + str(args.weights) +
-    #     "\n  Proportion of training chromosomes: " + str(args.proportion) +
-    #     "\n  Training epochs count: " + str(args.epochs) +
-    #     "\n  Training batches per epoch: " + str(args.batches) +
-    #     "\n  Batch size: " + str(BATCH_SIZE) +
-    #     "\n  Learning rate: " + str(args.lrate) +
-    #     "\n  Learning rate decay: " + str(args.decay) +
-    #     "\n  Plot model structure and training history: " + str(args.plot) +
-    #     "\n  Random seed: " + str(args.seed) +
-    #     "\n  Threads count: " + str(args.threads) +
-    #     "\n  Logging level: " + logging.getLevelName(args.loglevel) +
-    #     "\n  Training log location: " +  log_location +
-    #     "\n  TensorBoard logging directory: " +  tensor_board_log_dir +
-    #     "\n  Results location: " + results_location
-    # )
-##############################################################################
     configure_session(1)  # fit_generator should handle threads by itself
     if args.arch == "DCNN_V2":
         nn_model = get_dilated_cnn( input_length=INPUT_LENGTH,
                                     input_channels=INPUT_CHANNELS,
-                                    input_filters=INPUT_FILTERS,
-                                    input_kernel_size=INPUT_KERNEL_SIZE,
+                                    input_filters=args.FILTER_NUMBER,
+                                    input_kernel_size=args.KERNEL_SIZE,
                                     input_activation=INPUT_ACTIVATION,
                                     output_filters=OUTPUT_FILTERS,
                                     output_kernel_size=OUTPUT_KERNEL_SIZE,
@@ -240,8 +194,3 @@ def run_training(args):
         export_model_accuracy(training_history, results_location)
 
     logging.error("Results are saved to: " + results_location)
-
-#   1. Write code for model selection
-        # a. Create generator/dataset
-        # b. Make predictions
-        # c. Create AUPR curves

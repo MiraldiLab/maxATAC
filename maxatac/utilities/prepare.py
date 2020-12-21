@@ -479,7 +479,64 @@ def create_val_generator(
             yield (np.array(inputs_batch), np.array(targets_batch))    
     
         
+def get_significant(data, min_threshold):
+    selected = np.concatenate(([0], np.greater_equal(data, min_threshold).view(np.int8), [0]))
+    breakpoints = np.abs(np.diff(selected))
+    ranges = np.where(breakpoints == 1)[0].reshape(-1, 2)  # [[s1,e1],[s2,e2],[s3,e3]]
+    expanded_ranges = list(map(lambda a : list(range(a[0], a[1])), ranges))
+    mask = sum(expanded_ranges, [])  # to flatten
+    starts = mask.copy()  # copy list just in case
+    ends = [i + 1 for i in starts]
+    return mask, starts, ends
     
+
+def get_input_matrix(
+    rows,
+    cols,
+    batch_size,          # make sure that cols % batch_size == 0
+    signal_stream,
+    average_stream,
+    sequence_stream,
+    bp_order,
+    chrom,
+    start,               # end - start = cols
+    end,
+    reshape=True,
+    scale_signal=None,   # (min, max) ranges to scale signal
+    filters_stream=None  # defines regions that should be set to 0
+):
+ 
+    input_matrix = np.zeros((rows, cols))
+    for n, bp in enumerate(bp_order):
+        input_matrix[n, :] = get_one_hot_encoded(
+            sequence_stream.sequence(chrom, start, end),
+            bp
+        )
+    signal_array = np.array(signal_stream.values(chrom, start, end))
+    avg_array = np.array(average_stream.values(chrom, start, end))
+
+    if filters_stream is not None:
+        exclude_mask = np.array(filters_stream.values(chrom, start, end)) <= 0
+        signal_array[exclude_mask] = 0
+        avg_array[exclude_mask] = 0
+
+    input_matrix[4, :] = signal_array
+    input_matrix[5, :] = input_matrix[4, :] - avg_array
+
+    if scale_signal is not None:
+        scaling_factor = random.random() * (scale_signal[1] - scale_signal[0]) + \
+            scale_signal[0]
+        input_matrix[4, :] = input_matrix[4, :] * scaling_factor
+
+    input_matrix = input_matrix.T
+
+    if reshape:
+        input_matrix = np.reshape(
+            input_matrix,
+            (batch_size, round(cols/batch_size), rows)
+        )
+
+    return input_matrix
         
     
     
