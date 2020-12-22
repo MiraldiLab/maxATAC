@@ -36,7 +36,8 @@ setup(
         "matplotlib==3.2.1",
         "scikit-learn==0.22.2",
         "enum34>=1.0.4",
-        "pandas==1.0.3"
+        "pandas==1.0.3",
+        "dask==2.30.0"
     ],
     zip_safe=False,
     scripts=["maxatac/bin/maxatac"],
