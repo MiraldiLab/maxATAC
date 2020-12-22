@@ -632,23 +632,31 @@ def get_parser():
     )
 
     normalize_parser.add_argument(
-        "--prefix", dest="prefix", type=str,
+        "--prefix", 
+        dest="prefix", 
+        type=str,
         default="normalized",
         help="Output prefix. Default: normalized")
 
     normalize_parser.add_argument(
-        "--output", dest="output", type=str,
+        "--output", 
+        dest="output", 
+        type=str,
         default="./normalization_results",
         help="Folder for normalization results. Default: ./normalization_results")
 
     normalize_parser.add_argument(
-        "--threads", dest="threads", type=int,
+        "--threads", 
+        dest="threads", 
+        type=int,
         help="# of processes to run loading and exporing data in parallel. \
             Default: # of available CPUs minus 25 percent, minimum 1"
     )
 
     normalize_parser.add_argument(
-        "--loglevel", dest="loglevel", type=str,
+        "--loglevel", 
+        dest="loglevel", 
+        type=str,
         default=DEFAULT_LOG_LEVEL,
         choices=LOG_LEVELS.keys(),
         help="Logging level. Default: " + DEFAULT_LOG_LEVEL
@@ -663,19 +671,26 @@ def get_parser():
     benchmark_parser.set_defaults(func=run_benchmarking)
 
     benchmark_parser.add_argument(
-        "--prediction", dest="prediction", type=str,
+        "--prediction", 
+        dest="prediction", 
+        type=str,
         required=True,
         help="Prediction bigWig file"
     )
 
     benchmark_parser.add_argument(
-        "--control", dest="control", type=str,
+        "--control", 
+        dest="control", 
+        type=str,
         required=True,
         help="Control bigWig file"
     )
 
     benchmark_parser.add_argument(
-        "--chroms", dest="chroms", type=str, nargs="+",
+        "--chroms", 
+        dest="chroms", 
+        type=str, 
+        nargs="+",
         default=DEFAULT_CHRS,
         help="Chromosomes list for analysis. \
             Optionally with regions in a form of chrN:start-end. \
@@ -683,32 +698,42 @@ def get_parser():
     )
 
     benchmark_parser.add_argument(
-        "--bin", dest="bin", type=int,
+        "--bin", 
+        dest="bin", 
+        type=int,
         default=DEFAULT_NORMALIZATION_BIN,
         help="Bin size to split prediction and control data before running prediction. \
             Default: " + str(DEFAULT_NORMALIZATION_BIN)
     )
 
     benchmark_parser.add_argument(
-        "--plot", dest="plot", action="store_true",
+        "--plot", 
+        dest="plot", 
+        action="store_true",
         help="Plot PRC plot for every chromosome. \
             Default: False"
     )
 
     benchmark_parser.add_argument(
-        "--output", dest="output", type=str,
+        "--output", 
+        dest="output", 
+        type=str,
         default="./benchmarking_results",
         help="Folder for benchmarking results. Default: ./benchmarking_results"
     )
     
     benchmark_parser.add_argument(
-        "--threads", dest="threads", type=int,
+        "--threads", 
+        dest="threads", 
+        type=int,
         help="# of processes to run benchmarking in parallel. \
             Default: # of available CPUs minus 25 percent, min 1"
     )
 
     benchmark_parser.add_argument(
-        "--loglevel", dest="loglevel", type=str,
+        "--loglevel", 
+        dest="loglevel", 
+        type=str,
         default=DEFAULT_LOG_LEVEL,
         choices=LOG_LEVELS.keys(),
         help="Logging level. Default: " + DEFAULT_LOG_LEVEL

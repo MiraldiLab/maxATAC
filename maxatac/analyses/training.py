@@ -8,12 +8,18 @@ from os import path
 from yaml import dump, safe_load
 from datetime import datetime
 import sys
+
 from maxatac.utilities.helpers import (
     get_dir,
     get_rootname,
     replace_extension,
-    remove_tags, load_bigwig, safe_load_bigwig, load_2bit, Mute
+    remove_tags, 
+    load_bigwig, 
+    safe_load_bigwig, 
+    load_2bit, 
+    Mute
 )
+
 from maxatac.utilities.constants import (
     INPUT_CHANNELS,
     INPUT_LENGTH,
@@ -107,8 +113,8 @@ def run_training(args):
     elif args.arch == "RES_DCNN_V2":
         nn_model = get_res_dcnn( input_length=INPUT_LENGTH,
                                  input_channels=INPUT_CHANNELS,
-                                 input_filters=INPUT_FILTERS,
-                                 input_kernel_size=INPUT_KERNEL_SIZE,
+                                 input_filters=args.FILTER_NUMBER,
+                                 input_kernel_size=args.KERNEL_SIZE,
                                  input_activation=INPUT_ACTIVATION,
                                  output_filters=OUTPUT_FILTERS,
                                  output_kernel_size=OUTPUT_KERNEL_SIZE,
