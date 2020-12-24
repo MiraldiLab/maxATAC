@@ -19,17 +19,18 @@ from maxatac.utilities.helpers import (
 
 from maxatac.utilities.constants import (
     DEFAULT_CHRS,
-    DEFAULT_CHR_PROPORTION,
     LOG_LEVELS,
     DEFAULT_LOG_LEVEL,
     DEFAULT_TRAIN_EPOCHS,
     DEFAULT_TRAIN_BATCHES_PER_EPOCH,
     DEFAULT_ADAM_LEARNING_RATE,
     DEFAULT_ADAM_DECAY,
-    DEFAULT_NORMALIZATION_BIN,
-    DEFAULT_MIN_PREDICTION,
+    DEFAULT_BENCHMARKING_BIN_SIZE,
     INPUT_KERNEL_SIZE,
-    INPUT_FILTERS
+    INPUT_FILTERS,
+    DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
+    DEFAULT_ROUND,
+    DEFAULT_PREDICTION_BATCH_SIZE
 )
 
 
@@ -295,11 +296,19 @@ def get_parser():
     )
 
     predict_parser.add_argument(
-        "--minimum", 
-        dest="minimum", 
-        type=float,
-        default=DEFAULT_MIN_PREDICTION,
-        help="Minimum prediction value to be reported. Default: " + str(DEFAULT_MIN_PREDICTION)
+        "--round", 
+        dest="round", 
+        type=int,
+        default=DEFAULT_ROUND,
+        help="Float precision that you want to round predictions to"
+    )
+ 
+    predict_parser.add_argument(
+        "--batch_size", 
+        dest="batch_size", 
+        type=int,
+        default=DEFAULT_PREDICTION_BATCH_SIZE,
+        help="Float precision that you want to round predictions to"
     )
 
     predict_parser.add_argument(
@@ -584,7 +593,7 @@ def get_parser():
     normalize_parser = subparsers.add_parser(
         "normalize",
         parents=[parent_parser],
-        help="Run maxATAC normalization"
+        help="Run minmax normalization"
     )
     normalize_parser.set_defaults(func=run_normalization)
 
@@ -592,43 +601,15 @@ def get_parser():
         "--signal", 
         dest="signal", 
         type=str, 
-        nargs="+",
-        required=False,
+        required=True,
         help="Input signal bigWig file(s) to be normalized by reference"
     )
-
     normalize_parser.add_argument(
-        "--average", 
-        dest="average", 
-        type=str,
-        required=True,
-        help="Average signal bigWig file to be used as reference for normalization"
-    )
-
-    normalize_parser.add_argument(
-        "--chroms", 
-        dest="chroms", 
+        "--genome", 
+        dest="GENOME", 
         type=str, 
-        nargs="+",
-        default=DEFAULT_CHRS,
-        help="Chromosomes list for analysis. \
-            Regions in a form of chrN:start-end are ignored. \
-            Default: main human chromosomes, whole length"
-    )
-
-    normalize_parser.add_argument(
-        "--bin", 
-        dest="bin", 
-        type=int,
-        default=DEFAULT_NORMALIZATION_BIN,
-        help="Normalization bin size. \
-            Default: " + str(DEFAULT_NORMALIZATION_BIN)
-    )
-
-    normalize_parser.add_argument(
-        "--plot", dest="plot", action="store_true",
-        help="Plot normalized signal(s) boxplots per chromosome. \
-            Default: False"
+        required=True,
+        help="Reference genome build"
     )
 
     normalize_parser.add_argument(
@@ -644,14 +625,6 @@ def get_parser():
         type=str,
         default="./normalization_results",
         help="Folder for normalization results. Default: ./normalization_results")
-
-    normalize_parser.add_argument(
-        "--threads", 
-        dest="threads", 
-        type=int,
-        help="# of processes to run loading and exporing data in parallel. \
-            Default: # of available CPUs minus 25 percent, minimum 1"
-    )
 
     normalize_parser.add_argument(
         "--loglevel", 
@@ -679,18 +652,17 @@ def get_parser():
     )
 
     benchmark_parser.add_argument(
-        "--control", 
-        dest="control", 
+        "--goldstandard", 
+        dest="goldstandard", 
         type=str,
         required=True,
-        help="Control bigWig file"
+        help="Gold Standard bigWig file"
     )
 
     benchmark_parser.add_argument(
         "--chroms", 
         dest="chroms", 
         type=str, 
-        nargs="+",
         default=DEFAULT_CHRS,
         help="Chromosomes list for analysis. \
             Optionally with regions in a form of chrN:start-end. \
@@ -701,17 +673,26 @@ def get_parser():
         "--bin", 
         dest="bin", 
         type=int,
-        default=DEFAULT_NORMALIZATION_BIN,
+        default=DEFAULT_BENCHMARKING_BIN_SIZE,
         help="Bin size to split prediction and control data before running prediction. \
-            Default: " + str(DEFAULT_NORMALIZATION_BIN)
+            Default: " + str(DEFAULT_BENCHMARKING_BIN_SIZE)
     )
 
     benchmark_parser.add_argument(
-        "--plot", 
-        dest="plot", 
-        action="store_true",
-        help="Plot PRC plot for every chromosome. \
-            Default: False"
+        "--agg", 
+        dest="agg_function", 
+        type=int,
+        default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
+        help="Aggregation function to use for combining results into bins: \
+            max, sum, mean, median, min"
+    )
+
+    benchmark_parser.add_argument(
+        "--prefix", 
+        dest="prefix", 
+        type=str,
+        default="test",
+        help="Prefix for the file name"
     )
 
     benchmark_parser.add_argument(
@@ -720,14 +701,6 @@ def get_parser():
         type=str,
         default="./benchmarking_results",
         help="Folder for benchmarking results. Default: ./benchmarking_results"
-    )
-    
-    benchmark_parser.add_argument(
-        "--threads", 
-        dest="threads", 
-        type=int,
-        help="# of processes to run benchmarking in parallel. \
-            Default: # of available CPUs minus 25 percent, min 1"
     )
 
     benchmark_parser.add_argument(
@@ -766,7 +739,9 @@ def parse_arguments(argsl, cwd_abs_path=None):
                 "chroms", "keep", "epochs", "batches",
                 "prefix", "plot", "lrate", "decay", "bin",
                 "minimum", "test_cell_lines", "rand_ratio", 
-                "train_tf", "arch", "FILTER_NUMBER", "KERNEL_SIZE"
+                "train_tf", "arch", "FILTER_NUMBER", 
+                "KERNEL_SIZE", "genome", "goldstandard",
+                "agg_function", "round", "batch_size"
             ],
             cwd_abs_path
         )

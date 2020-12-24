@@ -1,167 +1,66 @@
 import logging
 import numpy as np
+import pyBigWig
+import pandas as pd
+import os
 
 from multiprocessing import Pool, Manager
 from os import path
 
-from maxatac.utilities.helpers import get_dir, get_rootname, load_bigwig, dump_bigwig
-from maxatac.utilities.plot import export_boxplot
+from maxatac.utilities.constants import DEFAULT_CHRS
+from maxatac.utilities.helpers import build_chrom_sizes_dict
 
+def find_genomic_minmax(x):
+    """Load the genome bigwig file and find the min and max values"""
+    bw = pyBigWig.open(x)    
 
-def quantile_normalize(signal, reference):
-    reference_sorted = np.sort(reference)
-    return reference_sorted[signal.argsort().argsort()]
+    minmax_results = []
 
+    logging.error("Finding min and max values per chromosome")    
+    for chrom in bw.chroms():
+        chr_vals = np.nan_to_num(bw.values(chrom, 0, bw.chroms(chrom), numpy=True))
 
-def load_chrom_signal_data(
-    job_id,
-    location,
-    is_reference,
-    chrom,  # (chrom_name, chrom_length)
-    region,  # (start, end), we don't use it here, only print to log
-    bin_size
-):
-    bin_count = int(chrom[1] / bin_size)  # need to floor the number
+        minmax_results.append([chrom, np.min(chr_vals), np.max(chr_vals)])
 
-    logging.error(
-        "Start loading job [" + str(job_id) + "]" +
-        "\n  Target signal: " + location +
-        "\n  Chromosome: " + \
-             chrom[0] + ":" + \
-             str(region[0]) + "-" + \
-             str(region[1]) + " (" + \
-             str(chrom[1]) + ")" +
-        "\n  Binning: " + str(bin_count) + " bins * " + str(bin_size) + " bp" +
-        "\n  Use it as reference: " + str(is_reference)
-    )
-    with load_bigwig(location) as data_stream:
-        chrom_signal_data = np.nan_to_num(
-            np.array(
-                data_stream.stats(
-                    chrom[0],
-                    0,
-                    chrom[1],
-                    type="mean",
-                    nBins=bin_count,
-                    exact=True
-                ),
-                dtype=float  # need it to have NaN instead of None
+    logging.error("Finding genome min and max values")    
+
+    minmax_results_df = pd.DataFrame(minmax_results) 
+
+    minmax_results_df.columns = ["chromosome", "min", "max"]
+
+    basename = os.path.basename(x)
+
+    minmax_results_df.to_csv(str(basename) + "_chromosome_min_max.txt", sep="\t", index=False)
+
+    return minmax_results_df["min"].min(), minmax_results_df["max"].max()
+
+def normalize_signal(chrom_array, genome_min, genome_max):
+    """This function will normalize the numpy array based on the parameters of the min and max values"""
+    minmax = lambda x: ((x-genome_min)/(genome_max-genome_min))
+    
+    return minmax(chrom_array)
+
+def normalize_write_bigwig(input_bigwig, OUT_BIGWIG_FILENAME, chromosome_length_dictionary, chromosome_list, genome_min, genome_max):
+    with pyBigWig.open(input_bigwig) as input_bw, pyBigWig.open(OUT_BIGWIG_FILENAME, "w") as output_bw:
+        header = [(x, chromosome_length_dictionary[x]) for x in sorted(chromosome_list)]
+
+        output_bw.addHeader(header)
+
+        for chrom_name, chrom_length in header:
+            chr_vals = np.nan_to_num(input_bw.values(chrom_name, 0, chrom_length, numpy=True))
+
+            normalized_signal = normalize_signal(chr_vals, genome_min, genome_max)
+            
+            logging.error("Add Entries for " + str(chrom_name))
+
+            output_bw.addEntries(
+                chroms = chrom_name,
+                starts = 0,      # [0, 1, 2, 3, 4]
+                ends = chrom_length,  # [1, 2, 3, 4, 5]
+                span=1,
+                step=1,
+                values = normalized_signal.tolist()
             )
-        )
-    logging.error("Finished loading job " + str(job_id))
-    return (location, chrom[0], chrom_signal_data, is_reference)
-
-
-def get_scattered_loading_params(args):
-    scattered_params = []
-    job_id = 1
-    locations = args.signal + [args.average]
-    for i, location in enumerate(locations):
-        for chrom_name, chrom_data in args.chroms.items():
-            is_reference = i == len(locations) - 1  # the last one is average
-            scattered_params.append(
-                (
-                    job_id,
-                    location,
-                    is_reference,
-                    (chrom_name, chrom_data["length"]),
-                    chrom_data["region"],
-                    args.bin
-                )
-            )
-            job_id += 1
-    return scattered_params
-
-
-def get_merged_data(raw_data, for_reference=False):
-    raw_data_dict = {}  # refactore raw_data to dict for easy access
-
-    for location, chrom_name, chrom_signal_data, is_reference in raw_data:
-        if (not for_reference and is_reference) or (for_reference and not is_reference):
-            continue
-        raw_data_dict.setdefault(location, {})[chrom_name] = chrom_signal_data
-
-    merged_data = []  # [(location, acc_signal)]
-    for location, signal_per_chrom  in raw_data_dict.items():
-        acc_signal = np.zeros(0)
-        for chrom_name in sorted(signal_per_chrom.keys()):  # need it sorted
-            acc_signal = np.append(
-                acc_signal,
-                signal_per_chrom[chrom_name]
-            )
-        merged_data.append((location, acc_signal))
-
-    return merged_data
-
-
-def get_normalized_signal(signal, reference_data):
-    logging.error("Running normalization")
-    normalized_signal = []
-    for location, signal_data in signal:
-        logging.error("  Processing " + get_rootname(location))
-        normalized_signal.append(
-            (
-                location,
-                quantile_normalize(signal_data, reference_data)
-            )
-        )
-    return normalized_signal  # [(location, normalized_signal_data)]
-
-
-def export_merged_data(merged_data_list, args):
-
-    logging.error("Export normalized results")
-
-    for location, merged_data in merged_data_list:
-        results_filename = args.prefix + \
-            "_" + get_rootname(location) + \
-            "_ref_" + get_rootname(args.average) + \
-            ".bigwig"
-
-        results_location = path.join(get_dir(args.output), results_filename)
-
-        chr_values = []
-        chr_names = []
-
-        with dump_bigwig(results_location) as data_stream:
-            header = [(n, args.chroms[n]["length"]) for n in sorted(args.chroms.keys())]
-            data_stream.addHeader(header)
-
-            start = 0
-            for chrom_name, chrom_length in header:
-                bin_count = int(chrom_length / args.bin)
-                end = start + bin_count
-                data_per_chr = merged_data[start:end]
-                chr_values.append(data_per_chr)
-                chr_names.append(chrom_name)
-
-                data_stream.addEntries(
-                    chroms = [chrom_name] * data_per_chr.size,
-                    starts = [i * args.bin for i in range(0, data_per_chr.size)],      # [0,  10, 20, 30, 40]
-                    ends = [(i + 1) * args.bin for i in range(0, data_per_chr.size)],  # [10, 20, 30, 40, 50]
-                    values = data_per_chr.tolist()
-                )
-
-                start = end
-
-        if args.plot:
-            export_boxplot(
-                data=chr_values,
-                file_location=results_location,
-                names=chr_names,
-                title="Quantile normalized " + get_rootname(location) + " by " + get_rootname(args.average)
-            )
-        
-        logging.error("  Results are saved to: " + results_location)
-
-    if args.plot:
-        logging.error("Export boxplots for combined chromosomes")
-        export_boxplot(
-            data=[i[1] for i in merged_data_list],
-            file_location=path.join(get_dir(args.output), "combined_chromosomes"),
-            names=[get_rootname(i[0]) for i in merged_data_list],
-            title="Quantile normalized merged chromosomes"
-        )
 
 
 def run_normalization(args):
@@ -169,38 +68,21 @@ def run_normalization(args):
     logging.error(
         "Normalization" +
         "\n  Target signal(s): \n   - " + "\n   - ".join(args.signal) +
-        "\n  Average signal (reference distribution): " + args.average +
-        "\n  Chromosomes: \n   - " + "\n   - ".join(
-                str(k) + ":" + \
-                str(v["region"][0])+ "-" + \
-                str(v["region"][1])+ " (" + \
-                str(v["length"])+ ")" for k, v in args.chroms.items()
-            ) +
-        "\n  Jobs count: " + 
-        "\n     - loading: " + str(len(args.chroms) * (len(args.signal) + 1)) +
-        "\n     - normalization: " + str(len(args.signal)) +
-        "\n     - export: " + str(len(args.signal) + 1) +
-        "\n  Threads count: " + str(args.threads) +
-        "\n  Normalization bin size: " + str(args.bin) +
-        "\n  Plot normalized signal(s) boxplots per chromosome: " + str(args.plot) +
-        "\n  Logging level: " + logging.getLevelName(args.loglevel) +
+        "\n  Reference Genome Build: " + args.GENOME + 
         "\n  Output prefix: " + args.prefix + 
         "\n  Output directory: " + args.output
     )
 
-    logging.error("Loading data using " + str(args.threads) + " threads")
-    with Pool(args.threads) as p:
-        raw_data = p.starmap(
-            load_chrom_signal_data,
-            get_scattered_loading_params(args)
-        )
+    logging.error("Find the min and max values across the genome")
+    
+    chromosome_length_dictionary = build_chrom_sizes_dict(args.GENOME)
+    
+    genome_min, genome_max = find_genomic_minmax(args.signal)
 
-    logging.error(f"Preparing data for normalization. Merge chromosomes into genome-wide array")
-    merged_signal_data = get_merged_data(raw_data=raw_data)  # [(location, signal_data)]
-    merged_average_data = get_merged_data(raw_data=raw_data, for_reference=True)  # [(location, signal_data)]
+    logging.error("Normalize and Write BigWig file")
 
-    normalized_merged_signal_data = get_normalized_signal(  # [(location, normalized_signal_data)]
-        signal=merged_signal_data,
-        reference_data=merged_average_data[0][1])  # set average data directly
+    OUTPUT_FILENAME = args.output + "/" + args.prefix + "_minmax01.bw"
 
-    export_merged_data(normalized_merged_signal_data + merged_average_data, args)
+    logging.error("Output BigWig Filename: " + OUTPUT_FILENAME)
+
+    normalize_write_bigwig(args.signal, OUTPUT_FILENAME, chromosome_length_dictionary, DEFAULT_CHRS, genome_min, genome_max)

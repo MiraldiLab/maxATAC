@@ -3,11 +3,11 @@ import pyBigWig
 import py2bit
 import os
 import logging
-
+import numpy as np
 from multiprocessing import cpu_count
 from os import path, getcwd, makedirs, error, walk, environ
 from re import match
-from maxatac.utilities.constants import CPP_LOG_LEVEL
+from maxatac.utilities.constants import CPP_LOG_LEVEL, DEFAULT_CHRS
 
 ### General Helpers ###
 def get_absolute_path(p, cwd_abs_path=None):
@@ -123,3 +123,36 @@ def dump_bigwig(location):
 
 def load_2bit(location):
     return py2bit.open(get_absolute_path(location))
+
+
+def build_chrom_sizes_dict(genome_build):
+    if genome_build == "hg19":
+        #### hg19 chrom sizes
+        num_bp=np.array([249250621,243199373,198022430,
+                        191154276,180915260,171115067,
+                        159138663,146364022,141213431,
+                        135534747,135006516,133851895,
+                        115169878,107349540,102531392,
+                        90354753,81195210,78077248,
+                        59128983,63025520,48129895,
+                        51304566,155270560])
+
+    else:
+        #### hg38 chrom sizes
+        num_bp=np.array([248956422,242193529,198295559,
+                        190214555,181538259,170805979,
+                        159345973,145138636,138394717,
+                        133797422,135086622,133275309,
+                        114364328,107043718,101991189,
+                        90338345,83257441,80373285,
+                        58617616,64444167,46709983,
+                        50818468,156040895])
+
+    # This will initialize an empty list to store the chrom sizes dict
+    chromosome_length_dictionary={}
+
+    # This will create the chromosome sizes dictionary
+    for i in np.arange(len(DEFAULT_CHRS)):
+        chromosome_length_dictionary[DEFAULT_CHRS[i]]=num_bp[i]
+
+    return chromosome_length_dictionary

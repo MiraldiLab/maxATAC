@@ -1,4 +1,3 @@
-
 import random
 import numpy as np
 import pandas as pd
@@ -11,21 +10,14 @@ import sys
 
 from maxatac.utilities.helpers import (
     get_dir,
-    get_rootname,
     replace_extension,
     remove_tags, 
-    load_bigwig, 
-    safe_load_bigwig, 
-    load_2bit, 
     Mute
 )
 
 from maxatac.utilities.constants import (
     INPUT_CHANNELS,
     INPUT_LENGTH,
-    BATCH_SIZE,
-    CHR_POOL_SIZE,
-    BP_ORDER,
     OUTPUT_FILTERS,
     CONV_BLOCKS,
     DILATION_RATE,
@@ -39,9 +31,7 @@ from maxatac.utilities.constants import (
     PADDING,
     ADAM_BETA_1,
     ADAM_BETA_2,
-    TRAIN_MONITOR,
-    TRAIN_SCALE_SIGNAL
-
+    TRAIN_MONITOR
 )
 
 from maxatac.utilities.prepare import (
@@ -59,37 +49,31 @@ from maxatac.utilities.plot import (
 )
 
 with Mute():  # hide stdout from loading the modules
-    from maxatac.utilities.d_cnn import (
-        get_dilated_cnn, tp, tn, fp, fn, acc, get_callbacks
-
-    )
-    from maxatac.utilities.res_dcnn import (
-        get_res_dcnn, tp, tn, fp, fn, acc
-
-    )
+    from maxatac.utilities.d_cnn import (get_dilated_cnn, tp, tn, fp, fn, acc, get_callbacks)
+    from maxatac.utilities.res_dcnn import get_res_dcnn
 
 def run_training(args):
-
     # TODO Random() object might be the same for all sub processes.
     random.seed(args.seed)
+    
     #Create a Results directory with Time Stamps
     ts = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    
     out_dir = path.join(args.output, 'Run_'+ ts)
     
     #filenames to be decided...may need to change the below
     out_dir = get_dir(out_dir)
 
-    results_filename = args.prefix + \
-        "_" + "_{epoch}" + \
-        ".h5"
+    results_filename = args.prefix + "_" + "_{epoch}" + ".h5"
+    
     results_location = path.join(out_dir, results_filename)
-    log_location = replace_extension(
-        remove_tags(results_location, "_{epoch}"),
-        ".csv"
-    )
+    
+    log_location = replace_extension(remove_tags(results_location, "_{epoch}"), ".csv")
+    
     tensor_board_log_dir = get_dir(path.join(out_dir, "tensorboard"))
     
     configure_session(1)  # fit_generator should handle threads by itself
+    
     if args.arch == "DCNN_V2":
         nn_model = get_dilated_cnn( input_length=INPUT_LENGTH,
                                     input_channels=INPUT_CHANNELS,

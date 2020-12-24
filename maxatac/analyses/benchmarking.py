@@ -1,66 +1,52 @@
 import logging
 import numpy as np
 import pandas as pd
-from multiprocessing import Pool
-from os import path
-from sklearn.metrics import (
-    precision_recall_curve,
-    plot_precision_recall_curve
-)
+from sklearn import metrics
+from sklearn.metrics import precision_recall_curve
+from maxatac.utilities.helpers import load_bigwig
 
-from maxatac.utilities.helpers import get_dir, get_rootname, load_bigwig
-from maxatac.utilities.plot import export_prc
-
-
-def run_chrom_benchmarking(
-    job_id,
+def benchmark_predictions(
     prediction,
-    control,
+    goldstandard,
     bin_size,
-    chrom,  # (chrom_name, chrom_length)
-    plot,
-    output
+    chrom,  
+    results_location# (chrom_name)
 ):
-    results_filename = get_rootname(prediction) + \
-        "_" + get_rootname(control) + \
-        "_" + chrom[0] + \
-        "_" + str(bin_size) + \
-        ".tsv"
-    results_location = path.join(get_dir(output), results_filename)
+    with load_bigwig(prediction) as prediction_stream, load_bigwig(goldstandard) as goldstandard_stream:
+        chrom_len = prediction_stream.chroms(chrom)
+        
+        bin_count = int(int(chrom_len) / int(bin_size))  # need to floor the number
 
-    bin_count = int(chrom[1] / bin_size)  # need to floor the number
-    logging.error(
-        "Start job [" + str(job_id) + "]" +
-        "\n  Prediction file:" + prediction +
-        "\n  Control file: " + control +
-        "\n  Chromosome: " + chrom[0] + " (" + str(chrom[1]) + ")" +
-        "\n  Binning: " + str(bin_count) + " bins * " + str(bin_size) + " bp"
-        "\n  Results location: " + results_location
-    )
+        logging.error(
+            "Prediction file:" + prediction +
+            "\n  Gold standard file: " + goldstandard +
+            "\n  Chromosome: " + chrom +
+            "\n  Binning: " + str(bin_count) + " bins * " + str(bin_size) + " bp"
+            "\n  Results location: " + results_location
+        )
     
-    logging.error("  Loading data")
-    with \
-            load_bigwig(prediction) as prediction_stream, \
-            load_bigwig(control) as control_stream:
         prediction_chrom_data = np.nan_to_num(
             np.array(
                 prediction_stream.stats(
-                    chrom[0],
+                    chrom,
                     0,
-                    chrom[1],
-                    type="mean",
+                    chrom_len,
+                    type="max",
                     nBins=bin_count,
                     exact=True
                 ),
                 dtype=float  # need it to have NaN instead of None
             )
         )
-        control_chrom_data = np.nan_to_num(
+
+        logging.error("Import Gold Standard Array")
+
+        goldstandard_chrom_data = np.nan_to_num(
             np.array(
-                control_stream.stats(
-                    chrom[0],
+                goldstandard_stream.stats(
+                    chrom,
                     0,
-                    chrom[1],
+                    chrom_len,
                     type="mean",
                     nBins=bin_count,
                     exact=True
@@ -69,63 +55,46 @@ def run_chrom_benchmarking(
             )
         ) > 0  # to convert to boolean array
         
-        logging.error("  Running PRC")
-        precision, recall, thresholds = precision_recall_curve(
-            control_chrom_data,
-            prediction_chrom_data
-        )
-        prc_data = pd.DataFrame({"recall":recall, "precision":precision}) 
-        prc_data.to_csv(results_location, index=False, sep="\t")
+        logging.error("Calculate Precision and Recall")
 
-        if plot:
-            logging.error("  Export PRC plot")        
-            export_prc(
-                precision=precision,
-                recall=recall,
-                file_location=results_location
-            )
-            
-        logging.error(
-            "Finish job [" + str(job_id) + "]" +
-            "\n  Results are saved to: " + results_location
-        )
+        # Calculate the precision and recall of both numpy arrays
+        precision, recall, thresholds = precision_recall_curve(goldstandard_chrom_data, prediction_chrom_data)
 
+        logging.error("Results Cleanup and Writing")
+        # Create a dataframe from the results
+        PR_CURVE_DF = pd.DataFrame({'Precision':precision, 'Recall':recall})
 
-def get_scattered_params(args):
-    scattered_params = []
-    job_id = 1
-    for chrom_name, chrom_length in args.chroms.items():
-        scattered_params.append(
-            (
-                job_id,
-                args.prediction,
-                args.control,
-                args.bin,
-                (chrom_name, chrom_length),
-                args.plot,
-                args.output
-            )
-        )
-        job_id += 1
-    return scattered_params
+        # The sklearn documentation states they add points to make sure precision and recall are at 1. We remove this point 
+        point_to_drop = PR_CURVE_DF[(PR_CURVE_DF["Recall"] == 1.0)].index
 
+        # This will drop the point from the dataframe
+        PR_CURVE_DF.drop(point_to_drop, inplace=True)
+
+        try:
+            PR_CURVE_DF["AUPR"] = metrics.auc(y=precision, x=recall)
+
+        except:
+            PR_CURVE_DF["AUPR"] = 0
+
+        PR_CURVE_DF.to_csv(results_location, sep="\t", header=True, index=False)
 
 def run_benchmarking(args):
+    results_filename = args.output + "/" + args.prefix + "_" + str(args.bin) + "bp_PRC.tsv"
+
     logging.error(
         "Benchmarking" +
         "\n  Prediction file:" + args.prediction +
-        "\n  Control file: " + args.control +
+        "\n  Gold standard file: " + args.goldstandard +
         "\n  Bin size: " + str(args.bin) +
-        "\n  All chromosomes: " + ", ".join(args.chroms) +
-        "\n  Jobs count: " + str(len(args.chroms)) +
-        "\n  Parallelization: " + str(args.threads) +
-        "\n  Export PRC plot: " + str(args.plot) +
+        "\n  All chromosomes: " + args.chroms +
         "\n  Logging level: " + logging.getLevelName(args.loglevel) +
-        "\n  Output directory: " + args.output
+        "\n  Output directory: " + results_filename
     )
-
-    with Pool(args.threads) as p:
-        raw_data = p.starmap(
-            run_chrom_benchmarking,
-            get_scattered_params(args)
-        )
+    
+    benchmark_predictions(
+                args.prediction,
+                args.goldstandard,
+                args.bin,
+                args.chroms,
+                results_filename
+    )

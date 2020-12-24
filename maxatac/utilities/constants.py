@@ -25,9 +25,17 @@ DEFAULT_CHRS = [
     "chr1",  "chr2",  "chr3",  "chr4",  "chr5",  "chr6",
     "chr7",  "chr8",  "chr9",  "chr10", "chr11", "chr12",
     "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
+    "chr19", "chr20", "chr21", "chr22", "chrX"
+]
+
+ALL_CHRS= [
+    "chr1",  "chr2",  "chr3",  "chr4",  "chr5",  "chr6",
+    "chr7",  "chr8",  "chr9",  "chr10", "chr11", "chr12",
+    "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
     "chr19", "chr20", "chr21", "chr22", "chrX",  "chrY",
     "chrM"
 ]
+
 DEFAULT_CHR_PROPORTION = 0.5  # proportion of chromosomes for training
 DEFAULT_LOG_LEVEL = "error"
 
@@ -35,7 +43,7 @@ DEFAULT_TRAIN_EPOCHS = 20
 
 DEFAULT_TRAIN_BATCHES_PER_EPOCH = 100
 
-DEFAULT_NORMALIZATION_BIN = 100
+DEFAULT_BENCHMARKING_BIN_SIZE = 32
 DEFAULT_ADAM_LEARNING_RATE = 1e-3
 DEFAULT_ADAM_DECAY = 1e-5
 DEFAULT_MIN_PREDICTION = 0.001  # min prediction value to be reported in the output
@@ -43,11 +51,11 @@ DEFAULT_MIN_PREDICTION = 0.001  # min prediction value to be reported in the out
 # Can be changed without problems
 
 MIN_PREDICTION = 0.01  # min prediction value to report in output
-
+DEFAULT_ROUND=6
 BATCH_SIZE = 1000
 VAL_BATCH_SIZE = 1000
 
-
+DEFAULT_PREDICTION_BATCH_SIZE=1000
 CHR_POOL_SIZE = 1000
 FLANK_LENGTH = 100  # make sure that 2 * FLANK_LENGTH < INPUT_LENGTH
 BP_ORDER = ["A", "C", "G", "T"]
@@ -76,3 +84,4 @@ TRAIN_SCALE_SIGNAL = (0.9, 1.15)  # min max scaling ranges
 
 INPUT_CHANNELS = 6
 TRAIN_MONITOR = "val_loss"
+DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION="max"

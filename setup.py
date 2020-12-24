@@ -3,7 +3,7 @@ import os
 from setuptools import setup, find_packages
 
 
-VERSION = "0.0.1"
+VERSION = "0.0.3"
 HERE = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -15,7 +15,8 @@ def get_description():
 
 setup(
     name="maxatac",
-    description="maxATAC - DeepCNN for TF binding prediction from ATAC-seq",
+    description="maxATAC - Dilated convolutional neural network \
+         for TF binding prediction from ATAC-seq",
     long_description=get_description(),
     long_description_content_type="text/markdown",
     version=VERSION,
@@ -37,7 +38,8 @@ setup(
         "scikit-learn==0.22.2",
         "enum34>=1.0.4",
         "pandas==1.0.3",
-        "dask==2.30.0"
+        "dask==2.30.0",
+        "pybedtools"
     ],
     zip_safe=False,
     scripts=["maxatac/bin/maxatac"],

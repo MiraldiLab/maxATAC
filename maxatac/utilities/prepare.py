@@ -1,10 +1,9 @@
 import numpy as np
 import pandas as pd
 import sys
-import logging
 import random
-from os import path
-from yaml import dump, safe_load
+import pybedtools
+
 from maxatac.utilities.helpers import load_bigwig, safe_load_bigwig, load_2bit
 from maxatac.utilities.constants import (
     INPUT_CHANNELS,
@@ -13,21 +12,6 @@ from maxatac.utilities.constants import (
     VAL_BATCH_SIZE,
     CHR_POOL_SIZE,
     BP_ORDER,
-    OUTPUT_FILTERS,
-    CONV_BLOCKS,
-    DILATION_RATE,
-    BP_RESOLUTION,
-    INPUT_FILTERS,
-    POOL_SIZE,
-    FILTERS_SCALING_FACTOR,
-    INPUT_KERNEL_SIZE,
-    OUTPUT_KERNEL_SIZE,
-    INPUT_ACTIVATION,
-    OUTPUT_ACTIVATION,
-    PADDING,
-    ADAM_BETA_1,
-    ADAM_BETA_2,
-    TRAIN_MONITOR,
     TRAIN_SCALE_SIGNAL
 )
 
@@ -247,8 +231,6 @@ def get_roi_pool_predict(seq_len=None, roi=None, shuffle=False, tf=None, cl=None
     return roi_df
 
 
-
-
 def get_roi_pool(seq_len=None, roi=None, shuffle=False):
     roi_df = pd.read_csv(roi, sep="\t", header=0, index_col=None)
     temp = roi_df['Stop'] - roi_df['Start']
@@ -267,8 +249,6 @@ def get_roi_pool(seq_len=None, roi=None, shuffle=False):
     if shuffle:
         roi_df = roi_df.sample(frac=1)
     return roi_df
-
-
 
 
 def get_one_hot_encoded(sequence, target_bp):
@@ -316,8 +296,6 @@ def get_pc_input_matrix(
     
     return input_matrix
 
-
-   
 
 def make_pc_pred_batch(
         batch_idxs,
@@ -666,3 +644,74 @@ def create_val_generator(
                         targets_batch.append(bin_vector)
                         
             yield (np.array(inputs_batch), np.array(targets_batch))    
+
+def get_roi_pool(seq_len=None, roi=None, shuffle=False):
+    roi_df = pd.read_csv(roi, sep="\t", header=None)
+
+    roi_df.columns = ['chr', 'start', 'stop']
+
+    temp = roi_df['stop'] - roi_df['start']
+
+    roi_ok = (temp == seq_len).all()
+
+    if not roi_ok:
+        sys.exit("ROI Length Does Not Match Input Length")
+        
+    if shuffle:
+        roi_df = roi_df.sample(frac=1)
+
+    return roi_df
+
+def window_prediction_intervals(df, number_intervals=32):
+        # Create BedTool object from the dataframe
+        df_css_bed = pybedtools.BedTool.from_dataframe(df[['chr', 'start', 'stop']])
+
+        # Window the intervals into 32 bins
+        pred_css_bed = df_css_bed.window_maker(b=df_css_bed, n=number_intervals)
+
+        # Create a dataframe from the BedTool object 
+        return pred_css_bed.to_dataframe()
+
+def write_df2bigwig(output_filename, interval_df, chromosome_length_dictionary, chrom):
+    with dump_bigwig(output_filename) as data_stream:
+        header = [(chrom, int(chromosome_length_dictionary[chrom]))]
+        data_stream.addHeader(header)
+
+        data_stream.addEntries(
+        chroms = interval_df["chr"].tolist(),
+        starts = interval_df["start"].tolist(),
+        ends = interval_df["stop"].tolist(),
+        values = interval_df["score"].tolist()
+        )
+
+def get_batch(
+    signal,
+    sequence,
+    roi_pool,
+    bp_resolution=1
+):
+    inputs_batch, targets_batch = [], []
+    roi_size = roi_pool.shape[0]
+    with \
+        load_bigwig(signal) as signal_stream, \
+        load_2bit(sequence) as sequence_stream:
+            for row_idx in range(roi_size):
+                row = roi_pool.loc[row_idx,:]
+                chrom_name = row[0]
+                start = int(row[1])
+                end = int(row[2])
+                input_matrix = get_input_matrix(
+                    rows=INPUT_CHANNELS,
+                    cols=INPUT_LENGTH,
+                    batch_size=1,                  # we will combine into batch later
+                    reshape=False,
+                    scale_signal=TRAIN_SCALE_SIGNAL,
+                    bp_order=BP_ORDER,
+                    signal_stream=signal_stream,
+                    sequence_stream=sequence_stream,
+                    chrom=chrom_name,
+                    start=start,
+                    end=end
+                )
+                inputs_batch.append(input_matrix)
+    return (np.array(inputs_batch))   
