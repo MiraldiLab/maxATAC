@@ -510,8 +510,6 @@ def create_random_batch(
         yield (np.array(inputs_batch), np.array(targets_batch))    
         
         
-    
-
 def pc_train_generator(
         sequence,
         average,
@@ -524,11 +522,10 @@ def pc_train_generator(
         bp_resolution=1,
         filters=None
 ):
-    
-    
-    roi_size = roi_pool.shape[0]
     n_roi = round(BATCH_SIZE*(1. - rand_ratio))
+    
     n_rand = round(BATCH_SIZE - n_roi)
+    
     train_random_regions_pool = RandomRegionsPool(
         chroms=tchroms,
         chrom_pool_size=CHR_POOL_SIZE,
@@ -663,14 +660,14 @@ def get_roi_pool(seq_len=None, roi=None, shuffle=False):
     return roi_df
 
 def window_prediction_intervals(df, number_intervals=32):
-        # Create BedTool object from the dataframe
-        df_css_bed = pybedtools.BedTool.from_dataframe(df[['chr', 'start', 'stop']])
+    # Create BedTool object from the dataframe
+    df_css_bed = pybedtools.BedTool.from_dataframe(df[['chr', 'start', 'stop']])
 
-        # Window the intervals into 32 bins
-        pred_css_bed = df_css_bed.window_maker(b=df_css_bed, n=number_intervals)
+    # Window the intervals into 32 bins
+    pred_css_bed = df_css_bed.window_maker(b=df_css_bed, n=number_intervals)
 
-        # Create a dataframe from the BedTool object 
-        return pred_css_bed.to_dataframe()
+    # Create a dataframe from the BedTool object 
+    return pred_css_bed.to_dataframe()
 
 def write_df2bigwig(output_filename, interval_df, chromosome_length_dictionary, chrom):
     with dump_bigwig(output_filename) as data_stream:

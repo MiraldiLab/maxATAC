@@ -5,20 +5,17 @@ from time import strftime
 from uuid import uuid4
 from yaml import dump
 
-from maxatac.analyses.prediction import run_prediction
-from maxatac.analyses.training import run_training
-from maxatac.analyses.normalization import run_normalization
-from maxatac.analyses.benchmarking import run_benchmarking
 from maxatac.utilities.helpers import (
     get_version,
-    get_absolute_path,
     get_cpu_count,
-    load_bigwig, 
-    load_2bit
 )
 
+from maxatac.analyses.training import run_training
+from maxatac.analyses.benchmarking import run_benchmarking
+from maxatac.analyses.normalization import run_normalization
+from maxatac.analyses.prediction import run_prediction
+
 from maxatac.utilities.constants import (
-    DEFAULT_CHRS,
     LOG_LEVELS,
     DEFAULT_LOG_LEVEL,
     DEFAULT_TRAIN_EPOCHS,
@@ -30,205 +27,22 @@ from maxatac.utilities.constants import (
     INPUT_FILTERS,
     DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
     DEFAULT_ROUND,
-    DEFAULT_PREDICTION_BATCH_SIZE
-)
-
-
-def normalize_args(args, skip_list=[], cwd_abs_path=None):
-    """
-    Converts all relative path arguments to absolute
-    ones relatively to the cwd_abs_path or current working directory.
-    Skipped arguments and None will be returned unchanged.
-    """
-    cwd_abs_path = getcwd() if cwd_abs_path is None else cwd_abs_path
-    normalized_args = {}
-    for key, value in args.__dict__.items():
-        if key not in skip_list and value is not None:
-            if isinstance(value, list):
-                for v in value:
-                    normalized_args.setdefault(key, []).append(
-                        get_absolute_path(v, cwd_abs_path)
-                    )
-            else:
-                normalized_args[key] = get_absolute_path(value, cwd_abs_path)
-        else:
-            normalized_args[key] = value
-    return argparse.Namespace(**normalized_args)
-
-
-def get_synced_chroms(chroms, files, ignore_regions=None):
-    """
-    If ignore_regions is True, set regions to the whole chromosome length
-    Returns something like this
-        {
-            "chr2": {"length": 243199373, "region": [0, 243199373]},
-            "chr3": {"length": 198022430, "region": [0, 198022430]}
-        }
-    """
-    
-    chroms_and_regions = {}
-    for chrom in chroms:
-        chrom_name, *region = chrom.replace(",", "").split(":")  # region is either [] or ["start-end", ...]
-        chroms_and_regions[chrom_name] = None
-        if not ignore_regions:
-            try:
-                chroms_and_regions[chrom_name] = [int(i) for i in region[0].split("-")]
-            except (IndexError, ValueError):
-                pass
-
-    loaded_chroms = set()
-    
-    for file in [f for f in files if f is not None]:
-        try:
-            with load_2bit(file) as data_stream:
-                avail_chroms = set([(k, v) for k, v in data_stream.chroms().items()])
-        except RuntimeError:
-            with load_bigwig(file) as data_stream:
-                avail_chroms = set([(k, v) for k, v in data_stream.chroms().items()])
-        loaded_chroms = loaded_chroms.intersection(avail_chroms) if loaded_chroms else avail_chroms  # checks both chrom_name and chrom_length are the same
-    
-    
-    synced_chroms = {}
-    for chrom_name, chrom_length in loaded_chroms:
-        if chrom_name not in chroms_and_regions: continue
-        region = chroms_and_regions[chrom_name]
-        if not region or \
-               region[0] < 0 or \
-               region[1] <= 0 or \
-               region[0] >= region[1] or \
-               region[1] > chrom_length:
-            region = [0, chrom_length]
-        synced_chroms[chrom_name] = {
-            "length": chrom_length,
-            "region": region
-        }
-    
-    return synced_chroms
-
-
-def assert_and_fix_args_for_prediction(args):
-
-    synced_chroms = get_synced_chroms(
-        args.chroms,
-        [args.sequence, args.signal, args.average]
+    DEFAULT_PREDICTION_BATCH_SIZE,
+    DEFAULT_TEST_CHRS,
+    FILTERS_SCALING_FACTOR,
+    DEFAULT_TRAIN_CHRS,
+    DEFAULT_VALIDATE_CHRS
     )
-    assert len(synced_chroms) > 0, \
-        "Failed to sync chromosomes. Check --chroms. Exiting"
-    setattr(args, "chroms", synced_chroms)
-
-    args.tmp = path.join(
-        args.tmp,
-        "-".join([strftime("%Y-%m-%d-%H-%M-%S"), str(uuid4())]))
-
-    if args.threads is None:
-        args.threads = len(args.models) * len(args.chroms)  # TODO: make sure that it's not more than available core count in GPU, or we are not using CPU
-
-
-def assert_and_fix_args_for_training(args):
-
-    setattr(args, "preferences", None)
-    setattr(args, "signal", None)
-    setattr(args, "tsites", None)
-    synced_tchroms = get_synced_chroms(
-        args.tchroms,
-        [
-            args.sequence,
-            args.average
-        ],
-        True
-    )
-    synced_vchroms = get_synced_chroms(
-        args.vchroms,
-        [
-            args.sequence,
-            args.average
-        ],
-        True
-    )
-
-    assert set(synced_tchroms).isdisjoint(set(synced_vchroms)), \
-        "--tchroms and --vchroms shouldn't intersect. Exiting"
-
-    synced_chroms = get_synced_chroms(  # call it just to take --chroms without possible regions
-        args.chroms,
-        [
-            args.sequence,
-            args.average
-        ],
-        True
-    )
-
-    assert set(synced_tchroms).union(set(synced_vchroms)).issubset(set(synced_chroms)), \
-        "--tchroms and --vchroms should be subset of --chroms. Exiting"
-
-    synced_chroms = get_synced_chroms(
-        set(synced_chroms) - set(synced_tchroms) - set(synced_vchroms),
-        [
-            args.sequence,
-            args.average
-        ],
-        True
-    )
-
-    synced_chroms.update(synced_tchroms)
-    synced_chroms.update(synced_vchroms)
-
-    assert len(synced_chroms) > 0, \
-        "--chroms, --tchroms or --vchroms failed to sync with the provided files. Exiting"
-
-    setattr(args, "tchroms", synced_tchroms)
-    setattr(args, "vchroms", synced_vchroms)
-    setattr(args, "chroms", synced_chroms)
-
-    if args.threads is None:
-        args.threads = 1  # TODO: maybe choose a smarter way to set default threads number
-
-
-def assert_and_fix_args_for_normalization(args):
-    synced_chroms = get_synced_chroms(
-        args.chroms,
-        [*args.signal, args.average],  # use * to unfold list of args.signal
-        True
-    )
-    assert len(synced_chroms) > 0, \
-        "Failed to sync chromosomes. Check --chroms. Exiting"
-    setattr(args, "chroms", synced_chroms)
-
-    if args.threads is None:
-        args.threads = get_cpu_count()
-
-
-def assert_and_fix_args_for_benchmarking(args):
-    synced_chroms = get_synced_chroms(
-        args.chroms,
-        [args.prediction, args.control]
-    )
-    assert len(synced_chroms) > 0, "Failed to sync --chroms"
-    setattr(args, "chroms", synced_chroms)  # now it's dict
-
-    if args.threads is None:
-        args.threads = get_cpu_count()
-
-
-def assert_and_fix_args(args):
-
-    args.loglevel = LOG_LEVELS[args.loglevel]
-    if args.func == run_prediction:
-        pass
-    elif args.func == run_training:
-        assert_and_fix_args_for_training(args)
-    elif args.func == run_normalization:
-        assert_and_fix_args_for_normalization(args)
-    else:
-        assert_and_fix_args_for_benchmarking(args)
-
 
 def get_parser():
     # Parent (general) parser
     parent_parser = argparse.ArgumentParser(add_help=False)
+    
     general_parser = argparse.ArgumentParser(description="maxATAC: \
         DeepCNN for predicting TF binding from ATAC-seq")
+    
     subparsers = general_parser.add_subparsers()
+    
     subparsers.required = True
 
     general_parser.add_argument(
@@ -255,23 +69,6 @@ def get_parser():
     )
 
     predict_parser.add_argument(
-        "--train_tf", 
-        dest="train_tf", 
-        type=str,
-        required=True,
-        help="Transcription Factor to train on. Restricted to only 1 TF."
-    )
-
-    predict_parser.add_argument(
-        "--test_cell_lines", 
-        dest="test_cell_lines", 
-        type=str, 
-        nargs="+",
-        required=True,
-        help="Cell lines for model testing. These cell lines will not be used in model training. cell lines must be delimited with , "
-    )
-
-    predict_parser.add_argument(
         "--average", 
         dest="average", 
         type=str,
@@ -285,14 +82,6 @@ def get_parser():
         type=str,
         required=True,
         help="Genome sequence 2bit file"
-    )
-
-    predict_parser.add_argument(
-        "--meta_file", 
-        dest="meta_file", 
-        type=str,
-        required=True,
-        help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
     )
 
     predict_parser.add_argument(
@@ -430,11 +219,9 @@ def get_parser():
         dest="tchroms", 
         type=str, 
         nargs="+",
-        required=True,
+        default=DEFAULT_TRAIN_CHRS,
         help="Chromosomes from --chroms fixed for training. \
-            Regions in a form of chrN:start-end are ignored. \
-            Use --filters instead \
-            Default: None, whole length"
+            Default: 3-7,9-18,20-22"
     )
 
     train_parser.add_argument(
@@ -442,11 +229,9 @@ def get_parser():
         dest="vchroms", 
         type=str, 
         nargs="+",
-        required=True,
+        default=DEFAULT_VALIDATE_CHRS,
         help="Chromosomes from --chroms fixed for validation. \
-            Regions in a form of chrN:start-end are ignored. \
-            Use --filters instead \
-            Default: None, whole length"
+            Default: chr2, chr19"
     )
     
     train_parser.add_argument(
@@ -461,6 +246,7 @@ def get_parser():
         "--arch", 
         dest="arch", 
         type=str,
+        default="DCNN_V2",
         required=True,
         help="Specify the model architecture. Currently support DCNN_V2 or RES_DCNN_V2"
     )
@@ -481,7 +267,6 @@ def get_parser():
         required=True,
         help="Ratio for controlling fraction of random seqeuences in each traning batch. float [0, 1]"
     )
-
 
     train_parser.add_argument(
         "--seed", 
@@ -504,6 +289,14 @@ def get_parser():
         type=int,
         default=DEFAULT_TRAIN_EPOCHS,
         help="# of training epochs. Default: " + str(DEFAULT_TRAIN_EPOCHS)
+    )
+
+    train_parser.add_argument(
+        "--FSF", 
+        dest="FILTER_SCALING_FACTOR", 
+        type=float,
+        default=FILTERS_SCALING_FACTOR,
+        help="Filter scaling factor. For each convolutional layer, multiply the number of filters by this argument. Default: " + str(FILTERS_SCALING_FACTOR)
     )
 
     train_parser.add_argument(
@@ -616,6 +409,7 @@ def get_parser():
         "--prefix", 
         dest="prefix", 
         type=str,
+        required=True,
         default="normalized",
         help="Output prefix. Default: normalized")
 
@@ -663,7 +457,7 @@ def get_parser():
         "--chroms", 
         dest="chroms", 
         type=str, 
-        default=DEFAULT_CHRS,
+        default=DEFAULT_TEST_CHRS,
         help="Chromosomes list for analysis. \
             Optionally with regions in a form of chrN:start-end. \
             Default: main human chromosomes, whole length"
@@ -691,7 +485,7 @@ def get_parser():
         "--prefix", 
         dest="prefix", 
         type=str,
-        default="test",
+        required=True,
         help="Prefix for the file name"
     )
 
@@ -730,21 +524,4 @@ def parse_arguments(argsl, cwd_abs_path=None):
         argsl.append("")  # otherwise fails with error if empty
     args, _ = get_parser().parse_known_args(argsl)
     
-    if args.func == run_training:
-        args = normalize_args(
-            args,
-            [
-                "func", "loglevel", "threads", "seed",
-                "proportion", "vchroms", "tchroms",
-                "chroms", "keep", "epochs", "batches",
-                "prefix", "plot", "lrate", "decay", "bin",
-                "minimum", "test_cell_lines", "rand_ratio", 
-                "train_tf", "arch", "FILTER_NUMBER", 
-                "KERNEL_SIZE", "genome", "goldstandard",
-                "agg_function", "round", "batch_size"
-            ],
-            cwd_abs_path
-        )
-    
-    assert_and_fix_args(args)
     return args

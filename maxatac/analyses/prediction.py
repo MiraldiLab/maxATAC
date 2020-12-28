@@ -26,7 +26,8 @@ def make_predictions(
     model,
     predict_roi_df,
     threads, 
-    batch_size
+    batch_size,
+    round
     ):
     configure_session(threads)
 
@@ -62,7 +63,7 @@ def make_predictions(
         else:
             predictions = pred_output_batch 
 
-    predictions = np.round(predictions, args.round)
+    predictions = np.round(predictions, round)
     logging.error("Parsing results into pandas dataframe")
 
     predictions_df = pd.DataFrame(data=predictions, index=None, columns=None)
@@ -106,7 +107,8 @@ def run_prediction(args, save_preds=True):
                                         args.models[0],
                                         roi_df,
                                         args.threads,
-                                        args.batch_size
+                                        args.batch_size,
+                                        args.round
                                     )
 
     logging.error("Convert the predictions to a dataframe that has a bedgraph format")
