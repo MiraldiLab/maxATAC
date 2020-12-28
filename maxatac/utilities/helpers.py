@@ -7,7 +7,7 @@ import numpy as np
 from multiprocessing import cpu_count
 from os import path, getcwd, makedirs, error, walk, environ
 from re import match
-from maxatac.utilities.constants import CPP_LOG_LEVEL, DEFAULT_CHRS
+from maxatac.utilities.constants import CPP_LOG_LEVEL, DEFAULT_NORMALIZE_CHRS
 
 ### General Helpers ###
 def get_absolute_path(p, cwd_abs_path=None):
@@ -72,8 +72,10 @@ class Mute():
     def __enter__(self):
         self.suppress_stdout()
 
+
     def __exit__(self, type, value, traceback):
         self.restore_stdout()
+
 
     def suppress_stdout(self):
         self.NULL_FDS = [os.open(os.devnull, os.O_RDWR) for x in range(2)]
@@ -81,18 +83,23 @@ class Mute():
         os.dup2(self.NULL_FDS[0], 1)
         os.dup2(self.NULL_FDS[1], 2)
 
+
     def restore_stdout(self):
         os.dup2(self.BACKUP_FDS[0], 1)
         os.dup2(self.BACKUP_FDS[1], 2)
         os.close(self.NULL_FDS[0])
         os.close(self.NULL_FDS[1])
 
+
 def setup_logger(log_level, log_format):
     for log_handler in logging.root.handlers:
         logging.root.removeHandler(log_handler)
+    
     for log_filter in logging.root.filters:
         logging.root.removeFilter(log_filter)
+    
     logging.basicConfig(level=log_level, format=log_format)
+    
     environ["TF_CPP_MIN_LOG_LEVEL"] = str(CPP_LOG_LEVEL[log_level])
 
 ##### Bigwigs Helpers #####
@@ -152,7 +159,7 @@ def build_chrom_sizes_dict(genome_build):
     chromosome_length_dictionary={}
 
     # This will create the chromosome sizes dictionary
-    for i in np.arange(len(DEFAULT_CHRS)):
-        chromosome_length_dictionary[DEFAULT_CHRS[i]]=num_bp[i]
+    for i in np.arange(len(DEFAULT_NORMALIZE_CHRS)):
+        chromosome_length_dictionary[DEFAULT_NORMALIZE_CHRS[i]]=num_bp[i]
 
     return chromosome_length_dictionary
