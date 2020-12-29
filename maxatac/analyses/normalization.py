@@ -4,14 +4,12 @@ import pyBigWig
 import pandas as pd
 import os
 
-from multiprocessing import Pool, Manager
 from os import path
-
-from maxatac.utilities.constants import DEFAULT_CHRS
 from maxatac.utilities.helpers import build_chrom_sizes_dict
 
 def find_genomic_minmax(x):
-    """Load the genome bigwig file and find the min and max values"""
+    """Load the genome bigwig file and find the min and max values
+    """
     bw = pyBigWig.open(x)    
 
     minmax_results = []

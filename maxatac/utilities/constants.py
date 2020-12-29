@@ -19,6 +19,7 @@ CPP_LOG_LEVEL = {
 }
 
 BLACKLISTED_REGIONS = "../data/hg38_composite_blacklist.bed"
+DEFAULT_CHROM_SIZES="../data/hg38.chrom.sizes"
 
 # Defaults for not provided arguments
 AUTOSOMAL_CHRS = [

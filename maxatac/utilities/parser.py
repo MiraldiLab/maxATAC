@@ -31,7 +31,8 @@ from maxatac.utilities.constants import (
     DEFAULT_TEST_CHRS,
     FILTERS_SCALING_FACTOR,
     DEFAULT_TRAIN_CHRS,
-    DEFAULT_VALIDATE_CHRS
+    DEFAULT_VALIDATE_CHRS,
+    DEFAULT_CHROM_SIZES
     )
 
 def get_parser():
@@ -401,7 +402,7 @@ def get_parser():
         "--genome", 
         dest="GENOME", 
         type=str, 
-        required=True,
+        default=DEFAULT_CHROM_SIZES,
         help="Reference genome build"
     )
 

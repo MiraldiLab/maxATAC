@@ -240,12 +240,6 @@ def get_roi_pool(seq_len=None, roi=None, shuffle=False):
     temp_df = roi_df[roi_ok==True]
     roi_df = temp_df
     ###############################
-
-    #roi_ok = (temp == seq_len).all()
-    #if not roi_ok:
-        
-        #sys.exit("ROI Length Does Not Match Input Length")
-        
     if shuffle:
         roi_df = roi_df.sample(frac=1)
     return roi_df
