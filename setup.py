@@ -28,7 +28,7 @@ setup(
     include_package_data=True,
     packages=find_packages(),
     install_requires=[
-        "tensorflow==1.14.0",
+        "tensorflow-gpu==1.14.0",
         "tensorboard==1.14.0",
         "keras==2.2.5",
         "pyBigWig==0.3.16",
