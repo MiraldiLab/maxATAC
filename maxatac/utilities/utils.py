@@ -1,79 +1,117 @@
-def get_absolute_path(p, cwd_abs_path=None):
-    cwd_abs_path = getcwd() if cwd_abs_path is None else cwd_abs_path
-    return p if path.isabs(p) else path.normpath(path.join(cwd_abs_path, p))
+import pandas as pd
+import sys
+import logging
+import random
+import pybedtools
+import numpy as np
 
-def get_dir(dir, permissions=0o0775, exist_ok=True):
-    abs_dir = get_absolute_path(dir)
-    try:
-        makedirs(abs_dir, mode=permissions)
-    except error:
-        if not exist_ok:
-            raise
-    return abs_dir
+from os import path
 
-def replace_extension(l, ext):
-    return get_absolute_path(
-        path.join(
-            path.dirname(l),
-            get_rootname(l) + ext
-        )
+from maxatac.utilities.dcnn import get_callbacks, get_dilated_cnn
+
+from maxatac.utilities.helpers import (get_absolute_path,
+                                       get_dir,
+                                       replace_extension,
+                                       remove_tags
+                                       )
+
+from maxatac.utilities.session import configure_session
+
+from maxatac.utilities.plot import (
+    export_model_loss,
+    export_model_accuracy,
+    export_model_dice,
+    export_model_structure
+)
+
+from maxatac.utilities.prepare import RandomRegionsGenerator, create_roi_batch
+
+
+def TrainingDataGenerator(
+        sequence,
+        average,
+        meta_table,
+        roi_pool,
+        rand_ratio,
+        chroms,
+        batch_size,
+        chrom_pool_size,
+        bp_resolution,
+        region_length
+    ):
+    """
+    Generate data for model training and validation
+
+    Args
+    ----
+        sequence (str):
+            Input 2-bit DNA sequence
+        average (str):
+            Input average ATAC-seq signal
+        meta_table (obj):
+            Input meta table object
+        roi_pool (list):
+            A pool of regions of interest
+        rand_ratio (float):
+            Proportion of training examples randomly generated
+        chroms (list):
+            A list of chromosomes of interest
+        batch_size (int):
+            The number of examples to use per batch
+        bp_resolution (int):
+            The resolution of the predictions
+
+    Yields
+    ------
+
+    """
+    n_roi = round(batch_size*(1. - rand_ratio))
+    
+    n_rand = round(batch_size - n_roi)
+    
+    roi_gen = create_roi_batch( sequence,
+                                average,
+                                meta_table,
+                                roi_pool,
+                                n_roi,
+                                chroms,
+                                bp_resolution=bp_resolution,
+                                filters=None
+                              )
+
+    train_random_regions_pool = RandomRegionsGenerator(
+        chrom_sizes_dict=build_chrom_sizes_dict(chroms),
+        chrom_pool_size=chrom_pool_size,
+        region_length=region_length
     )
 
-def remove_tags(l, tags):
-    tags = tags if type(tags) is list else [tags]
-    for tag in tags:
-        l = l.replace(tag, "")
-    return l
-
-class TrainModel(object):
-    """
-    This is a class for training a maxATAC model
-
-    Args:
-        seed (int, optional): Random seed to use.
-        out_dir (str): Path to directory for storing results.
-        prefix (str): Prefix string for building model name
-        arch (str): Architecture to use
-
-    Attributes:
-        seed (int): Random state seed.
-        out_dir (str): Output directory for storing results.
-        model_filename (str): The model filename
-        results_location (str): Output directory and model filename
-        log_location (str): Path to save logs
-        tensor_board_log_dir (str): Path to tensor board log
-    """
-    def __init__(self, 
-                 seed, 
-                 out_dir, 
-                 prefix
-                 ):
-        self.seed = random.seed(seed)
-        self.out_dir = get_dir(out_dir)
-        self.model_filename = prefix + "_{epoch}" + ".h5"
-        self.results_location = path.join(self.out_dir, self.model_filename)
-        self.log_location = replace_extension(remove_tags(self.results_location, "_{epoch}"), ".csv")
-        self.tensor_board_log_dir = get_dir(path.join(self.out_dir, "tensorboard"))
-
-        # Set fit_generator to handle threads by itself
-        configure_session(1)
-
-    def InitializeModel (self, 
-                         arch,
-                         FilterNumber, 
-                         KernelSize, 
-                         LRate, 
-                         decay, 
-                         FilterScalingFactor):
-        a
-        if arch == "DCNN_V2":
-            self.nn_model = get_dilated_cnn( input_filters=args.FILTER_NUMBER,
-                                        input_kernel_size=args.KERNEL_SIZE,
-                                        adam_learning_rate=args.lrate,
-                                        adam_decay=args.decay,
-                                        filters_scaling_factor=args.FILTERS_SCALING_FACTOR                                 
-                                    )
-
-        else:
-            sys.exit("Model Architecture not specified correctly. Please check")
+    rand_gen = create_random_batch(  sequence,
+                                     average,
+                                     meta_table,
+                                     train_cell_lines,
+                                     n_rand,
+                                     train_tf,
+                                     train_random_regions_pool,
+                                     bp_resolution=bp_resolution,
+                                     filters=None
+                                  )
+                                            
+    while True:
+        if rand_ratio > 0. and rand_ratio < 1.:
+            roi_input_batch, roi_target_batch = next(roi_gen)
+            rand_input_batch, rand_target_batch = next(rand_gen)
+            inputs_batch = np.concatenate((roi_input_batch, rand_input_batch), axis=0)
+            targets_batch = np.concatenate((roi_target_batch, rand_target_batch), axis=0)
         
+        elif rand_ratio == 1.:
+            rand_input_batch, rand_target_batch = next(rand_gen)
+            inputs_batch = rand_input_batch
+            targets_batch = rand_target_batch
+        
+        else:
+            roi_input_batch, roi_target_batch = next(roi_gen)
+            inputs_batch = roi_input_batch
+            targets_batch = roi_target_batch
+        
+        yield (inputs_batch, targets_batch)
+ 

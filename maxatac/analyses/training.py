@@ -1,33 +1,17 @@
-import random
-import numpy as np
-import pandas as pd
 import logging
-import os
 import sys
-
+import random
 from os import path
-from yaml import dump, safe_load
-from datetime import datetime
 from maxatac.utilities.session import configure_session
-from maxatac.utilities.utils import TrainModel
-from maxatac.utilities.helpers import (
+
+from maxatac.utilities.system_tools import (
     get_dir,
     replace_extension,
-    remove_tags, 
+    remove_tags,
     Mute
 )
 
-from maxatac.utilities.constants import (
-    BP_RESOLUTION,
-    TRAIN_MONITOR,
-    INPUT_LENGTH
-)
-
-from maxatac.utilities.prepare import (
-    get_roi_pool,
-    pc_train_generator,
-    create_val_generator
-)
+from maxatac.utilities.constants import TRAIN_MONITOR
 
 from maxatac.utilities.plot import (
     export_model_loss,
@@ -36,100 +20,210 @@ from maxatac.utilities.plot import (
     export_model_structure
 )
 
+from maxatac.utilities.genome_tools import DataGenerator
+
 with Mute():  # hide stdout from loading the modules
-    from maxatac.utilities.dcnn import (get_dilated_cnn, tp, tn, fp, fn, acc, get_callbacks)
+    from maxatac.utilities.dcnn import (get_dilated_cnn, get_callbacks)
+
+
+class GetModel(object):
+    """
+    This is a class for training a maxATAC model
+
+    Args
+    ----
+        seed (int, optional):
+            Random seed to use.
+        OutDir (str):
+            Path to directory for storing results.
+        prefix (str):
+            Prefix string for building model name.
+        arch (str):
+            Architecture to use.
+        FilterNumber (int):
+            Number of filters to use in the input layer.
+        KernelSize (int):
+            Size of the kernel in base pairs of the input layer.
+        FilterScalingFactor (float):
+            Multiply the number of filters each layer by this.
+        TrainMonitor (str):
+            The statistic to use to monitor training.
+        threads (int):
+            Number of threads to use for training.
+
+    Attributes
+    ----------
+        arch (str):
+            Architecture to use.
+        seed (int):
+            Random state seed.
+        OutDir (str):
+            Output directory for storing results.
+        model_filename (str):
+            The model filename.
+        results_location (str):
+            Output directory and model filename.
+        log_location (str):
+            Path to save logs.
+        tensor_board_log_dir (str):
+            Path to tensor board log.
+        FilterNumber (int):
+            Number of filters to use in the input layer.
+        KernelSize (int):
+            Size of the kernel in base pairs of the input layer.
+        LRate (float):
+            Adam learning rate.
+        decay (float):
+            Adam decay rate.
+        FilterScalingFactor (float):
+            Multiply the number of filters each layer by this.
+        batches (int):
+            The number of batches to use for training model.
+        epochs (int):
+            The number of epochs to train model for.
+        nn_model (obj):
+            The neural network model to be used for training.
+        TrainMonitor (str):
+            The statistic to use to monitor training.
+        threads (int):
+            Number of threads to use for training.
+
+    Methods
+    -------
+        _get_DCNN
+            Get a DCNN model
+        FitModel
+            Fit the model using the training data
+    """
+
+    def __init__(self,
+                 arch,
+                 seed,
+                 OutDir,
+                 prefix,
+                 FilterNumber,
+                 KernelSize,
+                 FilterScalingFactor,
+                 threads,
+                 TrainMonitor=TRAIN_MONITOR
+                 ):
+        self.arch = arch
+        self.seed = seed
+        self.OutDir = get_dir(OutDir)
+        self.model_filename = prefix + "_{epoch}" + ".h5"
+        self.results_location = path.join(self.OutDir, self.model_filename)
+        self.log_location = replace_extension(remove_tags(self.results_location, "_{epoch}"), ".csv")
+        self.tensor_board_log_dir = get_dir(path.join(self.OutDir, "tensorboard"))
+        self.FilterNumber = FilterNumber
+        self.KernelSize = KernelSize
+        self.FilterScalingFactor = FilterScalingFactor
+        self.TrainMonitor = TrainMonitor
+        self.threads = threads
+        self.training_history = ""
+
+        random.seed(seed)
+
+        if arch == "DCNN_V2":
+            self.nn_model = get_dilated_cnn(
+                input_filters=self.FilterNumber,
+                input_kernel_size=self.KernelSize,
+                filters_scaling_factor=self.FilterScalingFactor
+            )
+
+        else:
+            sys.exit("Model Architecture not specified correctly. Please check")
+
+    def FitModel(self, train_gen, val_gen, batches, epochs):
+        """
+        Fit the model with the specific number of batches and epochs
+
+        Args
+        ----
+            batches (int):
+                The number of batches to use for training model.
+            epochs (int):
+                The number of epochs to train model for.
+
+        Attributes
+        ----------
+            training_history (obj):
+                A history of model training and the parameters
+        """
+        self.training_history = self.nn_model.fit_generator(
+            generator=train_gen,
+            validation_data=val_gen,
+            steps_per_epoch=batches,
+            validation_steps=batches,
+            epochs=epochs,
+            callbacks=get_callbacks(
+                model_location=self.results_location,
+                log_location=self.log_location,
+                tensor_board_log_dir=self.tensor_board_log_dir,
+                monitor=self.TrainMonitor
+            ),
+            use_multiprocessing=self.threads > 1,
+            workers=self.threads,
+            verbose=1
+        )
+
+    def PlotResults(self):
+        export_model_structure(self.nn_model, self.results_location)
+        export_model_loss(self.training_history, self.results_location)
+        export_model_dice(self.training_history, self.results_location)
+        export_model_accuracy(self.training_history, self.results_location)
+
+        logging.error("Results are saved to: " + self.results_location)
+
 
 def run_training(args):
-    # TODO Random() object might be the same for all sub processes.
-    random.seed(args.seed)
-    
-    #filenames to be decided...may need to change the below
-    out_dir = get_dir(args.output)
+    """
+    Train a maxATAC model
 
-    # Set up the results filename based on the epoch number
-    results_filename = args.prefix + "_{epoch}" + ".h5"
-    
-    # This will create the results location and the file
-    results_location = path.join(out_dir, results_filename)
-    
-    log_location = replace_extension(remove_tags(results_location, "_{epoch}"), ".csv")
-    
-    tensor_board_log_dir = get_dir(path.join(out_dir, "tensorboard"))
-    
-    configure_session(1)  # fit_generator should handle threads by itself
-    
-    if args.arch == "DCNN_V2":
-        nn_model = get_dilated_cnn( input_filters=args.FILTER_NUMBER,
-                                    input_kernel_size=args.KERNEL_SIZE,
-                                    adam_learning_rate=args.lrate,
-                                    adam_decay=args.decay,
-                                    filters_scaling_factor=args.FILTERS_SCALING_FACTOR                                 
-                                  )
+    Args
+    ----
+        args (obj):
+            The argument parser object with the parameters from the parser
 
-    else:
-        sys.exit("Model Architecture not specified correctly. Please check")
-    
-    meta_table = pd.read_csv(args.meta_file, sep='\t', header=0, index_col=None)
+    Outputs
+    -------
+    """
+    configure_session(1)
 
-    train_pool = get_roi_pool(
-        seq_len=INPUT_LENGTH,
-        roi=args.train_roi,
-        shuffle=True
-    )
-    
-    validate_pool = get_roi_pool(
-        seq_len=INPUT_LENGTH,
-        roi=args.validate_roi,
-        shuffle=False
-    )
-    
-    test_cell_lines = set(args.test_cell_lines)
-    all_cell_lines = set(meta_table["Cell_Line"].unique())
-    train_cell_lines = list(all_cell_lines - test_cell_lines)
+    # Initialize the model
+    maxatac_model = GetModel(arch="DCNN_V2",
+                             seed=args.seed,
+                             OutDir=args.output,
+                             prefix=args.prefix,
+                             FilterNumber=args.FilterNumber,
+                             KernelSize=args.KernelSize,
+                             FilterScalingFactor=args.FilterScalingFactor,
+                             threads=args.threads)
 
-    train_gen = pc_train_generator( args.sequence,
-                                    args.average,
-                                    meta_table,
-                                    train_pool,
-                                    train_cell_lines,
-                                    args.rand_ratio,
-                                    args.train_tf,
-                                    args.tchroms,
-                                    bp_resolution=BP_RESOLUTION,
-                                    filters=None
-                                 )
-    
-    val_gen = create_val_generator( args.sequence,
-                                    args.average,
-                                    meta_table,
-                                    train_cell_lines,
-                                    args.train_tf,
-                                    validate_pool,
-                                    bp_resolution=BP_RESOLUTION,
-                                    filters=None
-                                    )
-    
-    training_history = nn_model.fit_generator(
-        generator=train_gen,
-        validation_data=val_gen,
-        steps_per_epoch=args.batches,
-        validation_steps=args.batches,
-        epochs=args.epochs,
-        callbacks=get_callbacks(
-            model_location=results_location,
-            log_location=log_location,
-            tensor_board_log_dir=tensor_board_log_dir,
-            monitor=TRAIN_MONITOR
-        ),
-        use_multiprocessing=args.threads > 1,
-        workers=args.threads,
-        verbose=1
-    )
-    
+    train_data_generator = DataGenerator(sequence=args.sequence,
+                                         average=args.average,
+                                         meta_table=args.meta_file,
+                                         rand_ratio=args.trand_ratio,
+                                         chroms=args.tchroms,
+                                         batch_size=args.batch_size,
+                                         blacklist=args.blacklist,
+                                         chrom_sizes=args.chrom_sizes)
+
+    validate_data_generator = DataGenerator(sequence=args.sequence,
+                                            average=args.average,
+                                            meta_table=args.meta_file,
+                                            rand_ratio=args.vrand_ratio,
+                                            chroms=args.vchroms,
+                                            batch_size=args.batch_size,
+                                            blacklist=args.blacklist,
+                                            chrom_sizes=args.chrom_sizes)
+
+    # Fit the model 
+    maxatac_model.FitModel(train_gen=train_data_generator,
+                           val_gen=validate_data_generator,
+                           batches=args.batches,
+                           epochs=args.epochs)
+
     if args.plot:
-        export_model_structure(nn_model, results_location)
-        export_model_loss(training_history, results_location)
-        export_model_dice(training_history, results_location)
-        export_model_accuracy(training_history, results_location)
+        maxatac_model.PlotResults()
 
-    logging.error("Results are saved to: " + results_location)
+    logging.error("Results are saved to: " + maxatac_model.results_location)

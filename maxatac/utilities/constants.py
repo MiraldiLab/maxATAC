@@ -1,7 +1,8 @@
 from logging import FATAL, ERROR, WARNING, INFO, DEBUG
+import os
+from os import path
 
-# Internal use
-
+# Parser Constants
 LOG_LEVELS = {
     "fatal": FATAL,
     "error": ERROR,
@@ -9,7 +10,11 @@ LOG_LEVELS = {
     "info": INFO,
     "debug": DEBUG
 }
+
+DEFAULT_LOG_LEVEL = "error"
+
 LOG_FORMAT = "[%(asctime)s]\n%(message)s"
+
 CPP_LOG_LEVEL = {
     FATAL: 3,
     ERROR: 3,
@@ -18,8 +23,12 @@ CPP_LOG_LEVEL = {
     DEBUG: 0
 }
 
-BLACKLISTED_REGIONS = "../data/hg38_composite_blacklist.bed"
-DEFAULT_CHROM_SIZES="../data/hg38.chrom.sizes"
+blacklist_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_composite_blacklist.bed")
+chrom_sizes_path = os.path.join(os.path.dirname(__file__), "../../data/hg38.chrom.sizes")
+
+# Genomic resource constants
+BLACKLISTED_REGIONS = os.path.normpath(blacklist_path)
+DEFAULT_CHROM_SIZES= os.path.normpath(chrom_sizes_path)
 
 # Defaults for not provided arguments
 AUTOSOMAL_CHRS = [
@@ -47,7 +56,6 @@ DEFAULT_VALIDATE_CHRS = ["chr2", "chr19"]
 DEFAULT_TEST_CHRS = ["chr1", "chr8"]
 
 DEFAULT_CHR_PROPORTION = 0.5  # proportion of chromosomes for training
-DEFAULT_LOG_LEVEL = "error"
 
 DEFAULT_TRAIN_EPOCHS = 20
 
@@ -66,7 +74,7 @@ BATCH_SIZE = 1000
 VAL_BATCH_SIZE = 1000
 
 DEFAULT_PREDICTION_BATCH_SIZE=1000
-CHR_POOL_SIZE = 1000
+CHR_POOL_SIZE = 10000
 FLANK_LENGTH = 100  # make sure that 2 * FLANK_LENGTH < INPUT_LENGTH
 BP_ORDER = ["A", "C", "G", "T"]
 PHASES = [0, 0.5]  # each item should belong to [0, 1)

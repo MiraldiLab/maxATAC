@@ -4,7 +4,7 @@ import sys
 import random
 import pybedtools
 
-from maxatac.utilities.helpers import load_bigwig, safe_load_bigwig, load_2bit
+from maxatac.utilities.genome_tools import load_bigwig, safe_load_bigwig, load_2bit
 from maxatac.utilities.constants import (
     INPUT_CHANNELS,
     INPUT_LENGTH,
@@ -14,6 +14,7 @@ from maxatac.utilities.constants import (
     BP_ORDER,
     TRAIN_SCALE_SIGNAL
 )
+
 
 def get_significant(data, min_threshold):
     selected = np.concatenate(([0], np.greater_equal(data, min_threshold).view(np.int8), [0]))
@@ -75,140 +76,6 @@ def get_input_matrix(
     return input_matrix
         
 
-def get_splitted_chromosomes(
-    chroms,
-    tchroms,
-    vchroms,
-    proportion
-):
-    """
-    Doesn't take regions into account.
-    May produce not correct results if inputs are not received from
-    get_synced_chroms with ignore_regions=True
-    """
-    free_chrom_set = set(chroms) - set(tchroms) - set(vchroms)
-
-    n = round(len(free_chrom_set) * proportion)
-
-    # need sorted list for random.sample to reproduce in tests
-    tchrom_set = set(random.sample(sorted(free_chrom_set), n))
-    vchrom_set = free_chrom_set.difference(tchrom_set).union(set(vchroms))
-    tchrom_set = tchrom_set.union(set(tchroms))
-
-    extended_tchrom = {
-        chrom_name: {
-            "length": chroms[chrom_name]["length"],
-            "region": chroms[chrom_name]["region"]
-        } for chrom_name in tchrom_set}
-
-    extended_vchrom = {
-        chrom_name: {
-            "length": chroms[chrom_name]["length"],
-            "region": chroms[chrom_name]["region"]
-        } for chrom_name in vchrom_set}
-
-    return extended_tchrom, extended_vchrom
-    
-class RandomRegionsPool:
-
-    def __init__(
-        self,
-        chroms,            # in a form of {"chr1": {"length": 249250621, "region": [0, 249250621]}}, "region" is ignored
-        chrom_pool_size,
-        region_length,
-        preferences=None   # bigBed file with ranges to limit random regions selection
-    ):
-
-        
-        self.chroms = chroms
-        self.chrom_pool_size = chrom_pool_size
-        self.region_length = region_length
-        self.preferences = preferences
-
-        #self.preference_pool = self.__get_preference_pool()  # should be run before self.__get_chrom_pool()
-        self.preference_pool = False
-        
-        self.chrom_pool = self.__get_chrom_pool()
-
-        self.__idx = 0
-
-
-    def get_region(self):
-        
-        
-        if self.__idx == self.chrom_pool_size:
-            random.shuffle(self.chrom_pool)
-            self.__idx = 0
-
-        chrom_name, chrom_length = self.chrom_pool[self.__idx]
-        self.__idx += 1
-
-        if self.preference_pool:
-            preference = random.sample(self.preference_pool[chrom_name], 1)[0]
-            start = round(
-                random.randint(
-                    preference[0],
-                    preference[1] - self.region_length
-                )
-            )
-        else:
-            start = round(
-                random.randint(
-                    0,
-                    chrom_length - self.region_length
-                )
-            )
-        end = start + self.region_length
-
-        return (chrom_name, start, end)
-
-
-    def __get_preference_pool(self):
-        preference_pool = {}
-        if self.preferences is not None:
-            with load_bigwig(self.preferences) as input_stream:
-                for chrom_name, chrom_data in self.chroms.items():
-                    for entry in input_stream.entries(
-                        chrom_name,
-                        0,
-                        chrom_data["length"],
-                        withString=False
-                    ):
-                        if entry[1] - entry[0] < self.region_length:
-                            continue
-                        preference_pool.setdefault(
-                            chrom_name, []
-                        ).append(list(entry[0:2]))
-        return preference_pool
-
-
-    def __get_chrom_pool(self):
-        """
-        TODO: rewrite to produce exactly the same number of items
-        as chrom_pool_size regardless of length(chroms) and
-        chrom_pool_size
-        """
-        
-        chroms = {
-            chrom_name: chrom_data
-            for chrom_name, chrom_data in self.chroms.items()
-            #if not self.preference_pool or (chrom_name in self.preference_pool)
-        }
-
-        sum_lengths = sum(map(lambda v: v["length"], chroms.values()))
-        frequencies = {
-            chrom_name: round(
-                chrom_data["length"] / sum_lengths * self.chrom_pool_size
-            )
-            for chrom_name, chrom_data in chroms.items()
-        }
-        labels = []
-        for k, v in frequencies.items():
-            labels += [(k, chroms[k]["length"])] * v
-        random.shuffle(labels)
-        
-        return labels
-
 def get_roi_pool_predict(seq_len=None, roi=None, shuffle=False, tf=None, cl=None):
     roi_df = pd.read_csv(roi, sep="\t", header=0, index_col=None)
     temp = roi_df['Stop'] - roi_df['Start']
@@ -230,7 +97,6 @@ def get_roi_pool_predict(seq_len=None, roi=None, shuffle=False, tf=None, cl=None
         roi_df = roi_df.sample(frac=1)
     return roi_df
 
-
 def get_roi_pool(seq_len=None, roi=None, shuffle=False):
     roi_df = pd.read_csv(roi, sep="\t", header=0, index_col=None)
     temp = roi_df['Stop'] - roi_df['Start']
@@ -244,15 +110,6 @@ def get_roi_pool(seq_len=None, roi=None, shuffle=False):
         roi_df = roi_df.sample(frac=1)
     return roi_df
 
-
-def get_one_hot_encoded(sequence, target_bp):
-    one_hot_encoded = []
-    for s in sequence:
-        if s.lower() == target_bp.lower():
-            one_hot_encoded.append(1)
-        else:
-            one_hot_encoded.append(0)
-    return one_hot_encoded
 
 def get_pc_input_matrix(
         rows,
@@ -367,7 +224,7 @@ def make_pc_pred_batch(
         batch_meta_df = batch_meta_df.drop(['ATAC_Signal_File', 'Binding_File'], axis='columns')
         batch_meta_df.reset_index(drop=True)
         return (np.array(inputs_batch), np.array(batch_gold_vals), batch_meta_df)       
-            
+
 
 def create_roi_batch(
     sequence,
@@ -376,74 +233,62 @@ def create_roi_batch(
     roi_pool,
     n_roi,
     train_tf,
-    tchroms,
-    bp_resolution=1,
-    filters=None
+    chroms,
+    cell_type_list,
+    bp_resolution=1
     ):
-        
-        
         while True:
             inputs_batch, targets_batch = [], []
+
             roi_size = roi_pool.shape[0]
-        
+
+            roi_pool = roi_pool[roi_pool["chr"].isin(chroms)]
+
             curr_batch_idxs = random.sample(range(roi_size), n_roi)
     
             #Here I will process by row, if performance is bad then process by cell line
             for row_idx in curr_batch_idxs:
                 roi_row = roi_pool.iloc[row_idx,:]
-                cell_line = roi_row['Cell_Line']
-                tf = train_tf
-                chrom_name = roi_row['Chr']
-                try:
-                    assert chrom_name in tchroms, \
-                            "Chromosome in roi file not in tchroms list. Exiting"
-                except:
-                    #print("Skipped {0} because it is not in tchroms".format(chrom_name))
-                    continue
+                
+                cell_line = random.sample(cell_type_list, 1)
+
+                chrom_name = roi_row['chr']
+                
                 start = int(roi_row['Start'])
                 end = int(roi_row['Stop'])
                 meta_row = meta_table[((meta_table['Cell_Line'] == cell_line) & (meta_table['TF'] == tf))]
                 meta_row = meta_row.reset_index(drop=True)
-                try:
-                    signal = meta_row.loc[0, 'ATAC_Signal_File']
-                    binding = meta_row.loc[0, 'Binding_File']
-                except:
-                    print("could not read meta_row. row_idx = {0}".format(row_idx))
-                    continue
+                
+                signal = meta_row.loc[0, 'ATAC_Signal_File']
+                binding = meta_row.loc[0, 'Binding_File']
+
                 with \
-                safe_load_bigwig(filters) as filters_stream, \
                 load_bigwig(average) as average_stream, \
                 load_2bit(sequence) as sequence_stream, \
                 load_bigwig(signal) as signal_stream, \
                 load_bigwig(binding) as binding_stream:
-                    try:
-                        input_matrix = get_pc_input_matrix(
-                            rows=INPUT_CHANNELS,
-                            cols=INPUT_LENGTH,
-                            batch_size=1,                  # we will combine into batch later
-                            reshape=False,
-                            bp_order=BP_ORDER,
-                            signal_stream=signal_stream,
-                            average_stream=average_stream,
-                            sequence_stream=sequence_stream,
-                            chrom=chrom_name,
-                            start=start,
-                            end=end
-                        )
-                        inputs_batch.append(input_matrix)
-                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-                        target_vector = np.nan_to_num(target_vector, 0.0)
-                        n_bins = int(target_vector.shape[0] / bp_resolution)
-                        split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                        bin_sums = np.sum(split_targets, axis=1)
-                        bin_vector = np.where(bin_sums > 0.5*bp_resolution, 1.0, 0.0)
-                        targets_batch.append(bin_vector)
+                    input_matrix = get_pc_input_matrix(
+                        rows=INPUT_CHANNELS,
+                        cols=INPUT_LENGTH,
+                        batch_size=1,                  # we will combine into batch later
+                        reshape=False,
+                        bp_order=BP_ORDER,
+                        signal_stream=signal_stream,
+                        average_stream=average_stream,
+                        sequence_stream=sequence_stream,
+                        chrom=chrom_name,
+                        start=start,
+                        end=end
+                    )
+                    inputs_batch.append(input_matrix)
+                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+                    target_vector = np.nan_to_num(target_vector, 0.0)
+                    n_bins = int(target_vector.shape[0] / bp_resolution)
+                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+                    bin_sums = np.sum(split_targets, axis=1)
+                    bin_vector = np.where(bin_sums > 0.5*bp_resolution, 1.0, 0.0)
+                    targets_batch.append(bin_vector)
 
-                    except:
-                        here = 3
-                        print(roi_row)
-                        continue
-        
             yield (np.array(inputs_batch), np.array(targets_batch))
 
 def create_random_batch(
@@ -504,7 +349,7 @@ def create_random_batch(
         yield (np.array(inputs_batch), np.array(targets_batch))    
         
         
-def pc_train_generator(
+def train_generator(
         sequence,
         average,
         meta_table,
@@ -520,12 +365,11 @@ def pc_train_generator(
     
     n_rand = round(BATCH_SIZE - n_roi)
     
-    train_random_regions_pool = RandomRegionsPool(
-        chroms=tchroms,
+    train_random_regions_pool = RandomRegionsGenerator(
+        chrom_sizes_dict=tchroms,
         chrom_pool_size=CHR_POOL_SIZE,
-        region_length=INPUT_LENGTH,
-        preferences=False                          # can be None
-    )
+        region_length=INPUT_LENGTH
+        )
 
     roi_gen = create_roi_batch( sequence,
                                 average,
@@ -571,7 +415,7 @@ def pc_train_generator(
         yield (inputs_batch, targets_batch)
  
       
-def create_val_generator(
+def validation_generator(
         sequence,
         average,
         meta_table,

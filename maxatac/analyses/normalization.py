@@ -5,7 +5,8 @@ import pandas as pd
 import os
 
 from os import path
-from maxatac.utilities.helpers import build_chrom_sizes_dict
+from maxatac.utilities.genome_tools import build_chrom_sizes_dict
+
 
 def find_genomic_minmax(x):
     """Load the genome bigwig file and find the min and max values

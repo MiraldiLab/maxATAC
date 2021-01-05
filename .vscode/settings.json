@@ -1,3 +1,4 @@
 {
-    "python.pythonPath": "/Users/caz3so/anaconda3/envs/py3/bin/python"
+    "python.pythonPath": "/Users/caz3so/anaconda3/envs/maxATAC_binary_CNN/bin/python",
+    "jupyter.jupyterServerType": "local"
 }

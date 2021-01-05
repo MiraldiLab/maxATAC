@@ -1,8 +1,7 @@
 import matplotlib.pyplot as plt
-import numpy as np
 from keras.utils import plot_model
 
-from maxatac.utilities.helpers import replace_extension, remove_tags
+from maxatac.utilities.system_tools import replace_extension, remove_tags
 
 
 def export_model_structure(model, file_location, suffix="_model_structure", ext=".pdf", skip_tags="_{epoch}"):

@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from maxatac.utilities.helpers import Mute
+from maxatac.utilities.system_tools import Mute
 with Mute():  # hide stdout from loading the modules
     from keras import backend as K
     from keras.backend.tensorflow_backend import set_session

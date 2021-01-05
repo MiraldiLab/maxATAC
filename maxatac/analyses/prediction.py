@@ -4,7 +4,7 @@ import pandas as pd
 
 from keras.models import load_model
 
-from maxatac.utilities.helpers import build_chrom_sizes_dict
+from maxatac.utilities.genome_tools import build_chrom_sizes_dict
 
 from maxatac.utilities.constants import (
     INPUT_LENGTH,

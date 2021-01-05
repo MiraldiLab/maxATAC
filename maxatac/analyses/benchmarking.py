@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from sklearn import metrics
 from sklearn.metrics import precision_recall_curve
-from maxatac.utilities.helpers import load_bigwig
+from maxatac.utilities.genome_tools import load_bigwig
 
 def benchmark_predictions(
     prediction,
