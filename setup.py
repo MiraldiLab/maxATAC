@@ -33,14 +33,12 @@ setup(
         "keras==2.2.5",
         "pyBigWig==0.3.16",
         "py2bit==0.3.0",
-        "numpy==1.16.4",
+        "numpy==1.19.4",
         "matplotlib",
         "scikit-learn",
         "pandas==1.1.5",
         "pysam==0.15.3",
-        "pydot",
-        "pybedtools==0.8.1",
-        "Cython>=0.28.5"
+        "pybedtools==0.8.1"
     ],
     zip_safe=False,
     scripts=["maxatac/bin/maxatac"],

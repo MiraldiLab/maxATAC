@@ -48,6 +48,7 @@ def export_model_loss(history, file_location, suffix="_model_loss", ext=".pdf", 
 
     plt.close("all")
 
+
 def export_model_dice(history, file_location, suffix="_model_dice", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
     plt.style.use(style)
     
