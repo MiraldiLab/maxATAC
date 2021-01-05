@@ -40,7 +40,7 @@ setup(
         "pysam==0.15.3",
         "pydot",
         "pybedtools==0.8.1",
-        "cython>=0.28.5"
+        "Cython>=0.28.5"
     ],
     zip_safe=False,
     scripts=["maxatac/bin/maxatac"],
