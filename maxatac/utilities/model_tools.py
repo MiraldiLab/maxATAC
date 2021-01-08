@@ -1,8 +1,9 @@
-import logging
+import matplotlib.pyplot as plt
+from keras.utils import plot_model
 import sys
 import random
 from os import path
-from maxatac.utilities.session import configure_session
+import logging
 
 from maxatac.utilities.system_tools import (
     get_dir,
@@ -11,19 +12,10 @@ from maxatac.utilities.system_tools import (
     Mute
 )
 
-from maxatac.utilities.constants import TRAIN_MONITOR
-
-from maxatac.utilities.plot import (
-    export_model_loss,
-    export_model_accuracy,
-    export_model_dice,
-    export_model_structure
-)
-
-from maxatac.utilities.genome_tools import DataGenerator
-
 with Mute():  # hide stdout from loading the modules
-    from maxatac.utilities.dcnn import (get_dilated_cnn, get_callbacks)
+    from maxatac.architectures.dcnn import (get_dilated_cnn, get_callbacks)
+
+from maxatac.utilities.constants import TRAIN_MONITOR
 
 
 class GetModel(object):
@@ -133,7 +125,7 @@ class GetModel(object):
         else:
             sys.exit("Model Architecture not specified correctly. Please check")
 
-    def FitModel(self, train_gen, val_gen, batches, epochs):
+    def FitModel(self, train_gen, val_gen, train_batches, validate_batches, epochs):
         """
         Fit the model with the specific number of batches and epochs
 
@@ -152,8 +144,8 @@ class GetModel(object):
         self.training_history = self.nn_model.fit_generator(
             generator=train_gen,
             validation_data=val_gen,
-            steps_per_epoch=batches,
-            validation_steps=batches,
+            steps_per_epoch=train_batches,
+            validation_steps=validate_batches,
             epochs=epochs,
             callbacks=get_callbacks(
                 model_location=self.results_location,
@@ -175,55 +167,105 @@ class GetModel(object):
         logging.error("Results are saved to: " + self.results_location)
 
 
-def run_training(args):
-    """
-    Train a maxATAC model
+def export_model_structure(model, file_location, suffix="_model_structure", ext=".pdf", skip_tags="_{epoch}"):
+    plot_model(
+        model=model,
+        show_shapes=True,
+        show_layer_names=True,
+        to_file=replace_extension(
+            remove_tags(file_location, skip_tags),
+            suffix + ext
+        )
+    )
 
-    Args
-    ----
-        args (obj):
-            The argument parser object with the parameters from the parser
 
-    Outputs
-    -------
-    """
-    configure_session(1)
+def export_model_loss(history, file_location, suffix="_model_loss", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
+    plt.style.use(style)
 
-    # Initialize the model
-    maxatac_model = GetModel(arch="DCNN_V2",
-                             seed=args.seed,
-                             OutDir=args.output,
-                             prefix=args.prefix,
-                             FilterNumber=args.FilterNumber,
-                             KernelSize=args.KernelSize,
-                             FilterScalingFactor=args.FilterScalingFactor,
-                             threads=args.threads)
+    t_y = history.history['loss']
+    t_x = [int(i) for i in range(1, len(t_y) + 1)]
 
-    train_data_generator = DataGenerator(sequence=args.sequence,
-                                         average=args.average,
-                                         meta_table=args.meta_file,
-                                         rand_ratio=args.trand_ratio,
-                                         chroms=args.tchroms,
-                                         batch_size=args.batch_size,
-                                         blacklist=args.blacklist,
-                                         chrom_sizes=args.chrom_sizes)
+    v_y = history.history["val_loss"]
+    v_x = [int(i) for i in range(1, len(v_y) + 1)]
 
-    validate_data_generator = DataGenerator(sequence=args.sequence,
-                                            average=args.average,
-                                            meta_table=args.meta_file,
-                                            rand_ratio=args.vrand_ratio,
-                                            chroms=args.vchroms,
-                                            batch_size=args.batch_size,
-                                            blacklist=args.blacklist,
-                                            chrom_sizes=args.chrom_sizes)
+    plt.plot(t_x, t_y, marker='o')
+    plt.plot(v_x, v_y, marker='o')
 
-    # Fit the model 
-    maxatac_model.FitModel(train_gen=train_data_generator,
-                           val_gen=validate_data_generator,
-                           batches=args.batches,
-                           epochs=args.epochs)
+    plt.xticks(t_x)
 
-    if args.plot:
-        maxatac_model.PlotResults()
+    plt.title("Model loss")
+    plt.ylabel("Loss")
+    plt.xlabel("Epoch")
+    plt.legend(["Training", "Validation"], loc="upper right")
 
-    logging.error("Results are saved to: " + maxatac_model.results_location)
+    plt.savefig(
+        replace_extension(
+            remove_tags(file_location, skip_tags),
+            suffix + ext
+        ),
+        bbox_inches="tight"
+    )
+
+    plt.close("all")
+
+
+def export_model_dice(history, file_location, suffix="_model_dice", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
+    plt.style.use(style)
+
+    t_y = history.history['dice_coef']
+    t_x = [int(i) for i in range(1, len(t_y) + 1)]
+
+    v_y = history.history["val_dice_coef"]
+    v_x = [int(i) for i in range(1, len(v_y) + 1)]
+
+    plt.plot(t_x, t_y, marker='o')
+    plt.plot(v_x, v_y, marker='o')
+
+    plt.xticks(t_x)
+    plt.ylim(0, 1)
+
+    plt.title("Model Dice Coefficient")
+    plt.ylabel("Dice Coefficient")
+    plt.xlabel("Epoch")
+    plt.legend(["Training", "Validation"], loc="upper left")
+
+    plt.savefig(
+        replace_extension(
+            remove_tags(file_location, skip_tags),
+            suffix + ext
+        ),
+        bbox_inches="tight"
+    )
+
+    plt.close("all")
+
+
+def export_model_accuracy(history, file_location, suffix="_model_accuracy", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
+    plt.style.use(style)
+
+    t_y = history.history['acc']
+    t_x = [int(i) for i in range(1, len(t_y) + 1)]
+
+    v_y = history.history["val_acc"]
+    v_x = [int(i) for i in range(1, len(v_y) + 1)]
+
+    plt.plot(t_x, t_y, marker='o')
+    plt.plot(v_x, v_y, marker='o')
+
+    plt.xticks(t_x)
+    plt.ylim(0, 1)
+
+    plt.title("Model Accuracy")
+    plt.ylabel("Accuracy")
+    plt.xlabel("Epoch")
+    plt.legend(["Training", "Validation"], loc="upper left")
+
+    plt.savefig(
+        replace_extension(
+            remove_tags(file_location, skip_tags),
+            suffix + ext
+        ),
+        bbox_inches="tight"
+    )
+
+    plt.close("all")

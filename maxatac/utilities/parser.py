@@ -8,10 +8,10 @@ from maxatac.utilities.system_tools import (
     get_cpu_count
 )
 
-from maxatac.analyses.training import run_training
-from maxatac.analyses.benchmarking import run_benchmarking
-from maxatac.analyses.normalization import run_normalization
-from maxatac.analyses.prediction import run_prediction
+from maxatac.functions.training import run_training
+from maxatac.functions.benchmarking import run_benchmarking
+from maxatac.functions.normalization import run_normalization
+from maxatac.functions.prediction import run_prediction
 
 from maxatac.utilities.constants import (
     LOG_LEVELS,
@@ -236,20 +236,36 @@ def get_parser():
         help="Filter scaling factor. For each convolutional layer, multiply the number of filters by this argument. Default: " + str(FILTERS_SCALING_FACTOR))
 
     train_parser.add_argument(
-        "--batches", 
-        dest="batches", 
+        "--validate_batch_size",
+        dest="validate_batch_size",
+        type=int,
+        default=BATCH_SIZE,
+        help="# of validation examples per batch. \
+            Default: " + str(BATCH_SIZE))
+
+    train_parser.add_argument(
+        "--train_batch_size",
+        dest="train_batch_size",
+        type=int,
+        default=BATCH_SIZE,
+        help="# of training examples per batch. \
+            Default: " + str(BATCH_SIZE))
+
+    train_parser.add_argument(
+        "--train_steps_per_epoch",
+        dest="train_steps_per_epoch",
         type=int,
         default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
         help="# of training batches per epoch. \
             Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH))
 
     train_parser.add_argument(
-        "--batch_size",
-        dest="batch_size",
+        "--validate_steps_per_epoch",
+        dest="validate_steps_per_epoch",
         type=int,
-        default=BATCH_SIZE,
-        help="# of training examples per batch. \
-            Default: " + str(BATCH_SIZE))
+        default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
+        help="# of validations batches per epoch. \
+            Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH))
 
     train_parser.add_argument(
         "--filter_number", 

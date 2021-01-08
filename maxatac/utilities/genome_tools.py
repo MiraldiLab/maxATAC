@@ -5,41 +5,19 @@ import numpy as np
 import pyBigWig
 import py2bit
 
-from maxatac.utilities.constants import (
-    BP_RESOLUTION,
-    CHR_POOL_SIZE,
-    TRAIN_MONITOR,
-    INPUT_LENGTH,
-    INPUT_CHANNELS
-)
-
-from maxatac.utilities.system_tools import get_absolute_path, EmptyStream
+from maxatac.utilities.system_tools import get_absolute_path
 
 
-def build_chrom_sizes_dict(chromosome_list, chrom_sizes_filename):
+def build_chrom_sizes_dict(chromosome_list,
+                           chrom_sizes_filename
+                           ):
     """
     Build a dictionary of chromosome sizes.
 
-    Example
-    -------
-        Input (tsv):
-            chr1 248956422
-        Output (dict):
-            {chr1: 248956422}
-
-    Parameters
-    ----------
-    chrom_sizes_filename (str):
-        Path to the chromosome sizes file.
-    chromosome_list (list):
-        A list of chromosomes of interest.
-
-    Returns
-    -------
-    dict:
-        A dictionary of chromosome sizes filterd by chromosome list.
+    :param chromosome_list: (str) path to the chromosome sizes file.
+    :param chrom_sizes_filename: (str) a list of chromosomes of interest.
+    :return: A dictionary of chromosome sizes filtered by chromosome list.
     """
-
     chrom_sizes_df = pd.read_csv(chrom_sizes_filename, header=None, names=["chr", "len"], sep="\t")
 
     chrom_sizes_df = chrom_sizes_df[chrom_sizes_df["chr"].isin(chromosome_list)]
@@ -47,52 +25,48 @@ def build_chrom_sizes_dict(chromosome_list, chrom_sizes_filename):
     return pd.Series(chrom_sizes_df.len.values, index=chrom_sizes_df.chr).to_dict()
 
 
-def DataGenerator(
-        sequence,
-        average,
-        meta_table,
-        rand_ratio,
-        chroms,
-        batch_size,
-        blacklist,
-        chrom_sizes,
-        chrom_pool_size=CHR_POOL_SIZE,
-        bp_resolution=BP_RESOLUTION,
-        region_length=INPUT_LENGTH
-):
+def DataGenerator(sequence,
+                  average,
+                  meta_table,
+                  rand_ratio,
+                  chroms,
+                  batch_size,
+                  blacklist,
+                  chrom_sizes,
+                  chrom_pool_size,
+                  bp_resolution,
+                  region_length,
+                  input_channels
+                  ):
     """
     Generate data for model training and validation
 
-    Args
-    ----
-        sequence (str):
-            Input 2-bit DNA sequence.
-        average (str):
-            Input average ATAC-seq signal.
-        meta_table (obj):
-            Input meta table object.
-        roi_pool (list):
-            A pool of regions of interest.
-        rand_ratio (float):
-            Proportion of training examples randomly generated.
-        chroms (list):
-            A list of chromosomes of interest.
-        batch_size (int):
-            The number of examples to use per batch.
-        chrom_pool_size (int):
-            The size of the chromosome pool to use for the RandomRegionsGenerator.
-        bp_resolution (int):
-            The resolution of the predictions.
-        region_length (int):
-            The length of the input regions.
+    :param sequence: (str) path to the 2bit DNA sequence
+    :param average: (str) path to the average ATAC-seq signal
+    :param meta_table: (str) path to the run meta table
+    :param rand_ratio: (float) fraction of examples randomly generated
+    :param chroms: (list) list of chromosomes to refine list
+    :param batch_size: (int) number of examples to use per batch
+    :param blacklist: (str) path to the bed file blacklisted regions to ignore
+    :param chrom_sizes: (str) path to the txt file with the chromosome sizes
+    :param chrom_pool_size: (int) size of the pool used to generate random regions
+    :param bp_resolution: (int) resolution of the targets
+    :param region_length: (int) receptive field size in base pairs
+    :param input_channels: (int) the number of channels in the matrix
 
-    Yields
-    ------
-
+    :return: inputs_batch, targets_batch: Yields the ATAC-seq signal and one-hot encoded signal &
+            the associated ChIP-seq signal as arrays.
     """
-    n_roi = round(batch_size * (1. - rand_ratio))
 
-    n_rand = round(batch_size - n_roi)
+    if batch_size == "all":
+        n_roi = "all"
+
+        n_rand = 0
+
+    else:
+        n_roi = round(batch_size * (1. - rand_ratio))
+
+        n_rand = round(batch_size - n_roi)
 
     chrom_sizes_dict = build_chrom_sizes_dict(chroms, chrom_sizes)
 
@@ -105,7 +79,7 @@ def DataGenerator(
                             sequence=sequence,
                             batch_size=batch_size,
                             bp_resolution=bp_resolution,
-                            input_channels=INPUT_CHANNELS)
+                            input_channels=input_channels)
 
     roi_gen = ROI_pool.BatchGenerator(n_roi=n_roi)
 
@@ -116,13 +90,14 @@ def DataGenerator(
         sequence=sequence,
         average=average,
         meta_table=meta_table,
-        input_channels=INPUT_CHANNELS
+        input_channels=input_channels,
+        bp_resolution=bp_resolution
     )
 
     rand_gen = random_regions_pool.BatchGenerator(n_rand=n_rand)
 
     while True:
-        if rand_ratio > 0. and rand_ratio < 1.:
+        if 0. < rand_ratio < 1.:
             roi_input_batch, roi_target_batch = next(roi_gen)
             rand_input_batch, rand_target_batch = next(rand_gen)
             inputs_batch = np.concatenate((roi_input_batch, rand_input_batch), axis=0)
@@ -138,14 +113,29 @@ def DataGenerator(
             inputs_batch = roi_input_batch
             targets_batch = roi_target_batch
 
-        yield (inputs_batch, targets_batch)
+        yield inputs_batch, targets_batch
 
 
 def dump_bigwig(location):
+    """
+    Write a bigwig file to the location
+
+    :param location: the path to desired file location
+
+    :return: an opened bigwig for writing
+    """
     return pyBigWig.open(get_absolute_path(location), "w")
 
 
 def get_one_hot_encoded(sequence, target_bp):
+    """
+    Convert a 2bit DNA sequence to a one-hot encoded sequence.
+
+    :param sequence: path to the 2bit DNA sequence
+    :param target_bp: resolution of the bp sequence
+
+    :return: one-hot encoded DNA sequence
+    """
     one_hot_encoded = []
     for s in sequence:
         if s.lower() == target_bp.lower():
@@ -156,11 +146,78 @@ def get_one_hot_encoded(sequence, target_bp):
 
 
 def load_2bit(location):
+    """
+    Load a 2bit file.
+
+    :param location: path to the 2bit DNA sequence
+
+    :return: opened 2bit file
+    """
     return py2bit.open(get_absolute_path(location))
 
 
 def load_bigwig(location):
+    """
+    Load a bigwig file
+
+    :param location: path to the bigwig file
+
+    :return: opened bigwig file
+    """
     return pyBigWig.open(get_absolute_path(location))
+
+
+def get_input_matrix(rows,
+                     cols,
+                     batch_size,  # make sure that cols % batch_size == 0
+                     signal_stream,
+                     average_stream,
+                     sequence_stream,
+                     bp_order,
+                     chrom,
+                     start,  # end - start = cols
+                     end,
+                     reshape=True,
+
+                     ):
+    """
+    Generate the matrix of values from the signal, sequence, and average data tracks
+
+    :param rows: (int) The number of channels or rows
+    :param cols: (int) The number of columns or length
+    :param batch_size: (int) The number of examples per batch
+    :param signal_stream: (str) ATAC-seq signal
+    :param average_stream: (str) Average ATAC-seq signal
+    :param sequence_stream: (str) One-hot encoded sequence
+    :param bp_order: (list) Order of the bases in matrix
+    :param chrom: (str) Chromosome name
+    :param start: (str) Chromosome start
+    :param end: (str) Chromosome end
+    :param reshape: (bool) Whether to transpose the matrix
+
+    :return: A matrix that is rows x columns with the values from each file
+    """
+    input_matrix = np.zeros((rows, cols))
+
+    for n, bp in enumerate(bp_order):
+        input_matrix[n, :] = get_one_hot_encoded(
+            sequence_stream.sequence(chrom, start, end),
+            bp
+        )
+
+    signal_array = np.array(signal_stream.values(chrom, start, end))
+    avg_array = np.array(average_stream.values(chrom, start, end))
+    input_matrix[4, :] = signal_array
+    input_matrix[5, :] = input_matrix[4, :] - avg_array
+    input_matrix = input_matrix.T
+
+    if reshape:
+        input_matrix = np.reshape(
+            input_matrix,
+            (batch_size, round(cols / batch_size), rows)
+        )
+
+    return input_matrix
 
 
 class RandomRegionsGenerator(object):
@@ -224,9 +281,21 @@ class RandomRegionsGenerator(object):
             average,
             meta_table,
             input_channels,
-            bp_resolution=BP_RESOLUTION,
+            bp_resolution,
             method="length"
     ):
+        """
+
+        :param chrom_sizes_dict:
+        :param chrom_pool_size:
+        :param region_length:
+        :param sequence:
+        :param average:
+        :param meta_table:
+        :param input_channels:
+        :param bp_resolution:
+        :param method:
+        """
         self.chrom_sizes_dict = chrom_sizes_dict
         self.chrom_pool_size = chrom_pool_size
         self.region_length = region_length
@@ -250,44 +319,11 @@ class RandomRegionsGenerator(object):
         return self.MetaDF["Cell_Line"].unique().tolist()
 
     def _get_TranscriptionFactor(self):
+        """
+
+        :return:
+        """
         return self.MetaDF["TF"].unique()[0]
-
-    def _get_input_matrix(self,
-                         rows,
-                         cols,
-                         batch_size,  # make sure that cols % batch_size == 0
-                         signal_stream,
-                         average_stream,
-                         sequence_stream,
-                         bp_order,
-                         chrom,
-                         start,  # end - start = cols
-                         end,
-                         reshape=True,
-
-                         ):
-
-        input_matrix = np.zeros((rows, cols))
-
-        for n, bp in enumerate(bp_order):
-            input_matrix[n, :] = get_one_hot_encoded(
-                sequence_stream.sequence(chrom, start, end),
-                bp
-            )
-
-        signal_array = np.array(signal_stream.values(chrom, start, end))
-        avg_array = np.array(average_stream.values(chrom, start, end))
-        input_matrix[4, :] = signal_array
-        input_matrix[5, :] = input_matrix[4, :] - avg_array
-        input_matrix = input_matrix.T
-
-        if reshape:
-            input_matrix = np.reshape(
-                input_matrix,
-                (batch_size, round(cols / batch_size), rows)
-            )
-
-        return input_matrix
 
     def __get_chrom_frequencies(self):
         """
@@ -300,7 +336,7 @@ class RandomRegionsGenerator(object):
         The length method will generate the frequencies of examples in
         the pool based on the length of the chromosomes in total.
 
-        The proportionmethod will generate a pool that has chromosome
+        The proportion method will generate a pool that has chromosome
         frequencies equel to the chromosome pools size divided by the
         number of chromosomes.
 
@@ -391,8 +427,7 @@ class RandomRegionsGenerator(object):
                         load_2bit(self.sequence) as sequence_stream, \
                         load_bigwig(signal) as signal_stream, \
                         load_bigwig(binding) as binding_stream:
-
-                    input_matrix = self._get_input_matrix(
+                    input_matrix = get_input_matrix(
                         rows=self.input_channels,
                         cols=self.region_length,
                         batch_size=1,  # we will combine into batch later
@@ -414,7 +449,7 @@ class RandomRegionsGenerator(object):
                     bin_vector = np.where(bin_sums > 0.5 * self.bp_resolution, 1.0, 0.0)
                     targets_batch.append(bin_vector)
 
-            yield (np.array(inputs_batch), np.array(targets_batch))
+            yield np.array(inputs_batch), np.array(targets_batch)
 
 
 class ROIGenerator(object):
@@ -455,8 +490,8 @@ class ROIGenerator(object):
                  average,
                  sequence,
                  batch_size,
-                 bp_resolution=BP_RESOLUTION,
-                 input_channels=INPUT_CHANNELS,
+                 bp_resolution,
+                 input_channels,
                  ):
         self.MetaPath = meta_path
         self.chrom_sizes_dict = chrom_sizes_dict
@@ -475,6 +510,12 @@ class ROIGenerator(object):
         self.PeakPaths = self._get_PeakPaths()
         self.ROI_POOL = self._GetROIPool()
 
+        if self.batch_size == "all":
+            self.batch_size = self.ROI_POOL.shape()[0]
+
+        else:
+            self.batch_size = batch_size
+
     def _ImportMeta(self):
         return pd.read_csv(self.MetaPath, sep='\t', header=0, index_col=None)
 
@@ -486,45 +527,6 @@ class ROIGenerator(object):
 
     def _get_PeakPaths(self):
         return self.MetaDF["ATAC_Peaks"].unique().tolist() + self.MetaDF["CHIP_Peaks"].unique().tolist()
-
-    def _get_input_matrix(self,
-                         rows,
-                         cols,
-                         batch_size,  # make sure that cols % batch_size == 0
-                         signal_stream,
-                         average_stream,
-                         sequence_stream,
-                         bp_order,
-                         chrom,
-                         start,  # end - start = cols
-                         end,
-                         reshape=True,
-
-                         ):
-
-        input_matrix = np.zeros((rows, cols))
-
-        for n, bp in enumerate(bp_order):
-            input_matrix[n, :] = get_one_hot_encoded(
-                sequence_stream.sequence(chrom, start, end),
-                bp
-            )
-
-        signal_array = np.array(signal_stream.values(chrom, start, end))
-        avg_array = np.array(average_stream.values(chrom, start, end))
-
-        input_matrix[4, :] = signal_array
-        input_matrix[5, :] = input_matrix[4, :] - avg_array
-
-        input_matrix = input_matrix.T
-
-        if reshape:
-            input_matrix = np.reshape(
-                input_matrix,
-                (batch_size, round(cols / batch_size), rows)
-            )
-
-        return input_matrix
 
     def _import_bed(self, bed_file, ):
         df = pd.read_csv(bed_file,
@@ -606,7 +608,7 @@ class ROIGenerator(object):
                         load_2bit(self.sequence) as sequence_stream, \
                         load_bigwig(signal) as signal_stream, \
                         load_bigwig(binding) as binding_stream:
-                    input_matrix = self._get_input_matrix(
+                    input_matrix = get_input_matrix(
                         rows=self.input_channels,
                         cols=self.input_length,
                         batch_size=1,  # we will combine into batch later
@@ -628,11 +630,39 @@ class ROIGenerator(object):
                     bin_vector = np.where(bin_sums > 0.5 * self.bp_resolution, 1.0, 0.0)
                     targets_batch.append(bin_vector)
 
-            yield (np.array(inputs_batch), np.array(targets_batch))
+            yield np.array(inputs_batch), np.array(targets_batch)
 
 
-def safe_load_bigwig(location):
-    try:
-        return pyBigWig.open(get_absolute_path(location))
-    except (RuntimeError, TypeError):
-        return EmptyStream()
+def get_significant(data, min_threshold):
+    selected = np.concatenate(([0], np.greater_equal(data, min_threshold).view(np.int8), [0]))
+    breakpoints = np.abs(np.diff(selected))
+    ranges = np.where(breakpoints == 1)[0].reshape(-1, 2)  # [[s1,e1],[s2,e2],[s3,e3]]
+    expanded_ranges = list(map(lambda a: list(range(a[0], a[1])), ranges))
+    mask = sum(expanded_ranges, [])  # to flatten
+    starts = mask.copy()  # copy list just in case
+    ends = [i + 1 for i in starts]
+    return mask, starts, ends
+
+
+def window_prediction_intervals(df, number_intervals=32):
+    # Create BedTool object from the dataframe
+    df_css_bed = pybedtools.BedTool.from_dataframe(df[['chr', 'start', 'stop']])
+
+    # Window the intervals into 32 bins
+    pred_css_bed = df_css_bed.window_maker(b=df_css_bed, n=number_intervals)
+
+    # Create a dataframe from the BedTool object
+    return pred_css_bed.to_dataframe()
+
+
+def write_df2bigwig(output_filename, interval_df, chromosome_length_dictionary, chrom):
+    with dump_bigwig(output_filename) as data_stream:
+        header = [(chrom, int(chromosome_length_dictionary[chrom]))]
+        data_stream.addHeader(header)
+
+        data_stream.addEntries(
+            chroms=interval_df["chr"].tolist(),
+            starts=interval_df["start"].tolist(),
+            ends=interval_df["stop"].tolist(),
+            values=interval_df["score"].tolist()
+        )
