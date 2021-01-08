@@ -1,4 +1,5 @@
 import logging
+import numpy as np
 
 from maxatac.utilities.session import configure_session
 
@@ -12,6 +13,7 @@ from maxatac.utilities.genome_tools import DataGenerator
 from maxatac.utilities.model_tools import GetModel
 
 from keras.utils import Sequence
+
 
 def run_training(args):
     """
@@ -61,12 +63,13 @@ def run_training(args):
                                             region_length=INPUT_LENGTH,
                                             input_channels=INPUT_CHANNELS)
 
+    validation_array = next(validate_data_generator)
+
     # Fit the model 
     maxatac_model.FitModel(train_gen=train_data_generator,
-                           val_gen=validate_data_generator,
+                           val_gen=validation_array,
                            epochs=args.epochs,
-                           train_batches=args.train_steps_per_epoch,
-                           validate_batches=args.validate_steps_per_epoch)
+                           train_batches=args.train_steps_per_epoch)
 
     if args.plot:
         maxatac_model.PlotResults()

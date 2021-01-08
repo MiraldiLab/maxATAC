@@ -260,14 +260,6 @@ def get_parser():
             Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH))
 
     train_parser.add_argument(
-        "--validate_steps_per_epoch",
-        dest="validate_steps_per_epoch",
-        type=int,
-        default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
-        help="# of validations batches per epoch. \
-            Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH))
-
-    train_parser.add_argument(
         "--filter_number", 
         dest="FilterNumber", 
         type=int,

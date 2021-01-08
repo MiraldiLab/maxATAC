@@ -125,7 +125,7 @@ class GetModel(object):
         else:
             sys.exit("Model Architecture not specified correctly. Please check")
 
-    def FitModel(self, train_gen, val_gen, train_batches, validate_batches, epochs):
+    def FitModel(self, train_gen, val_gen, train_batches, epochs):
         """
         Fit the model with the specific number of batches and epochs
 
@@ -145,7 +145,6 @@ class GetModel(object):
             generator=train_gen,
             validation_data=val_gen,
             steps_per_epoch=train_batches,
-            validation_steps=validate_batches,
             epochs=epochs,
             callbacks=get_callbacks(
                 model_location=self.results_location,
