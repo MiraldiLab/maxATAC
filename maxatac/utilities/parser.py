@@ -244,6 +244,14 @@ def get_parser():
             Default: " + str(BATCH_SIZE))
 
     train_parser.add_argument(
+        "--validate_steps_per_epoch",
+        dest="validate_steps_per_epoch",
+        type=int,
+        default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
+        help="# of validate batches per epoch. \
+            Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH))
+
+    train_parser.add_argument(
         "--train_batch_size",
         dest="train_batch_size",
         type=int,

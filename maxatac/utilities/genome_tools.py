@@ -25,95 +25,97 @@ def build_chrom_sizes_dict(chromosome_list,
     return pd.Series(chrom_sizes_df.len.values, index=chrom_sizes_df.chr).to_dict()
 
 
-def DataGenerator(sequence,
-                  average,
-                  meta_table,
-                  rand_ratio,
-                  chroms,
-                  batch_size,
-                  blacklist,
-                  chrom_sizes,
-                  chrom_pool_size,
-                  bp_resolution,
-                  region_length,
-                  input_channels
-                  ):
-    """
-    Generate data for model training and validation
+class DataGenerator(object):
+    def __init__(self,
+                 meta_table,
+                 chroms,
+                 blacklist,
+                 region_length,
+                 average,
+                 sequence,
+                 batch_size,
+                 bp_resolution,
+                 input_channels,
+                 chrom_pool_size,
+                 chrom_sizes,
+                 rand_ratio):
+        self.chrom_pool_size = chrom_pool_size
+        self.input_channels = input_channels
+        self.bp_resolution = bp_resolution
+        self.batch_size = batch_size
+        self.sequence = sequence
+        self.average = average
+        self.region_length = region_length
+        self.blacklist = blacklist
+        self.chroms = chroms
+        self.meta_table = meta_table
+        self.rand_ratio = rand_ratio
 
-    :param sequence: (str) path to the 2bit DNA sequence
-    :param average: (str) path to the average ATAC-seq signal
-    :param meta_table: (str) path to the run meta table
-    :param rand_ratio: (float) fraction of examples randomly generated
-    :param chroms: (list) list of chromosomes to refine list
-    :param batch_size: (int) number of examples to use per batch
-    :param blacklist: (str) path to the bed file blacklisted regions to ignore
-    :param chrom_sizes: (str) path to the txt file with the chromosome sizes
-    :param chrom_pool_size: (int) size of the pool used to generate random regions
-    :param bp_resolution: (int) resolution of the targets
-    :param region_length: (int) receptive field size in base pairs
-    :param input_channels: (int) the number of channels in the matrix
+        self.n_roi = round(batch_size * (1. - rand_ratio))
+        self.n_rand = round(batch_size - self.n_roi)
 
-    :return: inputs_batch, targets_batch: Yields the ATAC-seq signal and one-hot encoded signal &
-            the associated ChIP-seq signal as arrays.
-    """
+        self.chrom_sizes_dict = build_chrom_sizes_dict(chroms, chrom_sizes)
 
-    if batch_size == "all":
-        n_roi = "all"
-
-        n_rand = 0
-
-    else:
-        n_roi = round(batch_size * (1. - rand_ratio))
-
-        n_rand = round(batch_size - n_roi)
-
-    chrom_sizes_dict = build_chrom_sizes_dict(chroms, chrom_sizes)
-
-    ROI_pool = ROIGenerator(meta_path=meta_table,
-                            chroms=chroms,
-                            chrom_sizes_dict=chrom_sizes_dict,
-                            blacklist=blacklist,
-                            input_length=region_length,
-                            average=average,
-                            sequence=sequence,
-                            batch_size=batch_size,
-                            bp_resolution=bp_resolution,
-                            input_channels=input_channels)
-
-    roi_gen = ROI_pool.BatchGenerator(n_roi=n_roi)
-
-    random_regions_pool = RandomRegionsGenerator(
-        chrom_sizes_dict=chrom_sizes_dict,
-        chrom_pool_size=chrom_pool_size,
-        region_length=region_length,
-        sequence=sequence,
-        average=average,
-        meta_table=meta_table,
-        input_channels=input_channels,
-        bp_resolution=bp_resolution
-    )
-
-    rand_gen = random_regions_pool.BatchGenerator(n_rand=n_rand)
-
-    while True:
-        if 0. < rand_ratio < 1.:
-            roi_input_batch, roi_target_batch = next(roi_gen)
-            rand_input_batch, rand_target_batch = next(rand_gen)
-            inputs_batch = np.concatenate((roi_input_batch, rand_input_batch), axis=0)
-            targets_batch = np.concatenate((roi_target_batch, rand_target_batch), axis=0)
-
-        elif rand_ratio == 1.:
-            rand_input_batch, rand_target_batch = next(rand_gen)
-            inputs_batch = rand_input_batch
-            targets_batch = rand_target_batch
-
+        if rand_ratio == 1:
+            self.ROI_pool = None
         else:
-            roi_input_batch, roi_target_batch = next(roi_gen)
-            inputs_batch = roi_input_batch
-            targets_batch = roi_target_batch
+            self.ROI_pool = self._get_ROIPool()
 
-        yield inputs_batch, targets_batch
+        if rand_ratio > 0:
+            self.RandomRegions_pool = self._get_RandomRegionsPool()
+        else:
+            self.RandomRegions_pool = None
+
+    def _get_ROIPool(self):
+        return ROIPool(meta_path=self.meta_table,
+                       chroms=self.chroms,
+                       chrom_sizes_dict=self.chrom_sizes_dict,
+                       blacklist=self.blacklist,
+                       input_length=self.region_length,
+                       average=self.average,
+                       sequence=self.sequence,
+                       batch_size=self.batch_size,
+                       bp_resolution=self.bp_resolution,
+                       input_channels=self.input_channels
+                       )
+
+    def _get_RandomRegionsPool(self):
+        return RandomRegionsPool(chrom_sizes_dict=self.chrom_sizes_dict,
+                                 chrom_pool_size=self.chrom_pool_size,
+                                 region_length=self.region_length,
+                                 sequence=self.sequence,
+                                 average=self.average,
+                                 meta_table=self.meta_table,
+                                 input_channels=self.input_channels,
+                                 bp_resolution=self.bp_resolution
+                                 )
+
+    def BatchGenerator(self):
+        while True:
+            if 0. < self.rand_ratio < 1.:
+                rand_gen = self.RandomRegions_pool.BatchGenerator(n_rand=self.n_rand)
+                roi_gen = self.ROI_pool.BatchGenerator(n_roi=self.n_roi)
+
+                roi_input_batch, roi_target_batch = next(roi_gen)
+                rand_input_batch, rand_target_batch = next(rand_gen)
+                inputs_batch = np.concatenate((roi_input_batch, rand_input_batch), axis=0)
+                targets_batch = np.concatenate((roi_target_batch, rand_target_batch), axis=0)
+
+            elif self.rand_ratio == 1.:
+                rand_gen = self.RandomRegions_pool.BatchGenerator(n_rand=self.n_rand)
+
+                rand_input_batch, rand_target_batch = next(rand_gen)
+                inputs_batch = rand_input_batch
+                targets_batch = rand_target_batch
+
+            else:
+                roi_gen = self.ROI_pool.BatchGenerator(n_roi=self.n_roi)
+
+                roi_input_batch, roi_target_batch = next(roi_gen)
+                inputs_batch = roi_input_batch
+                targets_batch = roi_target_batch
+
+            yield inputs_batch, targets_batch
 
 
 def dump_bigwig(location):
@@ -220,7 +222,7 @@ def get_input_matrix(rows,
     return input_matrix
 
 
-class RandomRegionsGenerator(object):
+class RandomRegionsPool(object):
     """
     This class will generate a pool of random regions
 
@@ -452,7 +454,7 @@ class RandomRegionsGenerator(object):
             yield np.array(inputs_batch), np.array(targets_batch)
 
 
-class ROIGenerator(object):
+class ROIPool(object):
     """
     This class will create an ROI Generator
 
@@ -572,7 +574,7 @@ class ROIGenerator(object):
         for bed_file in self.PeakPaths:
             bed_list.append(self._import_bed(bed_file))
 
-        return pd.concat(bed_list)
+        return pd.concat(bed_list).sample(frac=1)
 
     def BatchGenerator(self,
                        n_roi):

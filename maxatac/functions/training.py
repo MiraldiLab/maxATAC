@@ -25,6 +25,15 @@ def run_training(args):
     # We configure the session to have the generator handle the multi-processing
     configure_session(1)
 
+    logging.error("Loading model with parameters: \n"
+                  "Seed: " + str(args.seed) + "\n" +
+                  "Output Directory: " + args.output + "\n" +
+                  "Filename Prefix: " + args.prefix + "\n" +
+                  "Number of Filters: " + str(args.FilterNumber) + "\n" +
+                  "Kernel Size in BP: " + str(args.KernelSize) + "\n" +
+                  "FilterScalingFactor: " + str(args.FilterScalingFactor) + "\n" +
+                  "Number of threads to use: " + str(args.threads))
+
     # Initialize the model
     maxatac_model = GetModel(arch="DCNN_V2",
                              seed=args.seed,
@@ -47,7 +56,8 @@ def run_training(args):
                                          chrom_pool_size=CHR_POOL_SIZE,
                                          bp_resolution=BP_RESOLUTION,
                                          region_length=INPUT_LENGTH,
-                                         input_channels=INPUT_CHANNELS)
+                                         input_channels=INPUT_CHANNELS,
+                                         )
 
     # Initialize the validation data generator
     validate_data_generator = DataGenerator(sequence=args.sequence,
@@ -63,13 +73,12 @@ def run_training(args):
                                             region_length=INPUT_LENGTH,
                                             input_channels=INPUT_CHANNELS)
 
-    validation_array = next(validate_data_generator)
-
     # Fit the model 
-    maxatac_model.FitModel(train_gen=train_data_generator,
-                           val_gen=validation_array,
+    maxatac_model.FitModel(train_gen=train_data_generator.BatchGenerator(),
+                           val_gen=validate_data_generator.BatchGenerator(),
                            epochs=args.epochs,
-                           train_batches=args.train_steps_per_epoch)
+                           train_batches=args.train_steps_per_epoch,
+                           validation_batches=args.validate_steps_per_epoch)
 
     if args.plot:
         maxatac_model.PlotResults()
