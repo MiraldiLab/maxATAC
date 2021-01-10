@@ -1,0 +1,9 @@
+
+*.pyc
+maxatac.egg-info/dependency_links.txt
+maxatac.egg-info/not-zip-safe
+maxatac.egg-info/PKG-INFO
+maxatac.egg-info/requires.txt
+maxatac.egg-info/SOURCES.txt
+maxatac.egg-info/top_level.txt
+maxatac.egg-info/top_level.txt

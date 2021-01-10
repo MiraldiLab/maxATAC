@@ -1,0 +1,1 @@
+from maxatac.utilities.genome_tools import build_chrom_sizes_dict
