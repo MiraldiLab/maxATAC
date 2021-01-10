@@ -44,12 +44,17 @@ def run_training(args):
                              FilterScalingFactor=args.FilterScalingFactor,
                              threads=args.threads)
 
+    logging.error("Initializing the training generator with the parameters: " + "\n" +
+                  "Training random ratio proportion: " + str(args.trand_ratio) + "\n" +
+                  "Training chroms: " + str(args.tchroms) + "\n" +
+                  "Training batch size: " + str(args.train_batch_size))
+
     # Initialize the training generator
     train_data_generator = DataGenerator(sequence=args.sequence,
                                          average=args.average,
                                          meta_table=args.meta_file,
-                                         rand_ratio=args.trand_ratio,
-                                         chroms=args.tchroms,
+                                         rand_ratio=args.train_rand_ratio,
+                                         chroms=args.train_chroms,
                                          batch_size=args.train_batch_size,
                                          blacklist=args.blacklist,
                                          chrom_sizes=args.chrom_sizes,
@@ -59,12 +64,17 @@ def run_training(args):
                                          input_channels=INPUT_CHANNELS,
                                          )
 
+    logging.error("Initializing the validation generator with the parameters: " + "\n" +
+                  "Validation random ratio proportion: " + str(args.vrand_ratio) + "\n" +
+                  "Validation chroms: " + str(args.vchroms) + "\n" +
+                  "Validation batch size: " + str(args.train_batch_size))
+
     # Initialize the validation data generator
     validate_data_generator = DataGenerator(sequence=args.sequence,
                                             average=args.average,
                                             meta_table=args.meta_file,
-                                            rand_ratio=args.vrand_ratio,
-                                            chroms=args.vchroms,
+                                            rand_ratio=args.validate_rand_ratio,
+                                            chroms=args.validate_chroms,
                                             batch_size=args.validate_batch_size,
                                             blacklist=args.blacklist,
                                             chrom_sizes=args.chrom_sizes,
