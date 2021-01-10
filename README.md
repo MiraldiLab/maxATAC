@@ -1,49 +1,72 @@
 # maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq 
 
+A working version of maxATAC for binary TF binding predictions. This is the base DCNN model that uses peak-centric, pan-cell, and random regions for training. This model can also take in multiple cell types and is formatted to be used with a meta file. 
+
+This version lacks documentation of functions and code still.
+
+## TODO
+
+* Learn how to create tests 
+* Optimize training.py
+* Clean up prediction
+* Clean up class objects
+* Document code
+* Clean up benchmarking
+* Update to latest tensorflow
+* Incorporate quantitative predictions
+* Incorporate resnet
+* Incorporate multi-modal
+
 ## Dependencies
 
 maxATAC uses python 3.6 and can be run with or without a GPU. Package requirements include:
 
 <pre>
-  bedtools           bioconda/osx-64::bedtools-2.29.2-h37cfd92_0
-  bzip2              conda-forge/osx-64::bzip2-1.0.8-hc929b4f_4
-  curl               conda-forge/osx-64::curl-7.71.1-hcb81553_8
-  libdeflate         bioconda/osx-64::libdeflate-1.0-h1de35cc_1
-  python-dateutil    conda-forge/noarch::python-dateutil-2.8.1-py_0
-  pytz               conda-forge/noarch::pytz-2020.5-pyhd8ed1ab_0 
+bedtools           bioconda/osx-64::bedtools-2.29.2-h37cfd92_0
 </pre>
 
 The following python packages are required:
 <pre>
-    "tensorflow==1.14.0",
-    "keras==2.2.5",
-    "pyBigWig==0.3.16",
-    "py2bit==0.3.0",
-    "numpy",
-    "matplotlib",
-    "scikit-learn",
-    "pandas==1.1.5",
-    "pysam==0.15.3",
-    "pybedtools==0.8.1"
+"tensorflow-gpu==1.14.0",
+"tensorboard==1.14.0",
+"keras==2.2.5",
+"pyBigWig==0.3.16",
+"py2bit==0.3.0",
+"numpy==1.19.4",
+"matplotlib",
+"scikit-learn",
+"pandas==1.1.5",
+"pysam==0.15.3",
+"pybedtools==0.8.1"
 </pre>
 
 ## Functions
 
-There are four main functions:
+These are the main functions:
 
-1. Normalization
-2. Training
-3. Prediction
-4. Benchmarking
+* Average
+* Normalize
+* Train
+* Predict
+* Benchmark
+* Average
 
-### Normalization
+### Average
 
-The normalization function will take an input bigwig file and minmax normalize the values genome wide.
+The average function will average multiple bigwig files into a single output bigwig file. 
 
-### Training
+### Normalize
 
-The training function takes as input ATAC-seq signal, DNA sequence, .....
+The normalize function will take an input bigwig file and minmax normalize the values genome wide.
 
-### Prediction
+### Train
 
-### Benchmarking
+The training function takes as input ATAC-seq signal, DNA sequence, Delta-ATAC-seq signal, and ChIP-seq signal to train a dilated convolutional neural network. 
+
+### Predict
+
+The predict function takes as input BED formatted genomic regions to predict TF binding using a trained maxATAC model.
+
+### Benchmark
+
+The benchmark function takes as input a prediction bigwig signal track and a ChIP-seq gold standard bigwig track to calculate precision and recall.

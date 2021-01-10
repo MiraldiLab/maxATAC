@@ -45,8 +45,8 @@ def run_training(args):
                              threads=args.threads)
 
     logging.error("Initializing the training generator with the parameters: " + "\n" +
-                  "Training random ratio proportion: " + str(args.trand_ratio) + "\n" +
-                  "Training chroms: " + str(args.tchroms) + "\n" +
+                  "Training random ratio proportion: " + str(args.train_rand_ratio) + "\n" +
+                  "Training chroms: " + str(args.train_chroms) + "\n" +
                   "Training batch size: " + str(args.train_batch_size))
 
     # Initialize the training generator
@@ -65,8 +65,8 @@ def run_training(args):
                                          )
 
     logging.error("Initializing the validation generator with the parameters: " + "\n" +
-                  "Validation random ratio proportion: " + str(args.vrand_ratio) + "\n" +
-                  "Validation chroms: " + str(args.vchroms) + "\n" +
+                  "Validation random ratio proportion: " + str(args.validate_rand_ratio) + "\n" +
+                  "Validation chroms: " + str(args.validate_chroms) + "\n" +
                   "Validation batch size: " + str(args.train_batch_size))
 
     # Initialize the validation data generator

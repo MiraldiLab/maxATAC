@@ -8,10 +8,10 @@ from maxatac.utilities.system_tools import (
     get_cpu_count
 )
 
-from maxatac.functions.training import run_training
-from maxatac.functions.benchmarking import run_benchmarking
-from maxatac.functions.normalization import run_normalization
-from maxatac.functions.prediction import run_prediction
+from maxatac.functions.train import run_training
+from maxatac.functions.benchmark import run_benchmarking
+from maxatac.functions.normalize import run_normalization
+from maxatac.functions.predict import run_prediction
 
 from maxatac.utilities.constants import (
     LOG_LEVELS,
