@@ -3,8 +3,7 @@ from keras.utils import plot_model
 import sys
 import random
 from os import path
-import logging
-
+import pandas as pd
 from maxatac.utilities.system_tools import (
     get_dir,
     replace_extension,
@@ -15,257 +14,207 @@ from maxatac.utilities.system_tools import (
 with Mute():  # hide stdout from loading the modules
     from maxatac.architectures.dcnn import (get_dilated_cnn, get_callbacks)
 
-from maxatac.utilities.constants import TRAIN_MONITOR
 
-
-class GetModel(object):
+class MaxATACModel(object):
     """
-    This is a class for training a maxATAC model
-
-    Args
-    ----
-        seed (int, optional):
-            Random seed to use.
-        OutDir (str):
-            Path to directory for storing results.
-        prefix (str):
-            Prefix string for building model name.
-        arch (str):
-            Architecture to use.
-        FilterNumber (int):
-            Number of filters to use in the input layer.
-        KernelSize (int):
-            Size of the kernel in base pairs of the input layer.
-        FilterScalingFactor (float):
-            Multiply the number of filters each layer by this.
-        TrainMonitor (str):
-            The statistic to use to monitor training.
-        threads (int):
-            Number of threads to use for training.
-
-    Attributes
-    ----------
-        arch (str):
-            Architecture to use.
-        seed (int):
-            Random state seed.
-        OutDir (str):
-            Output directory for storing results.
-        model_filename (str):
-            The model filename.
-        results_location (str):
-            Output directory and model filename.
-        log_location (str):
-            Path to save logs.
-        tensor_board_log_dir (str):
-            Path to tensor board log.
-        FilterNumber (int):
-            Number of filters to use in the input layer.
-        KernelSize (int):
-            Size of the kernel in base pairs of the input layer.
-        LRate (float):
-            Adam learning rate.
-        decay (float):
-            Adam decay rate.
-        FilterScalingFactor (float):
-            Multiply the number of filters each layer by this.
-        batches (int):
-            The number of batches to use for training model.
-        epochs (int):
-            The number of epochs to train model for.
-        nn_model (obj):
-            The neural network model to be used for training.
-        TrainMonitor (str):
-            The statistic to use to monitor training.
-        threads (int):
-            Number of threads to use for training.
-
-    Methods
-    -------
-        _get_DCNN
-            Get a DCNN model
-        FitModel
-            Fit the model using the training data
+    This class will initialize and fit a maxATAC model.
     """
 
     def __init__(self,
                  arch,
                  seed,
-                 OutDir,
+                 output_directory,
                  prefix,
-                 FilterNumber,
-                 KernelSize,
-                 FilterScalingFactor,
+                 number_of_filters,
+                 kernel_size,
+                 filter_scaling_factor,
                  threads,
-                 TrainMonitor=TRAIN_MONITOR
+                 training_monitor,
+                 meta_path
                  ):
+        """
+        Initialize a maxATAC model
+        
+        :param arch: Neural network architecture to use
+        :param seed: Random seed to use
+        :param output_directory: Path to output directory
+        :param prefix: Prefix to use for filename
+        :param number_of_filters: The number of filters to use for input layer
+        :param kernel_size: Kernel width in base pairs
+        :param filter_scaling_factor: Scale the filter number by this factor each layer
+        :param threads: Number of threads to use
+        :param training_monitor: Metric to use to monitor model training
+        :param meta_path: Path to the meta file associated with the run
+        """
         self.arch = arch
         self.seed = seed
-        self.OutDir = get_dir(OutDir)
+        self.output_directory = get_dir(output_directory)
         self.model_filename = prefix + "_{epoch}" + ".h5"
-        self.results_location = path.join(self.OutDir, self.model_filename)
+        self.results_location = path.join(self.output_directory, self.model_filename)
         self.log_location = replace_extension(remove_tags(self.results_location, "_{epoch}"), ".csv")
-        self.tensor_board_log_dir = get_dir(path.join(self.OutDir, "tensorboard"))
-        self.FilterNumber = FilterNumber
-        self.KernelSize = KernelSize
-        self.FilterScalingFactor = FilterScalingFactor
-        self.TrainMonitor = TrainMonitor
+        self.tensor_board_log_dir = get_dir(path.join(self.output_directory, "tensorboard"))
+        self.number_of_filters = number_of_filters
+        self.kernel_size = kernel_size
+        self.filter_scaling_factor = filter_scaling_factor
+        self.training_monitor = training_monitor
         self.threads = threads
         self.training_history = ""
 
+        # Set the random seed for the model
         random.seed(seed)
 
+        self.meta_path = meta_path
+
+        self.meta_dataframe = self.__import_meta()
+        self.peak_paths = self.__get_peak_paths()
+        self.cell_types = self.__get_cell_types()
+
+        # Get the neural network model based on the specified model architecture
         if arch == "DCNN_V2":
             self.nn_model = get_dilated_cnn(
-                input_filters=self.FilterNumber,
-                input_kernel_size=self.KernelSize,
-                filters_scaling_factor=self.FilterScalingFactor
+                input_filters=self.number_of_filters,
+                input_kernel_size=self.kernel_size,
+                filters_scaling_factor=self.filter_scaling_factor
             )
 
         else:
             sys.exit("Model Architecture not specified correctly. Please check")
 
-    def FitModel(self, train_gen, val_gen, train_batches, validation_batches, epochs):
+    def __import_meta(self):
         """
-        Fit the model with the specific number of batches and epochs
+        Import the meta file into a dataframe
 
-        Args
-        ----
-            batches (int):
-                The number of batches to use for training model.
-            epochs (int):
-                The number of epochs to train model for.
-
-        Attributes
-        ----------
-            training_history (obj):
-                A history of model training and the parameters
+        :return: Meta data in a pandas dataframe
         """
-        self.training_history = self.nn_model.fit_generator(
-            generator=train_gen,
-            validation_data=val_gen,
-            steps_per_epoch=train_batches,
-            validation_steps=validation_batches,
-            epochs=epochs,
-            callbacks=get_callbacks(
-                model_location=self.results_location,
-                log_location=self.log_location,
-                tensor_board_log_dir=self.tensor_board_log_dir,
-                monitor=self.TrainMonitor
+        return pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
+
+    def __get_cell_types(self):
+        """
+        Get the unique cell lines in the meta dataframe
+
+        :return: A list of unique cell types
+        """
+        return self.meta_dataframe["Cell_Line"].unique().tolist()
+
+    def __get_peak_paths(self):
+        """
+        Get the ATAC-seq and ChIP-seq peak paths from the meta data file and concatenate them
+
+        :return: A list of unique paths to all ATAC-seq and ChIP-seq data
+        """
+        return self.meta_dataframe["ATAC_Peaks"].unique().tolist() + self.meta_dataframe["CHIP_Peaks"].unique().tolist()
+
+    def fit_model(self, train_gen, val_gen, train_batches, validation_batches, epochs):
+        """
+        Fit the maxATAC model using the provided training and validation generators.
+
+        :param train_gen: The training data generator
+        :param val_gen: The validation data generator
+        :param train_batches: Number of batches to use for training
+        :param validation_batches: Number of batches to use for validation
+        :param epochs: Number of epochs to run the model for
+
+        :return: Model training history
+        """
+        self.training_history = self.nn_model.fit_generator(generator=train_gen,
+                                                            validation_data=val_gen,
+                                                            steps_per_epoch=train_batches,
+                                                            validation_steps=validation_batches,
+                                                            epochs=epochs,
+                                                            callbacks=get_callbacks(
+                                                                model_location=self.results_location,
+                                                                log_location=self.log_location,
+                                                                tensor_board_log_dir=self.tensor_board_log_dir,
+                                                                monitor=self.training_monitor
+                                                            ),
+                                                            use_multiprocessing=self.threads > 1,
+                                                            workers=self.threads,
+                                                            verbose=1
+                                                            )
+
+    def export_model_structure(self):
+        """
+        Export the model structure as a PDF.
+
+        :return: Saves a PDF version of the model structure from Keras.
+        """
+        plot_model(model=self.nn_model,
+                   show_shapes=True,
+                   show_layer_names=True,
+                   to_file=replace_extension(remove_tags(self.results_location,
+                                                         "_{epoch}"
+                                                         ),
+                                             "_model_structure" + ".png"
+                                             )
+                   )
+
+    def plot_metrics(self,
+                     metric,
+                     style="ggplot"
+                     ):
+        """
+        Plot the loss, accuracy, or dice coefficient training history.
+
+        :param metric: Metric to plot ("loss", "acc", "dice_coef")
+        :param style: Style of plot to use. Default: "ggplot"
+
+        :return: Saves a PDF image of the training history curves.
+        """
+        # Set the plot style to use
+        plt.style.use(style)
+
+        # Build the labels and names based on the metric of choice
+        if metric == 'dice_coef':
+            val_metric = "val_dice_coef"
+            title = "Model Dice Coefficient"
+            y_label = "Dice Coefficient"
+            suffix = "_model_dice"
+
+        elif metric == 'acc':
+            val_metric = "val_acc"
+            title = "Model Accuracy"
+            y_label = "Accuracy"
+            suffix = "_model_accuracy"
+
+        elif metric == "loss":
+            val_metric = "val_loss"
+            title = "Model Loss"
+            y_label = "Loss"
+            suffix = "_model_loss"
+
+        # Get the training X and Y values
+        t_y = self.training_history.history[metric]
+        t_x = [int(i) for i in range(1, len(t_y) + 1)]
+
+        # Get the validation X and Y values
+        v_y = self.training_history.history[val_metric]
+        v_x = [int(i) for i in range(1, len(v_y) + 1)]
+
+        # Plot the training and validation data
+        plt.plot(t_x, t_y, marker='o')
+        plt.plot(v_x, v_y, marker='o')
+
+        # Set the x ticks based on the training x epochs.
+        plt.xticks(t_x)
+
+        # If the metric is accuracy or dice_coef set the ylim to (0,1)
+        if metric == "acc" or metric == "dice_coef":
+            plt.ylim(0, 1)
+
+        plt.title(title)
+        plt.ylabel(y_label)
+        plt.xlabel("Epoch")
+
+        plt.legend(["Training", "Validation"], loc="upper left")
+
+        # Save figure based on the filename
+        plt.savefig(
+            replace_extension(
+                remove_tags(self.results_location, "_{epoch}"),
+                suffix + ".pdf"
             ),
-            use_multiprocessing=self.threads > 1,
-            workers=self.threads,
-            verbose=1
+            bbox_inches="tight"
         )
 
-    def PlotResults(self):
-        export_model_structure(self.nn_model, self.results_location)
-        export_model_loss(self.training_history, self.results_location)
-        export_model_dice(self.training_history, self.results_location)
-        export_model_accuracy(self.training_history, self.results_location)
-
-        logging.error("Results are saved to: " + self.results_location)
-
-
-def export_model_structure(model, file_location, suffix="_model_structure", ext=".pdf", skip_tags="_{epoch}"):
-    plot_model(
-        model=model,
-        show_shapes=True,
-        show_layer_names=True,
-        to_file=replace_extension(
-            remove_tags(file_location, skip_tags),
-            suffix + ext
-        )
-    )
-
-
-def export_model_loss(history, file_location, suffix="_model_loss", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
-    plt.style.use(style)
-
-    t_y = history.history['loss']
-    t_x = [int(i) for i in range(1, len(t_y) + 1)]
-
-    v_y = history.history["val_loss"]
-    v_x = [int(i) for i in range(1, len(v_y) + 1)]
-
-    plt.plot(t_x, t_y, marker='o')
-    plt.plot(v_x, v_y, marker='o')
-
-    plt.xticks(t_x)
-
-    plt.title("Model loss")
-    plt.ylabel("Loss")
-    plt.xlabel("Epoch")
-    plt.legend(["Training", "Validation"], loc="upper right")
-
-    plt.savefig(
-        replace_extension(
-            remove_tags(file_location, skip_tags),
-            suffix + ext
-        ),
-        bbox_inches="tight"
-    )
-
-    plt.close("all")
-
-
-def export_model_dice(history, file_location, suffix="_model_dice", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
-    plt.style.use(style)
-
-    t_y = history.history['dice_coef']
-    t_x = [int(i) for i in range(1, len(t_y) + 1)]
-
-    v_y = history.history["val_dice_coef"]
-    v_x = [int(i) for i in range(1, len(v_y) + 1)]
-
-    plt.plot(t_x, t_y, marker='o')
-    plt.plot(v_x, v_y, marker='o')
-
-    plt.xticks(t_x)
-    plt.ylim(0, 1)
-
-    plt.title("Model Dice Coefficient")
-    plt.ylabel("Dice Coefficient")
-    plt.xlabel("Epoch")
-    plt.legend(["Training", "Validation"], loc="upper left")
-
-    plt.savefig(
-        replace_extension(
-            remove_tags(file_location, skip_tags),
-            suffix + ext
-        ),
-        bbox_inches="tight"
-    )
-
-    plt.close("all")
-
-
-def export_model_accuracy(history, file_location, suffix="_model_accuracy", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
-    plt.style.use(style)
-
-    t_y = history.history['acc']
-    t_x = [int(i) for i in range(1, len(t_y) + 1)]
-
-    v_y = history.history["val_acc"]
-    v_x = [int(i) for i in range(1, len(v_y) + 1)]
-
-    plt.plot(t_x, t_y, marker='o')
-    plt.plot(v_x, v_y, marker='o')
-
-    plt.xticks(t_x)
-    plt.ylim(0, 1)
-
-    plt.title("Model Accuracy")
-    plt.ylabel("Accuracy")
-    plt.xlabel("Epoch")
-    plt.legend(["Training", "Validation"], loc="upper left")
-
-    plt.savefig(
-        replace_extension(
-            remove_tags(file_location, skip_tags),
-            suffix + ext
-        ),
-        bbox_inches="tight"
-    )
-
-    plt.close("all")
+        # Close figure
+        plt.close("all")

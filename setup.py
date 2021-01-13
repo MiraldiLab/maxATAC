@@ -38,7 +38,8 @@ setup(
         "scikit-learn",
         "pandas==1.1.5",
         "pysam==0.15.3",
-        "pybedtools==0.8.1"
+        "pybedtools==0.8.1",
+        "tqdm"
     ],
     zip_safe=False,
     scripts=["maxatac/bin/maxatac"],

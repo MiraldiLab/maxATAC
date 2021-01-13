@@ -13,7 +13,7 @@ def benchmark_predictions(
     results_location# (chrom_name)
 ):
     with load_bigwig(prediction) as prediction_stream, load_bigwig(goldstandard) as goldstandard_stream:
-        chrom_len = prediction_stream.chroms(chrom)
+        chrom_len = prediction_stream.chromosomes(chrom)
         
         bin_count = int(int(chrom_len) / int(bin_size))  # need to floor the number
 
@@ -86,7 +86,7 @@ def run_benchmarking(args):
         "\n  Prediction file:" + args.prediction +
         "\n  Gold standard file: " + args.goldstandard +
         "\n  Bin size: " + str(args.bin) +
-        "\n  All chromosomes: " + args.chroms +
+        "\n  All chromosomes: " + args.chromosomes +
         "\n  Logging level: " + logging.getLevelName(args.loglevel) +
         "\n  Output directory: " + results_filename
     )
@@ -95,6 +95,6 @@ def run_benchmarking(args):
                 args.prediction,
                 args.goldstandard,
                 args.bin,
-                args.chroms,
+                args.chromosomes,
                 results_filename
     )
