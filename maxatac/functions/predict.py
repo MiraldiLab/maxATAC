@@ -1,10 +1,17 @@
+"""
+Use a maxATAC model to predict TF binding in specific regions of interest or genome-wide
+"""
+
 import logging
 import numpy as np
 import pandas as pd
 
 from keras.models import load_model
 
-from maxatac.utilities.genome_tools import build_chrom_sizes_dict, window_prediction_intervals, write_df2bigwig
+from maxatac.utilities.genome_tools import (build_chrom_sizes_dict,
+                                            window_prediction_intervals,
+                                            write_df2bigwig,
+                                            GetPredictionROI)
 
 from maxatac.utilities.constants import (
     INPUT_LENGTH,
@@ -69,7 +76,7 @@ def make_predictions(
     return predictions_df
 
 
-def run_prediction(args, save_preds=True):
+def run_prediction(args):
     outfile_name_bigwig = args.output + "/" + args.prefix + ".bw"
 
     logging.error(
@@ -78,9 +85,9 @@ def run_prediction(args, save_preds=True):
         "\n  Target signal: " + args.signal +
         "\n  Sequence data: " + args.sequence +
         "\n  Models: \n   - " + "\n   - ".join(args.models) +
-        "\n  Chromosomes: " + args.chroms +
+        "\n  Chromosomes: " + args.chromosomes +
         "\n  Minimum prediction value to be reported: " + str(args.minimum) +
-        "\n  Jobs count: " + str(len(args.chroms) * len(args.models)) +
+        "\n  Jobs count: " + str(len(args.chromosomes) * len(args.models)) +
         "\n  Threads count: " + str(args.threads) +
         "\n  Keep temporary data: " + str(args.keep) +
         "\n  Logging level: " + logging.getLevelName(args.loglevel) +
@@ -88,7 +95,7 @@ def run_prediction(args, save_preds=True):
         "\n  Output directory: " + args.output
     )
 
-    roi_df = get_roi_pool(
+    roi_df = GetPredictionROI(
         seq_len=INPUT_LENGTH,
         roi=args.predict_roi,
         shuffle=False
@@ -121,4 +128,4 @@ def run_prediction(args, save_preds=True):
     write_df2bigwig(output_filename=outfile_name_bigwig,
                     interval_df=df_intervals,
                     chromosome_length_dictionary=build_chrom_sizes_dict("hg38"),
-                    chrom=args.chroms)
+                    chrom=args.chromosomes)

@@ -1,6 +1,5 @@
 import argparse
 import random
-from os import getcwd
 from yaml import dump
 
 from maxatac.utilities.system_tools import (
@@ -12,13 +11,17 @@ from maxatac.functions.train import run_training
 from maxatac.functions.benchmark import run_benchmarking
 from maxatac.functions.normalize import run_normalization
 from maxatac.functions.predict import run_prediction
+from maxatac.functions.average import run_averaging
 
 from maxatac.utilities.constants import (
     LOG_LEVELS,
     DEFAULT_LOG_LEVEL,
     DEFAULT_TRAIN_EPOCHS,
+    DEFAULT_TRAIN_RAND_RATIO,
+    DEFAULT_VALIDATE_RAND_RATIO,
     DEFAULT_TRAIN_BATCHES_PER_EPOCH,
-    BATCH_SIZE,
+    DEFAULT_VALIDATE_BATCHES_PER_EPOCH,
+    DEFAULT_TRAIN_BATCH_SIZE,
     CHR_POOL_SIZE,
     BLACKLISTED_REGIONS,
     DEFAULT_BENCHMARKING_BIN_SIZE,
@@ -31,24 +34,86 @@ from maxatac.utilities.constants import (
     FILTERS_SCALING_FACTOR,
     DEFAULT_TRAIN_CHRS,
     DEFAULT_VALIDATE_CHRS,
-    DEFAULT_CHROM_SIZES
+    DEFAULT_CHROM_SIZES,
+    DEFAULT_VALIDATE_BATCH_SIZE,
+    DEFAULT_CHRS
 )
 
 
 def get_parser():
-    # Parent (general) parser
+    # Parent parser for maxATAC
     parent_parser = argparse.ArgumentParser(add_help=False)
 
+    # General parser for description and functions
     general_parser = argparse.ArgumentParser(description="maxATAC: \
-        DeepCNN for predicting TF binding from ATAC-seq")
+        A suite of user-friendly, deep neural network models for \
+        transcription factor binding prediction from ATAC-seq")
 
+    # Add subparsers: to be used with different functions
     subparsers = general_parser.add_subparsers()
 
+    # require subparsers
     subparsers.required = True
 
+    # Add the version argument to the general parser.
     general_parser.add_argument(
         "--version", action="version", version=get_version(),
         help="Print version information and exit")
+
+    # Average parser
+    average_parser = subparsers.add_parser(
+        "average",
+        parents=[parent_parser],
+        help="Run maxATAC average")
+
+    # Set the default function to run averaging
+    average_parser.set_defaults(func=run_averaging)
+
+    average_parser.add_argument(
+        "--bigwigs",
+        dest="bigwig_files",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Input bigwig files to average.")
+
+    average_parser.add_argument(
+        "--prefix",
+        dest="prefix",
+        type=str,
+        required=True,
+        help="Output prefix.")
+
+    average_parser.add_argument(
+        "--chrom_sizes",
+        dest="chrom_sizes",
+        type=str,
+        default=DEFAULT_CHROM_SIZES,
+        help="Input chromosome sizes file. Default is hg38.")
+
+    average_parser.add_argument(
+        "--chromosomes",
+        dest="chromosomes",
+        type=str,
+        nargs="+",
+        default=DEFAULT_CHRS,
+        help="Chromosomes for averaging. \
+                Default: 1-22,X,Y")
+
+    average_parser.add_argument(
+        "--output",
+        dest="output_dir",
+        type=str,
+        default="./average",
+        help="Output directory.")
+
+    average_parser.add_argument(
+        "--loglevel",
+        dest="loglevel",
+        type=str,
+        default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+        choices=LOG_LEVELS.keys(),
+        help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
 
     # Predict parser
     predict_parser = subparsers.add_parser(
@@ -56,6 +121,7 @@ def get_parser():
         parents=[parent_parser],
         help="Run maxATAC prediction")
 
+    # Set the default function to run prediction
     predict_parser.set_defaults(func=run_prediction)
 
     predict_parser.add_argument(
@@ -120,13 +186,13 @@ def get_parser():
         default=get_cpu_count(),
         type=int,
         help="# of processes to run prediction in parallel. \
-            Default: # of --models multiplied by # of --chroms")
+            Default: # of --models multiplied by # of --chromosomes")
 
     predict_parser.add_argument(
         "--loglevel",
         dest="loglevel",
         type=str,
-        default=DEFAULT_LOG_LEVEL,
+        default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
         choices=LOG_LEVELS.keys(),
         help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
 
@@ -143,6 +209,7 @@ def get_parser():
         parents=[parent_parser],
         help="Run maxATAC training")
 
+    # Set the default function to run training
     train_parser.set_defaults(func=run_training)
 
     train_parser.add_argument(
@@ -172,7 +239,7 @@ def get_parser():
         type=str,
         nargs="+",
         default=DEFAULT_TRAIN_CHRS,
-        help="Chromosomes from --chroms fixed for training. \
+        help="Chromosomes from --chromosomes fixed for training. \
             Default: 3-7,9-18,20-22")
 
     train_parser.add_argument(
@@ -181,7 +248,7 @@ def get_parser():
         type=str,
         nargs="+",
         default=DEFAULT_VALIDATE_CHRS,
-        help="Chromosomes from --chroms fixed for validation. \
+        help="Chromosomes from fixed for validation. \
             Default: chr2, chr19")
 
     train_parser.add_argument(
@@ -197,15 +264,15 @@ def get_parser():
         dest="train_rand_ratio",
         type=float,
         required=False,
-        default=.5,
-        help="Ratio for controlling fraction of random seqeuences in each training batch. float [0, 1]")
+        default=DEFAULT_TRAIN_RAND_RATIO,
+        help="Ratio for controlling fraction of random sequences in each training batch. float [0, 1]")
 
     train_parser.add_argument(
         "--validate_rand_ratio",
         dest="validate_rand_ratio",
         type=float,
         required=False,
-        default=.5,
+        default=DEFAULT_VALIDATE_RAND_RATIO,
         help="Ratio for controlling fraction of random seqeuences in each validation batch. float [0, 1]")
 
     train_parser.add_argument(
@@ -230,7 +297,7 @@ def get_parser():
 
     train_parser.add_argument(
         "--FSF",
-        dest="FilterScalingFactor",
+        dest="filter_scaling_factor",
         type=float,
         default=FILTERS_SCALING_FACTOR,
         help="Filter scaling factor. For each convolutional layer, multiply the number of filters by this argument. "
@@ -240,15 +307,15 @@ def get_parser():
         "--validate_batch_size",
         dest="validate_batch_size",
         type=int,
-        default=BATCH_SIZE,
+        default=DEFAULT_VALIDATE_BATCH_SIZE,
         help="# of validation examples per batch."
-             "Default: " + str(BATCH_SIZE))
+             "Default: " + str(DEFAULT_VALIDATE_BATCH_SIZE))
 
     train_parser.add_argument(
         "--validate_steps_per_epoch",
         dest="validate_steps_per_epoch",
         type=int,
-        default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
+        default=DEFAULT_VALIDATE_BATCHES_PER_EPOCH,
         help="# of validate batches per epoch."
              "Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH))
 
@@ -256,9 +323,9 @@ def get_parser():
         "--train_batch_size",
         dest="train_batch_size",
         type=int,
-        default=BATCH_SIZE,
+        default=DEFAULT_TRAIN_BATCH_SIZE,
         help="# of training examples per batch. \
-            Default: " + str(BATCH_SIZE))
+            Default: " + str(DEFAULT_TRAIN_BATCH_SIZE))
 
     train_parser.add_argument(
         "--train_steps_per_epoch",
@@ -270,7 +337,7 @@ def get_parser():
 
     train_parser.add_argument(
         "--filter_number",
-        dest="FilterNumber",
+        dest="number_of_filters",
         type=int,
         default=INPUT_FILTERS,
         help="# of filters to use for training. \
@@ -278,15 +345,15 @@ def get_parser():
 
     train_parser.add_argument(
         "--kernel_size",
-        dest="KernelSize",
+        dest="kernel_size",
         type=int,
         default=INPUT_KERNEL_SIZE,
         help="Size of the kernel to use in BP. \
             Default: " + str(INPUT_KERNEL_SIZE))
 
     train_parser.add_argument(
-        "--chrom_pool_size",
-        dest="chrom_pool_size",
+        "--chromosome_pool_size",
+        dest="chromosome_pool_size",
         type=int,
         default=CHR_POOL_SIZE,
         help="Size of the kernel to use in BP. \
@@ -342,7 +409,7 @@ def get_parser():
         dest="chrom_sizes",
         type=str,
         default=DEFAULT_CHROM_SIZES,
-        help="The chrom sizes file to reference")
+        help="The chromosome sizes file to reference")
 
     # Normalize parser
     normalize_parser = subparsers.add_parser(
@@ -360,19 +427,11 @@ def get_parser():
         help="Input signal bigWig file(s) to be normalized by reference")
 
     normalize_parser.add_argument(
-        "--genome",
-        dest="GENOME",
+        "--chrom_sizes",
+        dest="chrom_sizes",
         type=str,
         default=DEFAULT_CHROM_SIZES,
-        help="Reference genome build")
-
-    normalize_parser.add_argument(
-        "--prefix",
-        dest="prefix",
-        type=str,
-        required=True,
-        default="normalized",
-        help="Output prefix. Default: normalized")
+        help="Chrom sizes file")
 
     normalize_parser.add_argument(
         "--output",
@@ -385,7 +444,7 @@ def get_parser():
         "--loglevel",
         dest="loglevel",
         type=str,
-        default=DEFAULT_LOG_LEVEL,
+        default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
         choices=LOG_LEVELS.keys(),
         help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
 
@@ -395,6 +454,7 @@ def get_parser():
         parents=[parent_parser],
         help="Run maxATAC benchmarking")
 
+    # Set the default function to run benchmarking
     benchmark_parser.set_defaults(func=run_benchmarking)
 
     benchmark_parser.add_argument(
@@ -412,8 +472,8 @@ def get_parser():
         help="Gold Standard bigWig file")
 
     benchmark_parser.add_argument(
-        "--chroms",
-        dest="chroms",
+        "--chromosomes",
+        dest="chromosomes",
         type=str,
         default=DEFAULT_TEST_CHRS,
         help="Chromosomes list for analysis. \
@@ -470,10 +530,7 @@ def print_args(args, logger, header="Arguments:\n", excl=["func"]):
     logger(header + dump(filtered))
 
 
-# we need to cwd_abs_path parameter only for running unit tests
-def parse_arguments(argsl, cwd_abs_path=None):
-    cwd_abs_path = getcwd() if cwd_abs_path is None else cwd_abs_path
-
+def parse_arguments(argsl):
     if len(argsl) == 0:
         argsl.append("")  # otherwise fails with error if empty
 

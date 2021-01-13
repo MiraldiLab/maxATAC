@@ -8,17 +8,20 @@ from maxatac.utilities.constants import LOG_FORMAT
 
 
 def main(argsl=None):
+    # If the arguments list is none exit
     if argsl is None:
         argsl = sys.argv[1:]
-    
+
+    # Parse input arguments list
     args = parse_arguments(argsl)
 
-    print(args)
-
+    # Set up error logging
     setup_logger(args.loglevel, LOG_FORMAT)
 
+    # Print the arguments that were input
     print_args(args, logging.debug)
 
+    # Run the function associated with the input argument: ie train, predict, benchmark, normalize, average
     args.func(args)
 
 
