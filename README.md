@@ -6,16 +6,16 @@ This version lacks documentation of functions and code still.
 
 ## TODO
 
-* Learn how to create tests 
-* Optimize training.py
-* Clean up prediction
-* Clean up class objects
-* Document code
-* Clean up benchmarking
-* Update to latest tensorflow
-* Incorporate quantitative predictions
-* Incorporate resnet
-* Incorporate multi-modal
+- [ ] Learn how to create tests 
+- [ ] Optimize training
+- [ ] Expand prediction to multi-chromosome
+- [ ] Clean up code
+- [ ] Document code
+- [ ] Expand benchmarking multi-chromosome
+- [ ] Update to latest tensorflow
+- [ ] Incorporate quantitative predictions
+- [ ] Incorporate resnet
+- [ ] Incorporate multi-modal
 
 ## Dependencies
 
@@ -37,7 +37,9 @@ The following python packages are required:
 "scikit-learn",
 "pandas==1.1.5",
 "pysam==0.15.3",
-"pybedtools==0.8.1"
+"h5py<3.0.0",
+"pybedtools==0.8.1",
+"tqdm"
 </pre>
 
 ## Functions
@@ -49,7 +51,6 @@ These are the main functions:
 * Train
 * Predict
 * Benchmark
-* Average
 
 ### Average
 

@@ -1,10 +1,9 @@
 import random
 import pandas as pd
 import numpy as np
-import pybedtools
 
-from maxatac.utilities.genome_tools import build_chrom_sizes_dict, load_bigwig, load_2bit, get_one_hot_encoded
-
+from maxatac.utilities.genome_tools import (build_chrom_sizes_dict, load_bigwig, load_2bit, get_one_hot_encoded,
+import_bed, get_input_matrix)
 
 class DataGenerator(object):
     """
@@ -308,8 +307,6 @@ class RandomRegionsPool(object):
                         load_bigwig(binding) as binding_stream:
                     inputs_batch.append(get_input_matrix(rows=self.input_channels,
                                                          cols=self.region_length,
-                                                         batch_size=1,  # we will combine into batch later
-                                                         reshape=False,
                                                          bp_order=["A", "C", "G", "T"],
                                                          signal_stream=signal_stream,
                                                          average_stream=average_stream,
@@ -379,51 +376,6 @@ class ROIPool(object):
 
         self.roi_pool = self.__get_roi_pool()
 
-    def __import_bed(self, bed_file):
-        """
-        Import a BED file and convert it to a ROI compatible dataframe
-
-        :param bed_file: Input BED file of genomic regions of interest
-
-        :return: A dataframe of BED regions formatted to be compatible with our CNN
-        """
-        df = pd.read_csv(bed_file,
-                         sep="\t",
-                         usecols=[0, 1, 2],
-                         header=None,
-                         names=["chr", "start", "stop"],
-                         low_memory=False)
-
-        df = df[df["chr"].isin(self.chromosomes)]
-
-        df["length"] = df["stop"] - df["start"]
-
-        df["center"] = np.floor(df["start"] + (df["length"] / 2)).apply(int)
-
-        df["start"] = np.floor(df["center"] - (self.region_length / 2)).apply(int)
-
-        df["stop"] = np.floor(df["center"] + (self.region_length / 2)).apply(int)
-
-        df["END"] = df["chr"].map(self.chromosome_sizes_dictionary)
-
-        df = df[df["stop"].apply(int) < df["END"].apply(int)]
-
-        df = df[df["start"].apply(int) > 0]
-
-        df = df[["chr", "start", "stop"]]
-
-        BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
-
-        blacklist_bedtool = pybedtools.BedTool(self.blacklist)
-
-        blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
-
-        df = blacklisted_df.to_dataframe()
-
-        df.columns = ["chr", "start", "stop"]
-
-        return df
-
     def __get_roi_pool(self):
         """
         Build a ROI pool from all of the peak files of interest
@@ -433,7 +385,11 @@ class ROIPool(object):
         bed_list = []
 
         for bed_file in self.peak_paths:
-            bed_list.append(self.__import_bed(bed_file))
+            bed_list.append(import_bed(bed_file,
+                                              region_length=self.region_length,
+                                              chromosomes=self.chromosomes,
+                                              chromosome_sizes_dictionary=self.chromosome_sizes_dictionary,
+                                              blacklist=self.blacklist))
 
         return pd.concat(bed_list).sample(frac=1)
 
@@ -480,8 +436,6 @@ class ROIPool(object):
                         load_bigwig(binding) as binding_stream:
                     inputs_batch.append(get_input_matrix(rows=self.input_channels,
                                                          cols=self.region_length,
-                                                         batch_size=1,  # we will combine into batch later
-                                                         reshape=False,
                                                          bp_order=["A", "C", "G", "T"],
                                                          signal_stream=signal_stream,
                                                          average_stream=average_stream,
@@ -530,55 +484,3 @@ def get_target_matrix(binding,
     bin_sums = np.sum(split_targets, axis=1)
 
     return np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-
-
-def get_input_matrix(rows,
-                     cols,
-                     batch_size,  # make sure that cols % batch_size == 0
-                     signal_stream,
-                     average_stream,
-                     sequence_stream,
-                     bp_order,
-                     chromosome,
-                     start,  # end - start = cols
-                     end,
-                     reshape=True
-                     ):
-    """
-    Generate the matrix of values from the signal, sequence, and average data tracks
-
-    :param rows: (int) The number of channels or rows
-    :param cols: (int) The number of columns or length
-    :param batch_size: (int) The number of examples per batch
-    :param signal_stream: (str) ATAC-seq signal
-    :param average_stream: (str) Average ATAC-seq signal
-    :param sequence_stream: (str) One-hot encoded sequence
-    :param bp_order: (list) Order of the bases in matrix
-    :param chromosome: (str) Chromosome name
-    :param start: (str) Chromosome start
-    :param end: (str) Chromosome end
-    :param reshape: (bool) Whether to transpose the matrix
-
-    :return: A matrix that is rows x columns with the values from each file
-    """
-    input_matrix = np.zeros((rows, cols))
-
-    for n, bp in enumerate(bp_order):
-        input_matrix[n, :] = get_one_hot_encoded(
-            sequence_stream.sequence(chromosome, start, end),
-            bp
-        )
-
-    signal_array = np.array(signal_stream.values(chromosome, start, end))
-    avg_array = np.array(average_stream.values(chromosome, start, end))
-    input_matrix[4, :] = signal_array
-    input_matrix[5, :] = input_matrix[4, :] - avg_array
-    input_matrix = input_matrix.T
-
-    if reshape:
-        input_matrix = np.reshape(
-            input_matrix,
-            (batch_size, round(cols / batch_size), rows)
-        )
-
-    return input_matrix

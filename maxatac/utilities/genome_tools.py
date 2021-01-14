@@ -1,12 +1,8 @@
-import logging
-import os
-
 import pandas as pd
 import pybedtools
 import numpy as np
 import pyBigWig
 import py2bit
-import tqdm
 
 from maxatac.utilities.system_tools import get_absolute_path
 
@@ -79,18 +75,80 @@ def load_bigwig(location):
     return pyBigWig.open(get_absolute_path(location))
 
 
+def get_bigwig_values(bigwig_path, chrom_name, chrom_end, chrom_start=0):
+    """
+    Get the values for a genomic region of interest from a bigwig file.
+
+    @param bigwig_path: Path to the bigwig file
+    @param chrom_name: Chromosome name
+    @param chrom_end: chromosome end
+    @param chrom_start: chromosome start
+
+    @return: Bigwig values from the region given
+    """
+    with pyBigWig.open(bigwig_path) as input_bw:
+        return np.nan_to_num(input_bw.values(chrom_name, chrom_start, chrom_end, numpy=True))
+
+
+def import_bed(bed_file, region_length, chromosomes, chromosome_sizes_dictionary, blacklist):
+    """
+    Import a BED file and format the regions to be compatible with our maxATAC models
+
+    @param bed_file: Input BED file to format
+    @param region_length: Length of the regions to resize BED intervals to
+    @param chromosomes: Chromosomes to filter the BED file for
+    @param chromosome_sizes_dictionary: A dictionary of chromosome sizes to make sure intervals fall in bounds
+    @param blacklist: A BED file of regions to exclude from our analysis
+
+    @return: A dataframe of BED regions compatible with our model
+    """
+    df = pd.read_csv(bed_file,
+                     sep="\t",
+                     usecols=[0, 1, 2],
+                     header=None,
+                     names=["chr", "start", "stop"],
+                     low_memory=False)
+
+    df = df[df["chr"].isin(chromosomes)]
+
+    df["length"] = df["stop"] - df["start"]
+
+    df["center"] = np.floor(df["start"] + (df["length"] / 2)).apply(int)
+
+    df["start"] = np.floor(df["center"] - (region_length / 2)).apply(int)
+
+    df["stop"] = np.floor(df["center"] + (region_length / 2)).apply(int)
+
+    df["END"] = df["chr"].map(chromosome_sizes_dictionary)
+
+    df = df[df["stop"].apply(int) < df["END"].apply(int)]
+
+    df = df[df["start"].apply(int) > 0]
+
+    df = df[["chr", "start", "stop"]]
+
+    BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
+
+    blacklist_bedtool = pybedtools.BedTool(blacklist)
+
+    blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
+
+    df = blacklisted_df.to_dataframe()
+
+    df.columns = ["chr", "start", "stop"]
+
+    return df
+
+
 def get_input_matrix(rows,
                      cols,
-                     batch_size,  # make sure that cols % batch_size == 0
                      signal_stream,
                      average_stream,
                      sequence_stream,
                      bp_order,
-                     chrom,
+                     chromosome,
                      start,  # end - start = cols
-                     end,
-                     reshape=True,
-
+                     end
                      ):
     """
     Generate the matrix of values from the signal, sequence, and average data tracks
@@ -102,10 +160,9 @@ def get_input_matrix(rows,
     :param average_stream: (str) Average ATAC-seq signal
     :param sequence_stream: (str) One-hot encoded sequence
     :param bp_order: (list) Order of the bases in matrix
-    :param chrom: (str) Chromosome name
+    :param chromosome: (str) Chromosome name
     :param start: (str) Chromosome start
     :param end: (str) Chromosome end
-    :param reshape: (bool) Whether to transpose the matrix
 
     :return: A matrix that is rows x columns with the values from each file
     """
@@ -113,158 +170,13 @@ def get_input_matrix(rows,
 
     for n, bp in enumerate(bp_order):
         input_matrix[n, :] = get_one_hot_encoded(
-            sequence_stream.sequence(chrom, start, end),
+            sequence_stream.sequence(chromosome, start, end),
             bp
         )
 
-    signal_array = np.array(signal_stream.values(chrom, start, end))
-    avg_array = np.array(average_stream.values(chrom, start, end))
+    signal_array = np.array(signal_stream.values(chromosome, start, end))
+    avg_array = np.array(average_stream.values(chromosome, start, end))
     input_matrix[4, :] = signal_array
     input_matrix[5, :] = input_matrix[4, :] - avg_array
-    input_matrix = input_matrix.T
 
-    if reshape:
-        input_matrix = np.reshape(
-            input_matrix,
-            (batch_size, round(cols / batch_size), rows)
-        )
-
-    return input_matrix
-
-
-def get_significant(data, min_threshold):
-    selected = np.concatenate(([0], np.greater_equal(data, min_threshold).view(np.int8), [0]))
-    breakpoints = np.abs(np.diff(selected))
-    ranges = np.where(breakpoints == 1)[0].reshape(-1, 2)  # [[s1,e1],[s2,e2],[s3,e3]]
-    expanded_ranges = list(map(lambda a: list(range(a[0], a[1])), ranges))
-    mask = sum(expanded_ranges, [])  # to flatten
-    starts = mask.copy()  # copy list just in case
-    ends = [i + 1 for i in starts]
-    return mask, starts, ends
-
-
-def window_prediction_intervals(df, number_intervals=32):
-    # Create BedTool object from the dataframe
-    df_css_bed = pybedtools.BedTool.from_dataframe(df[['chr', 'start', 'stop']])
-
-    # Window the intervals into 32 bins
-    pred_css_bed = df_css_bed.window_maker(b=df_css_bed, n=number_intervals)
-
-    # Create a dataframe from the BedTool object
-    return pred_css_bed.to_dataframe()
-
-
-def write_df2bigwig(output_filename, interval_df, chromosome_length_dictionary, chrom):
-    with dump_bigwig(output_filename) as data_stream:
-        header = [(chrom, int(chromosome_length_dictionary[chrom]))]
-        data_stream.addHeader(header)
-
-        data_stream.addEntries(
-            chroms=interval_df["chr"].tolist(),
-            starts=interval_df["start"].tolist(),
-            ends=interval_df["stop"].tolist(),
-            values=interval_df["score"].tolist()
-        )
-
-
-def GetBigWigValues(bigwig_path, chrom_name, chrom_end, chrom_start=0):
-    with pyBigWig.open(bigwig_path) as input_bw:
-        return np.nan_to_num(input_bw.values(chrom_name, chrom_start, chrom_end, numpy=True))
-
-
-def FindGenomicMinMax(bigwig_path):
-    """
-
-    :param bigwig_path: (str) Path to the input bigwig file
-
-    :return: Genomic minimum and maximum values
-    """
-    logging.error("Finding min and max values per chromosome")
-
-    with pyBigWig.open(bigwig_path) as input_bigwig:
-        minmax_results = []
-
-        # Create a status bar for to look fancy and count what chromosome you are on
-        chrom_status_bar = tqdm.tqdm(total=len(input_bigwig.chromosomes()), desc='Chromosomes Processed', position=0)
-
-        for chrom in input_bigwig.chromosomes():
-            chr_vals = np.nan_to_num(input_bigwig.values(chrom, 0, input_bigwig.chromosomes(chrom), numpy=True))
-
-            minmax_results.append([chrom, np.min(chr_vals), np.max(chr_vals)])
-
-            chrom_status_bar.update(1)
-
-        logging.error("Finding genome min and max values")
-
-        minmax_results_df = pd.DataFrame(minmax_results)
-
-        minmax_results_df.columns = ["chromosome", "min", "max"]
-
-        basename = os.path.basename(bigwig_path)
-
-        minmax_results_df.to_csv(str(basename) + "_chromosome_min_max.txt", sep="\t", index=False)
-
-    return minmax_results_df["min"].min(), minmax_results_df["max"].max()
-
-
-def MinMaxNormalizeArray(array, minimum_value, maximum_value):
-    """
-    MinMax normalize the numpy array based on the genomic min and max
-
-    :param array: Input array of bigwig values
-    :param minimum_value: Minimum value to use
-    :param maximum_value: Maximum value to use
-
-    :return: MinMax normalized array
-    """
-    return (array - minimum_value) / (maximum_value - minimum_value)
-
-def get_batch(
-        signal,
-        sequence,
-        roi_pool,
-        bp_resolution=1
-):
-    inputs_batch, targets_batch = [], []
-    roi_size = roi_pool.shape[0]
-    with \
-            load_bigwig(signal) as signal_stream, \
-            load_2bit(sequence) as sequence_stream:
-        for row_idx in range(roi_size):
-            row = roi_pool.loc[row_idx,:]
-            chrom_name = row[0]
-            start = int(row[1])
-            end = int(row[2])
-            input_matrix = get_input_matrix(
-                rows=INPUT_CHANNELS,
-                cols=INPUT_LENGTH,
-                batch_size=1,                  # we will combine into batch later
-                reshape=False,
-                scale_signal=TRAIN_SCALE_SIGNAL,
-                bp_order=BP_ORDER,
-                signal_stream=signal_stream,
-                sequence_stream=sequence_stream,
-                chrom=chrom_name,
-                start=start,
-                end=end
-            )
-            inputs_batch.append(input_matrix)
-    return (np.array(inputs_batch))
-
-
-def GetPredictionROI(seq_len=None, roi=None, shuffle=False):
-    roi_df = pd.read_csv(roi, sep="\t", header=None)
-
-    roi_df.columns = ['chr', 'start', 'stop']
-
-    temp = roi_df['stop'] - roi_df['start']
-
-    roi_ok = (temp == seq_len).all()
-
-    if not roi_ok:
-        sys.exit("ROI Length Does Not Match Input Length")
-
-    if shuffle:
-        roi_df = roi_df.sample(frac=1)
-
-    return roi_df
+    return input_matrix.T

@@ -24,9 +24,11 @@ CPP_LOG_LEVEL = {
 
 # Genomic resource constants
 blacklist_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_composite_blacklist.bed")
+blacklist_bigwig_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_composite_blacklist.bw")
 chrom_sizes_path = os.path.join(os.path.dirname(__file__), "../../data/hg38.chrom.sizes")
 
 BLACKLISTED_REGIONS = os.path.normpath(blacklist_path)
+BLACKLISTED_REGIONS_BIGWIG = os.path.normpath(blacklist_bigwig_path)
 DEFAULT_CHROM_SIZES= os.path.normpath(chrom_sizes_path)
 
 # Default chromosome sets
@@ -51,7 +53,7 @@ DEFAULT_TRAIN_CHRS = ["chr3",  "chr4",  "chr5",  "chr6",
 
 DEFAULT_VALIDATE_CHRS = ["chr2", "chr19"]
 
-DEFAULT_TEST_CHRS = ["chr1", "chr8"]
+DEFAULT_TEST_CHRS = ["chr1"]
 
 # Training  Constants
 DEFAULT_TRAIN_EPOCHS = 20
@@ -94,9 +96,9 @@ CHR_POOL_SIZE = 10000
 # Prediction Constants
 DEFAULT_MIN_PREDICTION = 0.001  # min prediction value to be reported in the output
 MIN_PREDICTION = 0.01  # min prediction value to report in output
-DEFAULT_ROUND=6
-DEFAULT_PREDICTION_BATCH_SIZE=1000
+DEFAULT_ROUND = 6
+DEFAULT_PREDICTION_BATCH_SIZE = 10000
 
 # Benchmarking Constants
-DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION="max"
+DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION = "max"
 DEFAULT_BENCHMARKING_BIN_SIZE = 32
