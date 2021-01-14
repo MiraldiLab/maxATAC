@@ -29,7 +29,7 @@ def run_training(args):
                   "Filename Prefix: " + args.prefix + "\n" +
                   "Number of Filters: " + str(args.number_of_filters) + "\n" +
                   "Kernel Size in BP: " + str(args.kernel_size) + "\n" +
-                  "FilterScalingFactor: " + str(args.filter_scaling_factor) + "\n" +
+                  "Scale filters by this factor each layer: " + str(args.filter_scaling_factor) + "\n" +
                   "Number of threads to use: " + str(args.threads) + "\n")
 
     # Initialize the model

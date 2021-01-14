@@ -38,6 +38,7 @@ setup(
         "scikit-learn",
         "pandas==1.1.5",
         "pysam==0.15.3",
+        "h5py<3.0.0",
         "pybedtools==0.8.1",
         "tqdm"
     ],

@@ -2,7 +2,6 @@ import tensorflow as tf
 import numpy as np
 import keras
 import logging
-import random
 from keras.models import Model
 from keras.layers.core import Reshape
 from keras.optimizers import Adam
@@ -261,6 +260,8 @@ def get_dilated_cnn(
             filters = round(filters * filters_scaling_factor)
             layer = MaxPooling1D(pool_size=pool_size, strides=pool_size)(layer)
         all_layers.append(layer)
+
+    all_layers.append()
 
     # Outputs
     layer_dilation_rate = dilation_rate[-1]

@@ -4,7 +4,7 @@ import os
 import numpy as np
 import tqdm
 
-from maxatac.utilities.genome_tools import build_chrom_sizes_dict, GetBigWigValues
+from maxatac.utilities.genome_tools import build_chrom_sizes_dict, get_bigwig_values
 from maxatac.utilities.system_tools import get_dir
 
 
@@ -56,7 +56,7 @@ def run_averaging(args):
 
             # Loop through the bigwig files and get the values and add them to the array.
             for bigwig_file in args.bigwig_files:
-                chrom_vals += GetBigWigValues(bigwig_file, chrom_name, chrom_length)
+                chrom_vals += get_bigwig_values(bigwig_file, chrom_name, chrom_length)
 
                 # Update the file status bar
                 file_status_bar.update(1)
