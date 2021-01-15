@@ -1,11 +1,17 @@
 import random
 import pandas as pd
 import numpy as np
+import keras
 
-from maxatac.utilities.genome_tools import build_chrom_sizes_dict, get_input_matrix, import_bed, load_bigwig, load_2bit
+from maxatac.utilities.genome_tools import (build_chrom_sizes_dict,
+                                            get_input_matrix,
+                                            import_bed,
+                                            load_bigwig,
+                                            load_2bit,
+                                            get_target_matrix)
 
 
-class DataGenerator(object):
+class DataGenerator(keras.utils.Sequence):
     """
     Generate batches of examples for the chromosomes of interest
 
@@ -13,18 +19,9 @@ class DataGenerator(object):
     random regions from the genome. This class object helps keep track of all of the required inputs and how they are
     processed.
 
-    The random_ratio attribute controls the ratio of random and ROI examples.
-
     This generator expects a meta_table with the header:
 
     TF | Cell Type | ATAC signal | ChIP signal | ATAC peaks | ChIP peaks
-
-    The method _get_ROIPool method will retrieve the ROI_pool (pool of regions of interest examples)
-
-    The method _get_RandomRegionsPool will get a batch of random examples from the genome
-
-    The method BatchGenerator is a generator that will yield training examples based on the attributes above.
-
     """
 
     def __init__(self,
@@ -41,7 +38,9 @@ class DataGenerator(object):
                  chromosome_sizes,
                  random_ratio,
                  peak_paths,
-                 cell_types):
+                 cell_types,
+                 batches_per_epoch,
+                 shuffle=True):
         """
         :param meta_dataframe: Path to meta table
         :param chromosomes: List of chromosome to restrict data to
@@ -55,6 +54,7 @@ class DataGenerator(object):
         :param chromosome_pool_size: Size of the chromosome pool used for generating random regions
         :param chromosome_sizes: A txt file of chromosome sizes
         :param random_ratio: The proportion of the total batch size that will be from randomly generated examples
+        :param batches_per_epoch: The number of batches to use per epoch
         """
         self.chromosome_pool_size = chromosome_pool_size
         self.input_channels = input_channels
@@ -66,9 +66,11 @@ class DataGenerator(object):
         self.blacklist = blacklist
         self.chromosomes = chromosomes
         self.meta_dataframe = meta_dataframe
-        self.rand_ratio = random_ratio
+        self.random_ratio = random_ratio
         self.peak_paths = peak_paths
         self.cell_types = cell_types
+        self.batch_per_epoch = batches_per_epoch
+        self.shuffle = shuffle
 
         # Calculate the number of ROI and Random regions needed based on batch size and random ratio desired
         self.number_roi = round(batch_size * (1. - random_ratio))
@@ -83,6 +85,19 @@ class DataGenerator(object):
         if random_ratio > 0:
             self.RandomRegions_pool = self.__get_RandomRegionsPool()
 
+    def __len__(self):
+        """Denotes the number of batches per epoch"""
+        return self.batch_per_epoch
+
+    def __getitem__(self, index):
+        """Generate one batch of data"""
+        current_batch = self.__mix_regions()
+
+        # Generate data
+        X, y = self.__data_generation(current_batch)
+
+        return X, y
+
     def __get_ROIPool(self):
         """
         Passes the attributes to the ROIPool class to build a pool of regions of interest
@@ -94,13 +109,8 @@ class DataGenerator(object):
                        chromosome_sizes_dictionary=self.chromosome_sizes_dictionary,
                        blacklist=self.blacklist,
                        region_length=self.region_length,
-                       average=self.average,
-                       sequence=self.sequence,
-                       batch_size=self.batch_size,
-                       bp_resolution=self.bp_resolution,
-                       input_channels=self.input_channels,
-                       cell_types=self.cell_types,
-                       peak_paths=self.peak_paths)
+                       peak_paths=self.peak_paths
+                       )
 
     def __get_RandomRegionsPool(self):
         """
@@ -111,52 +121,89 @@ class DataGenerator(object):
         return RandomRegionsPool(chromosome_sizes_dictionary=self.chromosome_sizes_dictionary,
                                  chromosome_pool_size=self.chromosome_pool_size,
                                  region_length=self.region_length,
-                                 sequence=self.sequence,
-                                 average=self.average,
-                                 meta_dataframe=self.meta_dataframe,
-                                 input_channels=self.input_channels,
-                                 bp_resolution=self.bp_resolution,
-                                 cell_types=self.cell_types)
+                                 meta_dataframe=self.meta_dataframe
+                                 )
 
-    def BatchGenerator(self):
+    def __mix_regions(self):
         """
         A generator that will combine batches of examples from two different sources with the defined proportions
 
         :return: Yields batches of training examples.
         """
+        # Build a batch of examples with mixed random and ROI examples
+        if 0. < self.random_ratio < 1.:
+
+            # Initialize the random and ROI generators with the specified batch size based on the total batch size
+            random_examples_list = self.RandomRegions_pool.get_regions_list(
+                number_random_regions=self.number_random_regions)
+            roi_examples_list = self.ROI_pool.get_regions_list(n_roi=self.number_roi)
+
+            # Mix batches
+            regions_list = random_examples_list + roi_examples_list
+
+        # Build a batch of examples with only random examples
+        elif self.random_ratio == 1.:
+            # Initialize the RandomRegions generator only with the specified batch size
+            regions_list = self.RandomRegions_pool.get_regions_list(number_random_regions=self.number_random_regions)
+
+        # Build a batch of examples with only ROI examples
+        else:
+            # Initialize the ROI generator only with the specified batch size
+            regions_list = self.ROI_pool.get_regions_list(n_roi=self.number_roi)
+
+        return regions_list
+
+    def __get_random_cell_data(self):
+        """
+        Get the cell line data from a random cell line from the meta table
+
+        :return: returns the signal file and the binding data file from a random cell line
+        """
+        meta_row = self.meta_dataframe[self.meta_dataframe['Cell_Line'] == random.choice(self.cell_types)].reset_index(
+            drop=True)
+
+        return meta_row.loc[0, 'ATAC_Signal_File'], meta_row.loc[0, 'Binding_File']
+
+    def __data_generation(self, current_batch):
+        """
+        Generate a batch of regions of interest from the input ChIP-seq and ATAC-seq peaks
+
+        :param current_batch: Current batch of regions
+
+        :return: A batch of training examples centered on regions of interest
+        """
         while True:
-            # Build a batch of examples with mixed random and ROI examples
-            if 0. < self.rand_ratio < 1.:
+            inputs_batch, targets_batch = [], []
 
-                # Initialize the random and ROI generators with the specified batch size based on the total batch size
-                rand_gen = self.RandomRegions_pool.generate_batch(number_random_regions=self.number_random_regions)
-                roi_gen = self.ROI_pool.generate_batch(n_roi=self.number_roi)
+            for region in current_batch:
+                signal, binding = self.__get_random_cell_data()
 
-                # Yield the batches of examples
-                roi_input_batch, roi_target_batch = next(roi_gen)
-                rand_input_batch, rand_target_batch = next(rand_gen)
+                with \
+                        load_bigwig(self.average) as average_stream, \
+                        load_2bit(self.sequence) as sequence_stream, \
+                        load_bigwig(signal) as signal_stream, \
+                        load_bigwig(binding) as binding_stream:
+                    inputs_batch.append(get_input_matrix(rows=self.input_channels,
+                                                         cols=self.region_length,
+                                                         bp_order=["A", "C", "G", "T"],
+                                                         signal_stream=signal_stream,
+                                                         average_stream=average_stream,
+                                                         sequence_stream=sequence_stream,
+                                                         chromosome=region[0],
+                                                         start=region[1],
+                                                         end=region[2]
+                                                         )
+                                        )
 
-                # Mix batches
-                inputs_batch = np.concatenate((roi_input_batch, rand_input_batch), axis=0)
-                targets_batch = np.concatenate((roi_target_batch, rand_target_batch), axis=0)
+                    targets_batch.append(get_target_matrix(binding_stream,
+                                                           chromosome=region[0],
+                                                           start=region[1],
+                                                           end=region[2],
+                                                           bp_resolution=self.bp_resolution
+                                                           )
+                                         )
 
-            # Build a batch of examples with only random examples
-            elif self.rand_ratio == 1.:
-                # Initialize the RandomRegions generator only with the specified batch size
-                rand_gen = self.RandomRegions_pool.generate_batch(number_random_regions=self.number_random_regions)
-
-                # Yield the batch of random examples
-                inputs_batch, targets_batch = next(rand_gen)
-
-            # Build a batch of examples with only ROI examples
-            else:
-                # Initialize the ROI generator only with the specified batch size
-                roi_gen = self.ROI_pool.generate_batch(n_roi=self.number_roi)
-
-                # Yield the batch of ROI examples
-                inputs_batch, targets_batch = next(roi_gen)
-
-            yield inputs_batch, targets_batch
+            return np.array(inputs_batch), np.array(targets_batch)
 
 
 class RandomRegionsPool(object):
@@ -173,23 +220,14 @@ class RandomRegionsPool(object):
             chromosome_sizes_dictionary,
             chromosome_pool_size,
             region_length,
-            cell_types,
-            sequence,
-            average,
             meta_dataframe,
-            input_channels,
-            bp_resolution,
             method="length"
     ):
         """
         :param chromosome_sizes_dictionary: Dictionary of chromosome sizes filtered for chromosomes of interest
         :param chromosome_pool_size: Size of the pool to use for building the pool to sample from
         :param region_length: Length of the training regions to be used
-        :param sequence: 2bit DNA sequence
-        :param average: Average ATAC-seq signal file
         :param meta_dataframe: Meta table used to ID location of peaks and signals
-        :param input_channels: The number of input channels to use
-        :param bp_resolution: Resolution of the output predictions
         :param method: Method to use to build the random regions pool
         :param cell_types: List of cell types available
         """
@@ -198,12 +236,7 @@ class RandomRegionsPool(object):
         self.region_length = region_length
         self.__idx = 0
         self.method = method
-        self.sequence = sequence
-        self.average = average
         self.meta_dataframe = meta_dataframe
-        self.input_channels = input_channels
-        self.bp_resolution = bp_resolution
-        self.cell_types = cell_types
 
         self.chromosome_pool = self.__get_chromosome_frequencies()
 
@@ -273,18 +306,7 @@ class RandomRegionsPool(object):
 
         return chrom_name, start, end
 
-    def __get_random_cell_data(self):
-        """
-        Get the cell line data from a random cell line from the meta table
-
-        :return: returns the signal file and the binding data file from a random cell line
-        """
-        meta_row = self.meta_dataframe[self.meta_dataframe['Cell_Line'] == random.choice(self.cell_types)].reset_index(
-            drop=True)
-
-        return meta_row.loc[0, 'ATAC_Signal_File'], meta_row.loc[0, 'Binding_File']
-
-    def generate_batch(self, number_random_regions):
+    def get_regions_list(self, number_random_regions):
         """
         Create batches of examples with the size of number_random_regions
 
@@ -292,38 +314,12 @@ class RandomRegionsPool(object):
 
         :return: Training examples generated from random regions of the genome
         """
-        while True:
-            inputs_batch, targets_batch = [], []
+        random_regions_list = []
 
-            for idx in range(number_random_regions):
-                chromosome, start, end = self.__get_region()  # returns random region (chromosome, start, end)
+        for idx in range(number_random_regions):
+            random_regions_list.append(self.__get_region())
 
-                signal, binding = self.__get_random_cell_data()
-
-                with \
-                        load_bigwig(self.average) as average_stream, \
-                        load_2bit(self.sequence) as sequence_stream, \
-                        load_bigwig(signal) as signal_stream, \
-                        load_bigwig(binding) as binding_stream:
-                    inputs_batch.append(get_input_matrix(rows=self.input_channels,
-                                                         cols=self.region_length,
-                                                         bp_order=["A", "C", "G", "T"],
-                                                         signal_stream=signal_stream,
-                                                         average_stream=average_stream,
-                                                         sequence_stream=sequence_stream,
-                                                         chromosome=chromosome,
-                                                         start=start,
-                                                         end=end
-                                                         )
-                                        )
-
-                    targets_batch.append(get_target_matrix(binding_stream,
-                                                           chromosome=chromosome,
-                                                           start=start,
-                                                           end=end,
-                                                           bp_resolution=self.bp_resolution))
-
-            yield np.array(inputs_batch), np.array(targets_batch)
+        return random_regions_list
 
 
 class ROIPool(object):
@@ -341,12 +337,6 @@ class ROIPool(object):
                  chromosome_sizes_dictionary,
                  blacklist,
                  region_length,
-                 average,
-                 sequence,
-                 batch_size,
-                 bp_resolution,
-                 input_channels,
-                 cell_types,
                  peak_paths
                  ):
         """
@@ -354,27 +344,19 @@ class ROIPool(object):
         :param chromosomes: List of chromosomes to use
         :param chromosome_sizes_dictionary: A dictionary of chromosome sizes
         :param blacklist: The blacklist file of BED regions to exclude
+        :param peak_paths: List of paths to ATAC and ChIP-seq peaks
         :param region_length: Length of the input regions
-        :param average: Average signal track
-        :param sequence: 2Bit DNA sequence
-        :param batch_size: Number of examples per batch generated
-        :param bp_resolution: Prediction resolution in base pairs
-        :param input_channels: Number of input channels
         """
         self.meta_dataframe = meta_dataframe
         self.chromosome_sizes_dictionary = chromosome_sizes_dictionary
         self.chromosomes = chromosomes
         self.blacklist = blacklist
         self.region_length = region_length
-        self.average = average
-        self.sequence = sequence
-        self.batch_size = batch_size
-        self.bp_resolution = bp_resolution
-        self.input_channels = input_channels
-        self.cell_types = cell_types
         self.peak_paths = peak_paths
 
         self.roi_pool = self.__get_roi_pool()
+
+        self.roi_size = self.roi_pool.shape[0]
 
     def __get_roi_pool(self):
         """
@@ -393,8 +375,8 @@ class ROIPool(object):
 
         return pd.concat(bed_list).sample(frac=1)
 
-    def generate_batch(self,
-                       n_roi):
+    def get_regions_list(self,
+                         n_roi):
         """
         Generate a batch of regions of interest from the input ChIP-seq and ATAC-seq peaks
 
@@ -402,85 +384,6 @@ class ROIPool(object):
 
         :return: A batch of training examples centered on regions of interest
         """
-        while True:
-            inputs_batch, targets_batch = [], []
+        random_roi_pool = self.roi_pool.sample(n=n_roi, replace=True, random_state=1)
 
-            roi_size = self.roi_pool.shape[0]
-
-            curr_batch_idxs = random.sample(range(roi_size), n_roi)
-
-            # Here I will process by row, if performance is bad then process by cell line
-            for row_idx in curr_batch_idxs:
-                roi_row = self.roi_pool.iloc[row_idx, :]
-
-                cell_line = random.sample(self.cell_types, 1)[0]
-
-                chromosome = roi_row['chr']
-
-                start = int(roi_row['start'])
-
-                end = int(roi_row['stop'])
-
-                meta_row = self.meta_dataframe[self.meta_dataframe['Cell_Line'] == cell_line]
-
-                meta_row = meta_row.reset_index(drop=True)
-
-                signal = meta_row.loc[0, 'ATAC_Signal_File']
-
-                binding = meta_row.loc[0, 'Binding_File']
-
-                with \
-                        load_bigwig(self.average) as average_stream, \
-                        load_2bit(self.sequence) as sequence_stream, \
-                        load_bigwig(signal) as signal_stream, \
-                        load_bigwig(binding) as binding_stream:
-                    inputs_batch.append(get_input_matrix(rows=self.input_channels,
-                                                         cols=self.region_length,
-                                                         bp_order=["A", "C", "G", "T"],
-                                                         signal_stream=signal_stream,
-                                                         average_stream=average_stream,
-                                                         sequence_stream=sequence_stream,
-                                                         chromosome=chromosome,
-                                                         start=start,
-                                                         end=end
-                                                         )
-                                        )
-
-                    targets_batch.append(get_target_matrix(binding_stream,
-                                                           chromosome=chromosome,
-                                                           start=start,
-                                                           end=end,
-                                                           bp_resolution=self.bp_resolution
-                                                           )
-                                         )
-
-            yield np.array(inputs_batch), np.array(targets_batch)
-
-
-def get_target_matrix(binding,
-                      chromosome,
-                      start,
-                      end,
-                      bp_resolution):
-    """
-    Get the values from a ChIP-seq signal file
-
-    :param binding: ChIP-seq signal file
-    :param chromosome: chromosome name: chr1
-    :param start: start
-    :param end: end
-    :param bp_resolution: Prediction resolution in base pairs
-
-    :return: Returns a vector of binary values
-    """
-    target_vector = np.array(binding.values(chromosome, start, end)).T
-
-    target_vector = np.nan_to_num(target_vector, 0.0)
-
-    n_bins = int(target_vector.shape[0] / bp_resolution)
-
-    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-
-    bin_sums = np.sum(split_targets, axis=1)
-
-    return np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+        return random_roi_pool.to_numpy().tolist()

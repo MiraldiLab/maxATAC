@@ -25,6 +25,7 @@ def run_training(args):
 
     logging.error("Loading model with parameters: \n"
                   "Seed: " + str(args.seed) + "\n" +
+                  "Average: " + args.average + "\n" +
                   "Output Directory: " + args.output + "\n" +
                   "Filename Prefix: " + args.prefix + "\n" +
                   "Number of Filters: " + str(args.number_of_filters) + "\n" +
@@ -63,7 +64,8 @@ def run_training(args):
                                          region_length=INPUT_LENGTH,
                                          input_channels=INPUT_CHANNELS,
                                          cell_types=maxatac_model.cell_types,
-                                         peak_paths=maxatac_model.peak_paths)
+                                         peak_paths=maxatac_model.peak_paths,
+                                         batches_per_epoch=args.train_steps_per_epoch)
 
     logging.error("Initializing the validation generator with the parameters: \n" +
                   "Validation random ratio proportion: " + str(args.validate_rand_ratio) + "\n" +
@@ -84,7 +86,8 @@ def run_training(args):
                                             region_length=INPUT_LENGTH,
                                             input_channels=INPUT_CHANNELS,
                                             cell_types=maxatac_model.cell_types,
-                                            peak_paths=maxatac_model.peak_paths)
+                                            peak_paths=maxatac_model.peak_paths,
+                                            batches_per_epoch=args.validate_steps_per_epoch)
 
     logging.error("Fitting the maxATAC model with parameters: \n"
                   "Epochs: " + str(args.epochs) + "\n"
@@ -92,12 +95,9 @@ def run_training(args):
                   "Validation batches: " + str(args.validate_steps_per_epoch) + "\n")
 
     # Fit the model 
-    maxatac_model.fit_model(train_gen=train_data_generator.BatchGenerator(),
-                            val_gen=validate_data_generator.BatchGenerator(),
-                            epochs=args.epochs,
-                            train_batches=args.train_steps_per_epoch,
-                            validation_batches=args.validate_steps_per_epoch
-                            )
+    maxatac_model.fit_model(train_gen=train_data_generator,
+                            val_gen=validate_data_generator,
+                            epochs=args.epochs)
 
     # Plot model structure and metrics is plot option is True
     if args.plot:

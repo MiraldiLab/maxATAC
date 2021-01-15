@@ -104,7 +104,7 @@ class MaxATACModel(object):
         """
         return self.meta_dataframe["ATAC_Peaks"].unique().tolist() + self.meta_dataframe["CHIP_Peaks"].unique().tolist()
 
-    def fit_model(self, train_gen, val_gen, train_batches, validation_batches, epochs):
+    def fit_model(self, train_gen, val_gen, epochs):
         """
         Fit the maxATAC model using the provided training and validation generators.
 
@@ -116,21 +116,18 @@ class MaxATACModel(object):
 
         :return: Model training history
         """
-        self.training_history = self.nn_model.fit_generator(generator=train_gen,
-                                                            validation_data=val_gen,
-                                                            steps_per_epoch=train_batches,
-                                                            validation_steps=validation_batches,
-                                                            epochs=epochs,
-                                                            callbacks=get_callbacks(
-                                                                model_location=self.results_location,
-                                                                log_location=self.log_location,
-                                                                tensor_board_log_dir=self.tensor_board_log_dir,
-                                                                monitor=self.training_monitor
-                                                            ),
-                                                            use_multiprocessing=self.threads > 1,
-                                                            workers=self.threads,
-                                                            verbose=1
-                                                            )
+        self.training_history = self.nn_model.fit(x=train_gen,
+                                                  validation_data=val_gen,
+                                                  epochs=epochs,
+                                                  callbacks=get_callbacks(model_location=self.results_location,
+                                                                          log_location=self.log_location,
+                                                                          tensor_board_log_dir=self.tensor_board_log_dir,
+                                                                          monitor=self.training_monitor
+                                                                          ),
+                                                  use_multiprocessing=self.threads > 1,
+                                                  workers=self.threads,
+                                                  verbose=1
+                                                  )
 
     def export_model_structure(self):
         """
