@@ -261,8 +261,6 @@ def get_dilated_cnn(
             layer = MaxPooling1D(pool_size=pool_size, strides=pool_size)(layer)
         all_layers.append(layer)
 
-    all_layers.append()
-
     # Outputs
     layer_dilation_rate = dilation_rate[-1]
 

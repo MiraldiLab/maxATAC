@@ -7,7 +7,7 @@ This version lacks documentation of functions and code still.
 ## TODO
 
 - [ ] Learn how to create tests 
-- [ ] Optimize training
+- [ ] ***Optimize training***
 - [ ] Expand prediction to multi-chromosome
 - [ ] Clean up code
 - [ ] Document code

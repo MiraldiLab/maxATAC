@@ -155,7 +155,6 @@ def get_input_matrix(rows,
 
     :param rows: (int) The number of channels or rows
     :param cols: (int) The number of columns or length
-    :param batch_size: (int) The number of examples per batch
     :param signal_stream: (str) ATAC-seq signal
     :param average_stream: (str) Average ATAC-seq signal
     :param sequence_stream: (str) One-hot encoded sequence
@@ -180,3 +179,33 @@ def get_input_matrix(rows,
     input_matrix[5, :] = input_matrix[4, :] - avg_array
 
     return input_matrix.T
+
+
+def get_target_matrix(binding,
+                      chromosome,
+                      start,
+                      end,
+                      bp_resolution):
+    """
+    Get the values from a ChIP-seq signal file
+
+    :param binding: ChIP-seq signal file
+    :param chromosome: chromosome name: chr1
+    :param start: start
+    :param end: end
+    :param bp_resolution: Prediction resolution in base pairs
+
+    :return: Returns a vector of binary values
+    """
+    target_vector = np.array(binding.values(chromosome, start, end)).T
+
+    target_vector = np.nan_to_num(target_vector, 0.0)
+
+    n_bins = int(target_vector.shape[0] / bp_resolution)
+
+    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+
+    bin_sums = np.sum(split_targets, axis=1)
+
+    return np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+

@@ -1,8 +1,7 @@
 import logging
 import os
 
-from maxatac.utilities.genome_tools import (build_chrom_sizes_dict,
-                                            import_bed)
+from maxatac.utilities.genome_tools import build_chrom_sizes_dict, import_bed
 
 from maxatac.utilities.constants import INPUT_LENGTH, INPUT_CHANNELS
 
