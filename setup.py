@@ -40,7 +40,8 @@ setup(
         "pysam==0.15.3",
         "h5py<3.0.0",
         "pybedtools==0.8.1",
-        "tqdm"
+        "tqdm",
+        "pyfiglet"
     ],
     zip_safe=False,
     scripts=["maxatac/bin/maxatac"],

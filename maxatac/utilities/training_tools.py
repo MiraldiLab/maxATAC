@@ -2,8 +2,8 @@ import random
 import pandas as pd
 import numpy as np
 
-from maxatac.utilities.genome_tools import (build_chrom_sizes_dict, load_bigwig, load_2bit, get_one_hot_encoded,
-import_bed, get_input_matrix)
+from maxatac.utilities.genome_tools import build_chrom_sizes_dict, get_input_matrix, import_bed, load_bigwig, load_2bit
+
 
 class DataGenerator(object):
     """
@@ -386,10 +386,10 @@ class ROIPool(object):
 
         for bed_file in self.peak_paths:
             bed_list.append(import_bed(bed_file,
-                                              region_length=self.region_length,
-                                              chromosomes=self.chromosomes,
-                                              chromosome_sizes_dictionary=self.chromosome_sizes_dictionary,
-                                              blacklist=self.blacklist))
+                                       region_length=self.region_length,
+                                       chromosomes=self.chromosomes,
+                                       chromosome_sizes_dictionary=self.chromosome_sizes_dictionary,
+                                       blacklist=self.blacklist))
 
         return pd.concat(bed_list).sample(frac=1)
 
