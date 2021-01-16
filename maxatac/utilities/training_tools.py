@@ -136,6 +136,7 @@ class DataGenerator(keras.utils.Sequence):
             # Initialize the random and ROI generators with the specified batch size based on the total batch size
             random_examples_list = self.RandomRegions_pool.get_regions_list(
                 number_random_regions=self.number_random_regions)
+
             roi_examples_list = self.ROI_pool.get_regions_list(n_roi=self.number_roi)
 
             # Mix batches
@@ -172,36 +173,35 @@ class DataGenerator(keras.utils.Sequence):
 
         :return: A batch of training examples centered on regions of interest
         """
-        while True:
-            inputs_batch, targets_batch = [], []
+        inputs_batch, targets_batch = [], []
 
-            for region in current_batch:
-                signal, binding = self.__get_random_cell_data()
+        for region in current_batch:
+            signal, binding = self.__get_random_cell_data()
 
-                with \
-                        load_bigwig(self.average) as average_stream, \
-                        load_2bit(self.sequence) as sequence_stream, \
-                        load_bigwig(signal) as signal_stream, \
-                        load_bigwig(binding) as binding_stream:
-                    inputs_batch.append(get_input_matrix(rows=self.input_channels,
-                                                         cols=self.region_length,
-                                                         bp_order=["A", "C", "G", "T"],
-                                                         signal_stream=signal_stream,
-                                                         average_stream=average_stream,
-                                                         sequence_stream=sequence_stream,
-                                                         chromosome=region[0],
-                                                         start=region[1],
-                                                         end=region[2]
-                                                         )
-                                        )
+            with \
+                    load_bigwig(self.average) as average_stream, \
+                    load_2bit(self.sequence) as sequence_stream, \
+                    load_bigwig(signal) as signal_stream, \
+                    load_bigwig(binding) as binding_stream:
+                inputs_batch.append(get_input_matrix(rows=self.input_channels,
+                                                     cols=self.region_length,
+                                                     bp_order=["A", "C", "G", "T"],
+                                                     signal_stream=signal_stream,
+                                                     average_stream=average_stream,
+                                                     sequence_stream=sequence_stream,
+                                                     chromosome=region[0],
+                                                     start=region[1],
+                                                     end=region[2]
+                                                     )
+                                    )
 
-                    targets_batch.append(get_target_matrix(binding_stream,
-                                                           chromosome=region[0],
-                                                           start=region[1],
-                                                           end=region[2],
-                                                           bp_resolution=self.bp_resolution
-                                                           )
-                                         )
+                targets_batch.append(get_target_matrix(binding_stream,
+                                                       chromosome=region[0],
+                                                       start=region[1],
+                                                       end=region[2],
+                                                       bp_resolution=self.bp_resolution
+                                                       )
+                                     )
 
             return np.array(inputs_batch), np.array(targets_batch)
 
@@ -229,7 +229,6 @@ class RandomRegionsPool(object):
         :param region_length: Length of the training regions to be used
         :param meta_dataframe: Meta table used to ID location of peaks and signals
         :param method: Method to use to build the random regions pool
-        :param cell_types: List of cell types available
         """
         self.chromosome_sizes_dictionary = chromosome_sizes_dictionary
         self.chromosome_pool_size = chromosome_pool_size

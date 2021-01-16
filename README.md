@@ -1,4 +1,4 @@
-# maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq 
+# maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq
 
 A working version of maxATAC for binary TF binding predictions. This is the base DCNN model that uses peak-centric, pan-cell, and random regions for training. This model can also take in multiple cell types and is formatted to be used with a meta file. 
 
