@@ -110,25 +110,23 @@ class MaxATACModel(object):
 
         :param train_gen: The training data generator
         :param val_gen: The validation data generator
-        :param train_batches: Number of batches to use for training
-        :param validation_batches: Number of batches to use for validation
         :param epochs: Number of epochs to run the model for
 
         :return: Model training history
         """
-        self.training_history = self.nn_model.fit(x=train_gen,
-                                                  validation_data=val_gen,
-                                                  epochs=epochs,
-                                                  callbacks=get_callbacks(
-                                                      model_location=self.results_location,
-                                                      log_location=self.log_location,
-                                                      tensor_board_log_dir=self.tensor_board_log_dir,
-                                                      monitor=self.training_monitor
-                                                  ),
-                                                  use_multiprocessing=self.threads > 1,
-                                                  workers=self.threads,
-                                                  verbose=1
-                                                  )
+        self.training_history = self.nn_model.fit_generator(generator=train_gen,
+                                                            validation_data=val_gen,
+                                                            epochs=epochs,
+                                                            callbacks=get_callbacks(
+                                                                model_location=self.results_location,
+                                                                log_location=self.log_location,
+                                                                tensor_board_log_dir=self.tensor_board_log_dir,
+                                                                monitor=self.training_monitor
+                                                            ),
+                                                            use_multiprocessing=self.threads > 1,
+                                                            workers=self.threads,
+                                                            verbose=1
+                                                            )
 
     def export_model_structure(self):
         """
@@ -148,11 +146,19 @@ class MaxATACModel(object):
 
     def plot_metrics(self,
                      metric,
-                     style="ggplot"
+                     style="ggplot",
+                     val_metric="",
+                     title="",
+                     y_label="",
+                     suffix=""
                      ):
         """
         Plot the loss, accuracy, or dice coefficient training history.
 
+        :param suffix:
+        :param y_label:
+        :param title:
+        :param val_metric:
         :param metric: Metric to plot ("loss", "acc", "dice_coef")
         :param style: Style of plot to use. Default: "ggplot"
 
@@ -179,6 +185,9 @@ class MaxATACModel(object):
             title = "Model Loss"
             y_label = "Loss"
             suffix = "_model_loss"
+
+        else:
+            pass
 
         # Get the training X and Y values
         t_y = self.training_history.history[metric]

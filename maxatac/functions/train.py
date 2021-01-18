@@ -6,8 +6,7 @@ from maxatac.utilities.constants import (BP_RESOLUTION,
                                          CHR_POOL_SIZE,
                                          INPUT_LENGTH,
                                          INPUT_CHANNELS,
-                                         TRAIN_MONITOR,
-                                         TRAIN_SCALE_SIGNAL)
+                                         TRAIN_MONITOR)
 
 from maxatac.utilities.training_tools import DataGenerator
 

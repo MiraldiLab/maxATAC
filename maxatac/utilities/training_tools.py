@@ -41,7 +41,7 @@ class DataGenerator(keras.utils.Sequence):
                  cell_types,
                  batches_per_epoch,
                  scale_signal,
-                 shuffle=True
+                 shuffle=False
                  ):
         """
         :param meta_dataframe: Path to meta table
