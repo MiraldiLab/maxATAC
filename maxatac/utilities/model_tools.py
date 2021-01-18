@@ -4,12 +4,7 @@ import sys
 import random
 from os import path
 import pandas as pd
-from maxatac.utilities.system_tools import (
-    get_dir,
-    replace_extension,
-    remove_tags,
-    Mute
-)
+from maxatac.utilities.system_tools import get_dir, replace_extension, remove_tags, Mute
 
 with Mute():  # hide stdout from loading the modules
     from maxatac.architectures.dcnn import (get_dilated_cnn, get_callbacks)
@@ -104,10 +99,12 @@ class MaxATACModel(object):
         """
         return self.meta_dataframe["ATAC_Peaks"].unique().tolist() + self.meta_dataframe["CHIP_Peaks"].unique().tolist()
 
-    def fit_model(self, train_gen, val_gen, epochs):
+    def fit_model(self, train_gen, val_gen, epochs, training_steps_per_epoch, validation_steps_per_epoch):
         """
         Fit the maxATAC model using the provided training and validation generators.
 
+        :param validation_steps_per_epoch:
+        :param training_steps_per_epoch:
         :param train_gen: The training data generator
         :param val_gen: The validation data generator
         :param epochs: Number of epochs to run the model for
@@ -116,6 +113,7 @@ class MaxATACModel(object):
         """
         self.training_history = self.nn_model.fit_generator(generator=train_gen,
                                                             validation_data=val_gen,
+
                                                             epochs=epochs,
                                                             callbacks=get_callbacks(
                                                                 model_location=self.results_location,
@@ -123,6 +121,8 @@ class MaxATACModel(object):
                                                                 tensor_board_log_dir=self.tensor_board_log_dir,
                                                                 monitor=self.training_monitor
                                                             ),
+                                                            steps_per_epoch=training_steps_per_epoch,
+                                                            validation_steps=validation_steps_per_epoch,
                                                             use_multiprocessing=self.threads > 1,
                                                             workers=self.threads,
                                                             verbose=1

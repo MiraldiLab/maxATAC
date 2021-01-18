@@ -8,7 +8,7 @@ from maxatac.utilities.constants import (BP_RESOLUTION,
                                          INPUT_CHANNELS,
                                          TRAIN_MONITOR)
 
-from maxatac.utilities.training_tools import DataGenerator
+from maxatac.utilities.training_tools import GenomicDataGenerator
 
 from maxatac.utilities.model_tools import MaxATACModel
 
@@ -51,22 +51,21 @@ def run_training(args):
                   "Training batch size: " + str(args.train_batch_size) + "\n")
 
     # Initialize the training generator
-    train_data_generator = DataGenerator(sequence=args.sequence,
-                                         average=args.average,
-                                         meta_dataframe=maxatac_model.meta_dataframe,
-                                         random_ratio=args.train_rand_ratio,
-                                         chromosomes=args.train_chroms,
-                                         batch_size=args.train_batch_size,
-                                         blacklist=args.blacklist,
-                                         chromosome_sizes=args.chrom_sizes,
-                                         chromosome_pool_size=CHR_POOL_SIZE,
-                                         bp_resolution=BP_RESOLUTION,
-                                         region_length=INPUT_LENGTH,
-                                         input_channels=INPUT_CHANNELS,
-                                         cell_types=maxatac_model.cell_types,
-                                         peak_paths=maxatac_model.peak_paths,
-                                         batches_per_epoch=args.train_steps_per_epoch,
-                                         scale_signal=None)
+    train_data_generator = GenomicDataGenerator(sequence=args.sequence,
+                                                average=args.average,
+                                                meta_dataframe=maxatac_model.meta_dataframe,
+                                                random_ratio=args.train_rand_ratio,
+                                                chromosomes=args.train_chroms,
+                                                batch_size=args.train_batch_size,
+                                                blacklist=args.blacklist,
+                                                chromosome_sizes=args.chrom_sizes,
+                                                chromosome_pool_size=CHR_POOL_SIZE,
+                                                bp_resolution=BP_RESOLUTION,
+                                                region_length=INPUT_LENGTH,
+                                                input_channels=INPUT_CHANNELS,
+                                                cell_types=maxatac_model.cell_types,
+                                                peak_paths=maxatac_model.peak_paths,
+                                                scale_signal=None)
 
     logging.error("Initializing the validation generator with the parameters: \n" +
                   "Validation random ratio proportion: " + str(args.validate_rand_ratio) + "\n" +
@@ -74,32 +73,34 @@ def run_training(args):
                   "Validation batch size: " + str(args.train_batch_size) + "\n")
 
     # Initialize the validation data generator
-    validate_data_generator = DataGenerator(sequence=args.sequence,
-                                            average=args.average,
-                                            meta_dataframe=maxatac_model.meta_dataframe,
-                                            random_ratio=args.validate_rand_ratio,
-                                            chromosomes=args.validate_chroms,
-                                            batch_size=args.validate_batch_size,
-                                            blacklist=args.blacklist,
-                                            chromosome_sizes=args.chrom_sizes,
-                                            chromosome_pool_size=CHR_POOL_SIZE,
-                                            bp_resolution=BP_RESOLUTION,
-                                            region_length=INPUT_LENGTH,
-                                            input_channels=INPUT_CHANNELS,
-                                            cell_types=maxatac_model.cell_types,
-                                            peak_paths=maxatac_model.peak_paths,
-                                            batches_per_epoch=args.validate_steps_per_epoch,
-                                            scale_signal=None)
+    validate_data_generator = GenomicDataGenerator(sequence=args.sequence,
+                                                   average=args.average,
+                                                   meta_dataframe=maxatac_model.meta_dataframe,
+                                                   random_ratio=args.validate_rand_ratio,
+                                                   chromosomes=args.validate_chroms,
+                                                   batch_size=args.validate_batch_size,
+                                                   blacklist=args.blacklist,
+                                                   chromosome_sizes=args.chrom_sizes,
+                                                   chromosome_pool_size=CHR_POOL_SIZE,
+                                                   bp_resolution=BP_RESOLUTION,
+                                                   region_length=INPUT_LENGTH,
+                                                   input_channels=INPUT_CHANNELS,
+                                                   cell_types=maxatac_model.cell_types,
+                                                   peak_paths=maxatac_model.peak_paths,
+                                                   scale_signal=None)
 
     logging.error("Fitting the maxATAC model with parameters: \n"
                   "Epochs: " + str(args.epochs) + "\n"
                   "Training batches: " + str(args.train_steps_per_epoch) + "\n"
-                  "Validation batches: " + str(args.validate_steps_per_epoch) + "\n")
+                  "Validation batches: " + str(args.validate_steps_per_epoch) + "\n"
+                  )
 
     # Fit the model 
-    maxatac_model.fit_model(train_gen=train_data_generator,
-                            val_gen=validate_data_generator,
-                            epochs=args.epochs)
+    maxatac_model.fit_model(train_gen=train_data_generator.batch_generator(),
+                            val_gen=validate_data_generator.batch_generator(),
+                            epochs=args.epochs,
+                            training_steps_per_epoch=args.train_steps_per_epoch,
+                            validation_steps_per_epoch=args.validate_steps_per_epoch)
 
     # Plot model structure and metrics is plot option is True
     if args.plot:
