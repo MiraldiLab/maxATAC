@@ -40,7 +40,9 @@ class DataGenerator(keras.utils.Sequence):
                  peak_paths,
                  cell_types,
                  batches_per_epoch,
-                 shuffle=True):
+                 scale_signal,
+                 shuffle=True
+                 ):
         """
         :param meta_dataframe: Path to meta table
         :param chromosomes: List of chromosome to restrict data to
@@ -71,6 +73,7 @@ class DataGenerator(keras.utils.Sequence):
         self.cell_types = cell_types
         self.batch_per_epoch = batches_per_epoch
         self.shuffle = shuffle
+        self.scale_signal = scale_signal
 
         # Calculate the number of ROI and Random regions needed based on batch size and random ratio desired
         self.number_roi = round(batch_size * (1. - random_ratio))
@@ -82,8 +85,7 @@ class DataGenerator(keras.utils.Sequence):
         if random_ratio < 1:
             self.ROI_pool = self.__get_ROIPool()
 
-        if random_ratio > 0:
-            self.RandomRegions_pool = self.__get_RandomRegionsPool()
+        self.RandomRegions_pool = self.__get_RandomRegionsPool()
 
     def __len__(self):
         """Denotes the number of batches per epoch"""
@@ -178,11 +180,8 @@ class DataGenerator(keras.utils.Sequence):
         for region in current_batch:
             signal, binding = self.__get_random_cell_data()
 
-            with \
-                    load_bigwig(self.average) as average_stream, \
-                    load_2bit(self.sequence) as sequence_stream, \
-                    load_bigwig(signal) as signal_stream, \
-                    load_bigwig(binding) as binding_stream:
+            with load_bigwig(self.average) as average_stream, load_2bit(self.sequence) as sequence_stream, \
+                    load_bigwig(signal) as signal_stream, load_bigwig(binding) as binding_stream:
                 inputs_batch.append(get_input_matrix(rows=self.input_channels,
                                                      cols=self.region_length,
                                                      bp_order=["A", "C", "G", "T"],
@@ -191,7 +190,8 @@ class DataGenerator(keras.utils.Sequence):
                                                      sequence_stream=sequence_stream,
                                                      chromosome=region[0],
                                                      start=region[1],
-                                                     end=region[2]
+                                                     end=region[2],
+                                                     scale_signal=self.scale_signal
                                                      )
                                     )
 
@@ -203,7 +203,7 @@ class DataGenerator(keras.utils.Sequence):
                                                        )
                                      )
 
-            return np.array(inputs_batch), np.array(targets_batch)
+        return np.array(inputs_batch), np.array(targets_batch)
 
 
 class RandomRegionsPool(object):
@@ -303,7 +303,7 @@ class RandomRegionsPool(object):
 
         end = start + self.region_length
 
-        return chrom_name, start, end
+        return [chrom_name, start, end]
 
     def get_regions_list(self, number_random_regions):
         """

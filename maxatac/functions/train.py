@@ -6,7 +6,8 @@ from maxatac.utilities.constants import (BP_RESOLUTION,
                                          CHR_POOL_SIZE,
                                          INPUT_LENGTH,
                                          INPUT_CHANNELS,
-                                         TRAIN_MONITOR)
+                                         TRAIN_MONITOR,
+                                         TRAIN_SCALE_SIGNAL)
 
 from maxatac.utilities.training_tools import DataGenerator
 
@@ -65,7 +66,8 @@ def run_training(args):
                                          input_channels=INPUT_CHANNELS,
                                          cell_types=maxatac_model.cell_types,
                                          peak_paths=maxatac_model.peak_paths,
-                                         batches_per_epoch=args.train_steps_per_epoch)
+                                         batches_per_epoch=args.train_steps_per_epoch,
+                                         scale_signal=None)
 
     logging.error("Initializing the validation generator with the parameters: \n" +
                   "Validation random ratio proportion: " + str(args.validate_rand_ratio) + "\n" +
@@ -87,7 +89,8 @@ def run_training(args):
                                             input_channels=INPUT_CHANNELS,
                                             cell_types=maxatac_model.cell_types,
                                             peak_paths=maxatac_model.peak_paths,
-                                            batches_per_epoch=args.validate_steps_per_epoch)
+                                            batches_per_epoch=args.validate_steps_per_epoch,
+                                            scale_signal=None)
 
     logging.error("Fitting the maxATAC model with parameters: \n"
                   "Epochs: " + str(args.epochs) + "\n"

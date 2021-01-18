@@ -29,27 +29,25 @@ chrom_sizes_path = os.path.join(os.path.dirname(__file__), "../../data/hg38.chro
 
 BLACKLISTED_REGIONS = os.path.normpath(blacklist_path)
 BLACKLISTED_REGIONS_BIGWIG = os.path.normpath(blacklist_bigwig_path)
-DEFAULT_CHROM_SIZES= os.path.normpath(chrom_sizes_path)
+DEFAULT_CHROM_SIZES = os.path.normpath(chrom_sizes_path)
 
 # Default chromosome sets
-AUTOSOMAL_CHRS = [
-    "chr1",  "chr2",  "chr3",  "chr4",  "chr5",  "chr6",
-    "chr7",  "chr8",  "chr9",  "chr10", "chr11", "chr12",
-    "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
-    "chr19", "chr20", "chr21", "chr22"
-]
+AUTOSOMAL_CHRS = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6",
+                  "chr7", "chr8", "chr9", "chr10", "chr11", "chr12",
+                  "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
+                  "chr19", "chr20", "chr21", "chr22"
+                  ]
 
-DEFAULT_CHRS = [
-    "chr1",  "chr2",  "chr3",  "chr4",  "chr5",  "chr6",
-    "chr7",  "chr8",  "chr9",  "chr10", "chr11", "chr12",
-    "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
-    "chr19", "chr20", "chr21", "chr22", "chrX"
-]
+DEFAULT_CHRS = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6",
+                "chr7", "chr8", "chr9", "chr10", "chr11", "chr12",
+                "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
+                "chr19", "chr20", "chr21", "chr22", "chrX"
+                ]
 
-DEFAULT_TRAIN_CHRS = ["chr3",  "chr4",  "chr5",  "chr6",
-    "chr7", "chr9",  "chr10", "chr11", "chr12",
-    "chr13", "chr14", "chr15", "chr16", "chr17", 
-    "chr18", "chr20", "chr21", "chr22"]
+DEFAULT_TRAIN_CHRS = ["chr3", "chr4", "chr5", "chr6",
+                      "chr7", "chr9", "chr10", "chr11", "chr12",
+                      "chr13", "chr14", "chr15", "chr16", "chr17",
+                      "chr18", "chr20", "chr21", "chr22"]
 
 DEFAULT_VALIDATE_CHRS = ["chr2", "chr19"]
 
@@ -73,7 +71,7 @@ INPUT_FILTERS = 15
 INPUT_KERNEL_SIZE = 7
 INPUT_LENGTH = 1024
 FLANK_LENGTH = 100  # make sure that 2 * FLANK_LENGTH < INPUT_LENGTH
-OUTPUT_LENGTH = 32 # INPUT_LENGTH/BP_RESOLUTION
+OUTPUT_LENGTH = 32  # INPUT_LENGTH/BP_RESOLUTION
 INPUT_ACTIVATION = "relu"
 PADDING = "same"
 FILTERS_SCALING_FACTOR = 1.5

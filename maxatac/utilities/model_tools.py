@@ -119,11 +119,12 @@ class MaxATACModel(object):
         self.training_history = self.nn_model.fit(x=train_gen,
                                                   validation_data=val_gen,
                                                   epochs=epochs,
-                                                  callbacks=get_callbacks(model_location=self.results_location,
-                                                                          log_location=self.log_location,
-                                                                          tensor_board_log_dir=self.tensor_board_log_dir,
-                                                                          monitor=self.training_monitor
-                                                                          ),
+                                                  callbacks=get_callbacks(
+                                                      model_location=self.results_location,
+                                                      log_location=self.log_location,
+                                                      tensor_board_log_dir=self.tensor_board_log_dir,
+                                                      monitor=self.training_monitor
+                                                  ),
                                                   use_multiprocessing=self.threads > 1,
                                                   workers=self.threads,
                                                   verbose=1

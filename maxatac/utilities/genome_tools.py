@@ -3,6 +3,7 @@ import pybedtools
 import numpy as np
 import pyBigWig
 import py2bit
+import random
 
 from maxatac.utilities.system_tools import get_absolute_path
 
@@ -148,7 +149,8 @@ def get_input_matrix(rows,
                      bp_order,
                      chromosome,
                      start,  # end - start = cols
-                     end
+                     end,
+                     scale_signal
                      ):
     """
     Generate the matrix of values from the signal, sequence, and average data tracks
@@ -162,6 +164,7 @@ def get_input_matrix(rows,
     :param chromosome: (str) Chromosome name
     :param start: (str) Chromosome start
     :param end: (str) Chromosome end
+    :param scale_signal: (tuple) Randomly scale input signal by these values
 
     :return: A matrix that is rows x columns with the values from each file
     """
@@ -177,6 +180,11 @@ def get_input_matrix(rows,
     avg_array = np.array(average_stream.values(chromosome, start, end))
     input_matrix[4, :] = signal_array
     input_matrix[5, :] = input_matrix[4, :] - avg_array
+
+    if scale_signal is not None:
+        scaling_factor = random.random() * (scale_signal[1] - scale_signal[0]) + \
+                         scale_signal[0]
+        input_matrix[4, :] = input_matrix[4, :] * scaling_factor
 
     return input_matrix.T
 
