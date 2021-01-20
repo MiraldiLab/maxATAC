@@ -174,8 +174,8 @@ class MaxATACModel(object):
             y_label = "Dice Coefficient"
             suffix = "_model_dice"
 
-        elif metric == 'acc':
-            val_metric = "val_acc"
+        elif metric == 'binary_accuracy':
+            val_metric = "val_binary_accuracy"
             title = "Model Accuracy"
             y_label = "Accuracy"
             suffix = "_model_accuracy"
@@ -185,6 +185,12 @@ class MaxATACModel(object):
             title = "Model Loss"
             y_label = "Loss"
             suffix = "_model_loss"
+
+        elif metric == 'acc':
+            val_metric = "val_acc"
+            title = "Model Accuracy"
+            y_label = "Accuracy"
+            suffix = "_model_accuracy"
 
         else:
             pass

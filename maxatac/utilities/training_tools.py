@@ -1,7 +1,6 @@
 import random
 import pandas as pd
 import numpy as np
-import keras
 
 from maxatac.utilities.genome_tools import (build_chrom_sizes_dict,
                                             get_input_matrix,
@@ -28,12 +27,10 @@ class GenomicDataGenerator(object):
                  meta_dataframe,
                  chromosomes,
                  blacklist,
-                 average,
                  sequence,
                  batch_size,
                  region_length,
                  peak_paths,
-                 chromosome_pool_size,
                  random_ratio,
                  chromosome_sizes,
                  bp_resolution,
@@ -46,13 +43,11 @@ class GenomicDataGenerator(object):
         self.blacklist = blacklist
         self.region_length = region_length
         self.peak_paths = peak_paths
-        self.chromosome_pool_size = chromosome_pool_size
         self.random_ratio = random_ratio
         self.input_channels = input_channels
         self.bp_resolution = bp_resolution
         self.batch_size = batch_size
         self.sequence = sequence
-        self.average = average
         self.region_length = region_length
         self.meta_dataframe = meta_dataframe
         self.peak_paths = peak_paths
@@ -91,7 +86,6 @@ class GenomicDataGenerator(object):
         :return: Initializes the object used to generate batches of randomly generated examples
         """
         return RandomRegionsPool(chromosome_sizes_dictionary=self.chromosome_sizes_dictionary,
-                                 chromosome_pool_size=self.chromosome_pool_size,
                                  region_length=self.region_length,
                                  meta_dataframe=self.meta_dataframe
                                  )
@@ -149,13 +143,12 @@ class GenomicDataGenerator(object):
             for region in self.__mix_regions():
                 signal, binding = self.__get_random_cell_data()
 
-                with load_bigwig(self.average) as average_stream, load_2bit(self.sequence) as sequence_stream, \
-                        load_bigwig(signal) as signal_stream, load_bigwig(binding) as binding_stream:
+                with load_2bit(self.sequence) as sequence_stream, load_bigwig(signal) as signal_stream, \
+                        load_bigwig(binding) as binding_stream:
                     inputs_batch.append(get_input_matrix(rows=self.input_channels,
                                                          cols=self.region_length,
                                                          bp_order=["A", "C", "G", "T"],
                                                          signal_stream=signal_stream,
-                                                         average_stream=average_stream,
                                                          sequence_stream=sequence_stream,
                                                          chromosome=region[0],
                                                          start=region[1],
@@ -186,19 +179,15 @@ class RandomRegionsPool(object):
     def __init__(
             self,
             chromosome_sizes_dictionary,
-            chromosome_pool_size,
             region_length,
             meta_dataframe
     ):
         """
         :param chromosome_sizes_dictionary: Dictionary of chromosome sizes filtered for chromosomes of interest
-        :param chromosome_pool_size: Size of the pool to use for building the pool to sample from
         :param region_length: Length of the training regions to be used
         :param meta_dataframe: Meta table used to ID location of peaks and signals
-        :param method: Method to use to build the random regions pool
         """
         self.chromosome_sizes_dictionary = chromosome_sizes_dictionary
-        self.chromosome_pool_size = chromosome_pool_size
         self.region_length = region_length
         self.__idx = 0
         self.meta_dataframe = meta_dataframe

@@ -144,7 +144,6 @@ def import_bed(bed_file, region_length, chromosomes, chromosome_sizes_dictionary
 def get_input_matrix(rows,
                      cols,
                      signal_stream,
-                     average_stream,
                      sequence_stream,
                      bp_order,
                      chromosome,
@@ -158,7 +157,6 @@ def get_input_matrix(rows,
     :param rows: (int) The number of channels or rows
     :param cols: (int) The number of columns or length
     :param signal_stream: (str) ATAC-seq signal
-    :param average_stream: (str) Average ATAC-seq signal
     :param sequence_stream: (str) One-hot encoded sequence
     :param bp_order: (list) Order of the bases in matrix
     :param chromosome: (str) Chromosome name
@@ -177,13 +175,10 @@ def get_input_matrix(rows,
         )
 
     signal_array = np.array(signal_stream.values(chromosome, start, end))
-    avg_array = np.array(average_stream.values(chromosome, start, end))
     input_matrix[4, :] = signal_array
-    input_matrix[5, :] = input_matrix[4, :] - avg_array
 
     if scale_signal is not None:
-        scaling_factor = random.random() * (scale_signal[1] - scale_signal[0]) + \
-                         scale_signal[0]
+        scaling_factor = random.random() * (scale_signal[1] - scale_signal[0]) + scale_signal[0]
         input_matrix[4, :] = input_matrix[4, :] * scaling_factor
 
     return input_matrix.T

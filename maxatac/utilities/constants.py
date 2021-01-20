@@ -47,9 +47,9 @@ DEFAULT_CHRS = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6",
 DEFAULT_TRAIN_CHRS = ["chr3", "chr4", "chr5", "chr6",
                       "chr7", "chr9", "chr10", "chr11", "chr12",
                       "chr13", "chr14", "chr15", "chr16", "chr17",
-                      "chr18", "chr20", "chr21", "chr22"]
+                      "chr18", "chr20", "chr21", "chr22", "chr19"]
 
-DEFAULT_VALIDATE_CHRS = ["chr2", "chr19"]
+DEFAULT_VALIDATE_CHRS = ["chr2"]
 
 DEFAULT_TEST_CHRS = ["chr1"]
 
@@ -85,7 +85,7 @@ POOL_SIZE = 2
 ADAM_BETA_1 = 0.9
 ADAM_BETA_2 = 0.999
 TRAIN_SCALE_SIGNAL = (0.9, 1.15)  # min max scaling ranges
-INPUT_CHANNELS = 6
+INPUT_CHANNELS = 5
 TRAIN_MONITOR = "val_loss"
 
 # Random Regions Generator Constants

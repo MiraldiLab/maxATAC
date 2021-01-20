@@ -3,10 +3,10 @@ import logging
 from maxatac.utilities.session import configure_session
 
 from maxatac.utilities.constants import (BP_RESOLUTION,
-                                         CHR_POOL_SIZE,
                                          INPUT_LENGTH,
                                          INPUT_CHANNELS,
-                                         TRAIN_MONITOR)
+                                         TRAIN_MONITOR,
+                                         TRAIN_SCALE_SIGNAL)
 
 from maxatac.utilities.training_tools import GenomicDataGenerator
 
@@ -25,7 +25,6 @@ def run_training(args):
 
     logging.error("Loading model with parameters: \n"
                   "Seed: " + str(args.seed) + "\n" +
-                  "Average: " + args.average + "\n" +
                   "Output Directory: " + args.output + "\n" +
                   "Filename Prefix: " + args.prefix + "\n" +
                   "Number of Filters: " + str(args.number_of_filters) + "\n" +
@@ -52,20 +51,18 @@ def run_training(args):
 
     # Initialize the training generator
     train_data_generator = GenomicDataGenerator(sequence=args.sequence,
-                                                average=args.average,
                                                 meta_dataframe=maxatac_model.meta_dataframe,
                                                 random_ratio=args.train_rand_ratio,
                                                 chromosomes=args.train_chroms,
                                                 batch_size=args.train_batch_size,
                                                 blacklist=args.blacklist,
                                                 chromosome_sizes=args.chrom_sizes,
-                                                chromosome_pool_size=CHR_POOL_SIZE,
                                                 bp_resolution=BP_RESOLUTION,
                                                 region_length=INPUT_LENGTH,
                                                 input_channels=INPUT_CHANNELS,
                                                 cell_types=maxatac_model.cell_types,
                                                 peak_paths=maxatac_model.peak_paths,
-                                                scale_signal=None)
+                                                scale_signal=TRAIN_SCALE_SIGNAL)
 
     logging.error("Initializing the validation generator with the parameters: \n" +
                   "Validation random ratio proportion: " + str(args.validate_rand_ratio) + "\n" +
@@ -74,20 +71,18 @@ def run_training(args):
 
     # Initialize the validation data generator
     validate_data_generator = GenomicDataGenerator(sequence=args.sequence,
-                                                   average=args.average,
                                                    meta_dataframe=maxatac_model.meta_dataframe,
                                                    random_ratio=args.validate_rand_ratio,
                                                    chromosomes=args.validate_chroms,
                                                    batch_size=args.validate_batch_size,
                                                    blacklist=args.blacklist,
                                                    chromosome_sizes=args.chrom_sizes,
-                                                   chromosome_pool_size=CHR_POOL_SIZE,
                                                    bp_resolution=BP_RESOLUTION,
                                                    region_length=INPUT_LENGTH,
                                                    input_channels=INPUT_CHANNELS,
                                                    cell_types=maxatac_model.cell_types,
                                                    peak_paths=maxatac_model.peak_paths,
-                                                   scale_signal=None)
+                                                   scale_signal=TRAIN_SCALE_SIGNAL)
 
     logging.error("Fitting the maxATAC model with parameters: \n"
                   "Epochs: " + str(args.epochs) + "\n"
@@ -109,7 +104,7 @@ def run_training(args):
         maxatac_model.export_model_structure()
 
         maxatac_model.plot_metrics('dice_coef')
+        maxatac_model.plot_metrics("binary_accuracy")
         maxatac_model.plot_metrics("acc")
-        maxatac_model.plot_metrics("loss")
 
     logging.error("Results are saved to: " + maxatac_model.results_location)

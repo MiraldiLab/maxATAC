@@ -134,13 +134,6 @@ def get_parser():
         help="Trained model file(s)")
 
     predict_parser.add_argument(
-        "--average",
-        dest="average",
-        type=str,
-        required=True,
-        help="Average signal bigWig file")
-
-    predict_parser.add_argument(
         "--sequence",
         dest="sequence",
         type=str,
@@ -251,13 +244,6 @@ def get_parser():
         type=str,
         required=True,
         help="Genome sequence 2bit file")
-
-    train_parser.add_argument(
-        "--average",
-        dest="average",
-        type=str,
-        required=True,
-        help="Average signal bigWig file")
 
     train_parser.add_argument(
         "--meta_file",

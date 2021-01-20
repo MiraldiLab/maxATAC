@@ -1,6 +1,5 @@
 import tensorflow as tf
-import numpy as np
-import keras
+
 import logging
 from keras.models import Model
 from keras.layers.core import Reshape
@@ -9,11 +8,8 @@ from keras import backend as K
 
 from keras.layers import (
     Input,
-    concatenate,
     Conv1D,
     MaxPooling1D,
-    Conv2DTranspose,
-    Lambda,
     BatchNormalization
 )
 
@@ -25,8 +21,6 @@ from keras.callbacks import (
 
 from maxatac.utilities.constants import (
     INPUT_CHANNELS,
-    INPUT_FILTERS,
-    INPUT_KERNEL_SIZE,
     INPUT_LENGTH,
     INPUT_ACTIVATION,
     PADDING,
@@ -290,8 +284,10 @@ def get_dilated_cnn(
             beta_2=adam_beta_2,
             decay=adam_decay
         ),
-        loss=loss_function,
-        metrics=[dice_coef, 'accuracy']
+        loss="binary_crossentropy",
+        metrics=[dice_coef,
+                 'binary_accuracy',
+                 "accuracy"]
     )
 
     logging.debug("Model compiled")
