@@ -21,10 +21,10 @@ def find_genomic_min_max(bigwig_path):
         minmax_results = []
 
         # Create a status bar for to look fancy and count what chromosome you are on
-        chromosome_status_bar = tqdm.tqdm(total=len(input_bigwig.chromosomes()), desc='Chromosomes Processed', position=0)
+        chromosome_status_bar = tqdm.tqdm(total=len(input_bigwig.chroms()), desc='Chromosomes Processed', position=0)
 
-        for chromosome in input_bigwig.chromosomes():
-            chr_vals = np.nan_to_num(input_bigwig.values(chromosome, 0, input_bigwig.chromosomes(chromosome), numpy=True))
+        for chromosome in input_bigwig.chroms():
+            chr_vals = np.nan_to_num(input_bigwig.values(chromosome, 0, input_bigwig.chroms(chromosome), numpy=True))
 
             minmax_results.append([chromosome, np.min(chr_vals), np.max(chr_vals)])
 
