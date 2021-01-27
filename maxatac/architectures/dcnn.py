@@ -287,7 +287,7 @@ def get_dilated_cnn(
         loss="binary_crossentropy",
         metrics=[dice_coef,
                  'binary_accuracy',
-                 "accuracy"]
+                 acc]
     )
 
     logging.debug("Model compiled")
