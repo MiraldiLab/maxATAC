@@ -2,6 +2,8 @@
 
 To train a maxATAC model you need to set up a lot of inputs and a meta table to organize those input files.
 
+___
+
 ## Requirements
 
 ### Meta Table
@@ -18,6 +20,8 @@ The large number of examples, targets, inputs, and peaks are tracked using a met
 
 
 You will need to have ATAC-seq and ChIP-seq data in a bigwig format. You will also need peak file for both ATAC-seq and ChIP-seq. If no ATAC-seq or ChIP-seq files are used then you will get an error when building the ROI based training regions. 
+
+___
 
 ## run_training
 

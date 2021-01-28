@@ -33,13 +33,13 @@ blacklist=${4}
 output_directory=${5}
 
 ### Build names ###
-Tn5_sites=`basename ${insertion_sites} .bed.gz`_Tn5_slop${flanking_size}bp.bed.gz
+Tn5_sites=$(basename "${insertion_sites}" .bed.gz)_Tn5_slop${flanking_size}bp.bed.gz
 
 ### Process ###
 
 # Window around the input insertion size and then compress the file
 # Then remove the sites overlapping blacklisted regions. -v option
 # Bedtools can take as input a compressed or uncompressed BED file. It's awesome
-bedtools slop  -i ${insertion_sites} -g ${chrom_sizes} -b ${flanking_size} | \
-bedtools intersect -a - -b ${blacklist} -v | \
-pigz > ${output_directory}/${Tn5_sites}
+bedtools slop  -i "${insertion_sites}" -g "${chrom_sizes}" -b "${flanking_size}" | \
+bedtools intersect -a - -b "${blacklist}" -v | \
+pigz > "${output_directory}"/"${Tn5_sites}"

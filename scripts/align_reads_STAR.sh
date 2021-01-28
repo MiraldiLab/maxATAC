@@ -51,10 +51,10 @@ THREADS=${5}
 
 echo "Align Files with STAR: In Progress"
 
-STAR --genomeDir ${STAR_INDEX} \
---runThreadN ${THREADS} \
---readFilesIn ${fq1} ${fq2} \
---outFileNamePrefix ${Prefix} \
+STAR --genomeDir "${STAR_INDEX}" \
+--runThreadN "${THREADS}" \
+--readFilesIn "${fq1}" "${fq2}" \
+--outFileNamePrefix "${Prefix}" \
 --outSAMtype BAM SortedByCoordinate \
 --outSAMunmapped Within \
 --outSAMattributes Standard \

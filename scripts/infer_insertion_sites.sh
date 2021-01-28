@@ -17,7 +17,7 @@
 # OUTPUT:
 
 # Inferred Tn5 insertion sites
-# These sites are single base paire resolved Tn5 cut sites based on the 5' end of the read
+# These sites are single base pair resolved Tn5 cut sites based on the 5' end of the read
 ###########################################################
 
 ### Rename Input Variables ###
