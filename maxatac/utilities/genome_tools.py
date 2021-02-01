@@ -176,7 +176,6 @@ def get_input_matrix(rows,
                      cols,
                      signal_stream,
                      sequence_stream,
-                     bp_order,
                      chromosome,
                      start,  # end - start = cols
                      end,
@@ -199,7 +198,7 @@ def get_input_matrix(rows,
     """
     input_matrix = np.zeros((rows, cols))
 
-    for n, bp in enumerate(bp_order):
+    for n, bp in enumerate(["A", "C", "G", "T"]):
         input_matrix[n, :] = get_one_hot_encoded(
             sequence_stream.sequence(chromosome, start, end),
             bp

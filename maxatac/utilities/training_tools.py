@@ -16,10 +16,10 @@ import sys
 from os import path
 from maxatac.utilities.system_tools import get_dir, replace_extension, remove_tags, Mute
 
-from maxatac.utilities.roi_tools import RandomRegionsPool, import_meta
+from maxatac.utilities.roi_tools import RandomRegionsPool
 
 with Mute():  # hide stdout from loading the modules
-    from maxatac.architectures.dcnn import (get_dilated_cnn, get_callbacks)
+    from maxatac.architectures.dcnn import get_dilated_cnn
 
 
 class TrainingDataGenerator(object):
@@ -32,7 +32,7 @@ class TrainingDataGenerator(object):
 
     This generator expects a meta_table with the header:
 
-    TF | Cell Type | ATAC signal | ChIP signal | ATAC peaks | ChIP peaks
+    TF | Cell_Type | ATAC_Signal_File | Binding_File | ATAC_Peaks | CHIP_Peaks
     """
 
     def __init__(self,
@@ -50,6 +50,30 @@ class TrainingDataGenerator(object):
                  preferences,
                  cell_types
                  ):
+        """
+        On __init__ three processes will happend.
+
+        1) Build chromosome sizes dictionary. This dictionary will help make sure the random regions that are generated
+        are falling within chromosome bounds. The chromosome sizes dictionary is also used to calculate the weights for
+        how often to sample a chromosome.
+
+        1) Get a pool of random regions of interest these regions of interest are based on the complement blacklist
+        regions generated using bedtools complement with a blacklist bed file. This is known as the preferences file.
+
+        :param meta_dataframe: The run meta dataframe
+        :param chromosomes: The chromosomes to use for training the model
+        :param sequence: 2bit sequence
+        :param batch_size: Training batch size to output each time the generator is called
+        :param region_length: The region length used for training
+        :param random_ratio: Proportion of each batch that should be used in each batch
+        :param chromosome_sizes: The chromosome sizes to use to build the chromosome sizes dictionary
+        :param bp_resolution: The resolution of the output predictions to bin the ChIP-seq signal to
+        :param input_channels: Number of input channels that are desired
+        :param scale_signal: Scale signal regions between these values. Noise injection
+        :param roi_dataframe: The dataframe that has the ROIs that are to be randomly selected from when making batches
+        :param preferences: The blacklist complement regions that are preferred for random regions
+        :param cell_types: The cell types that are found in the meta data file.
+        """
         self.meta_dataframe = meta_dataframe
         self.chromosomes = chromosomes
         self.region_length = region_length
@@ -71,17 +95,9 @@ class TrainingDataGenerator(object):
         self.chromosome_sizes_dictionary = build_chrom_sizes_dict(chromosomes, chromosome_sizes)
 
         # Get the ROIPool and/or RandomRegionsPool
-        self.ROI_pool = self.__get_ROIPool()
+        self.ROI_pool = pd.read_csv(self.roi_dataframe, sep="\t", header=0)
 
         self.RandomRegions_pool = self.__get_RandomRegionsPool()
-
-    def __get_ROIPool(self):
-        """
-        Passes the attributes to the ROIPool class to build a pool of regions of interest
-
-        :return: Initializes the object used to generate batches of peak centered training examples.
-        """
-        return pd.read_csv(self.roi_dataframe, sep="\t", header=0)
 
     def __get_RandomRegionsPool(self):
         """
@@ -94,21 +110,6 @@ class TrainingDataGenerator(object):
                                  preferences=self.preferences,
                                  chromosomes=self.chromosomes,
                                  cell_types=self.cell_types)
-
-    def __get_roi_regions_list(self, number_random_regions):
-        """
-        Create batches of examples with the size of number_random_regions
-
-        :param number_random_regions: Number of random regions to generate per batch
-
-        :return: Training examples generated from random regions of the genome
-        """
-        random_regions_list = []
-
-        for idx in range(number_random_regions):
-            random_regions_list.append(self.ROI_pool.sample(self.number_roi).to_numpy().tolist())
-
-        return random_regions_list
 
     def __mix_regions(self):
         """
@@ -150,6 +151,9 @@ class TrainingDataGenerator(object):
         """
         Generate a batch of regions of interest from the input ChIP-seq and ATAC-seq peaks
 
+        This generator will make training batches each time it is called. The batches are randomly selected from the ROI
+        pool and examples from a random regions pool.
+
         :return: A batch of training examples centered on regions of interest
         """
         while True:
@@ -165,7 +169,6 @@ class TrainingDataGenerator(object):
                         load_bigwig(binding) as binding_stream:
                     inputs_batch.append(get_input_matrix(rows=self.input_channels,
                                                          cols=self.region_length,
-                                                         bp_order=["A", "C", "G", "T"],
                                                          signal_stream=signal_stream,
                                                          sequence_stream=sequence_stream,
                                                          chromosome=region[0],
@@ -196,7 +199,7 @@ class ValidationDataGenerator(keras.utils.Sequence):
 
     This generator expects a meta_table with the header:
 
-    TF | Cell Type | ATAC signal | ChIP signal | ATAC peaks | ChIP peaks
+    TF | Cell_Type | ATAC_Signal_File | Binding_File | ATAC_Peaks | CHIP_Peaks
     """
 
     def __init__(self,
@@ -216,7 +219,11 @@ class ValidationDataGenerator(keras.utils.Sequence):
         self.meta_dataframe = meta_dataframe
         self.region_length = region_length
         self.batch_size = batch_size
+
+        # Input the ROI dataframe generated using maxATAC roi
         self.ROI_pool = pd.read_csv(roi_dataframe, sep="\t", header=0)
+
+        # Indexes are used to feed batches in sequentially.
         self.indexes = np.arange(self.ROI_pool.shape[0])
 
     def __len__(self):
@@ -254,7 +261,6 @@ class ValidationDataGenerator(keras.utils.Sequence):
                     load_bigwig(binding) as binding_stream:
                 inputs_batch.append(get_input_matrix(rows=self.input_channels,
                                                      cols=self.region_length,
-                                                     bp_order=["A", "C", "G", "T"],
                                                      signal_stream=signal_stream,
                                                      sequence_stream=sequence_stream,
                                                      chromosome=region[0],
@@ -325,10 +331,10 @@ class MaxATACModel(object):
         random.seed(seed)
 
         # Import meta txt as dataframe
-        self.meta_dataframe = import_meta(self.meta_path)
+        self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
 
         # Find the unique number of cell types in the meta file
-        self.cell_types = self.__get_cell_types()
+        self.cell_types = self.meta_dataframe["Cell_Type"].unique().tolist()
 
         # Get the neural network model based on the specified model architecture
         if arch == "DCNN_V2":
@@ -340,15 +346,6 @@ class MaxATACModel(object):
 
         else:
             sys.exit("Model Architecture not specified correctly. Please check")
-
-    def __get_cell_types(self):
-        """
-        Get the unique cell lines in the meta dataframe. This function requires that the cell types are in a column of
-        a pandas dataframe named "Cell_Type"
-
-        :return: A list of unique cell types
-        """
-        return self.meta_dataframe["Cell_Type"].unique().tolist()
 
     def __get_peak_paths(self):
         """

@@ -1,8 +1,11 @@
 import logging
 
-from maxatac.architectures.dcnn import get_callbacks
-from maxatac.utilities.session import configure_session
+from maxatac.utilities.system_tools import Mute
 
+with Mute():
+    from maxatac.architectures.dcnn import get_callbacks
+
+from maxatac.utilities.session import configure_session
 from maxatac.utilities.constants import (BP_RESOLUTION,
                                          INPUT_LENGTH,
                                          INPUT_CHANNELS,

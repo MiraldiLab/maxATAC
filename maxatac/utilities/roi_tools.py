@@ -51,7 +51,7 @@ class ValidationData(object):
         self.chromosome_sizes_dictionary = build_chrom_sizes_dict(chromosomes, chromosome_sizes)
 
         # Import meta txt as dataframe
-        self.meta_dataframe = import_meta(self.meta_path)
+        self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
         self.cell_types = self.meta_dataframe["Cell_Type"].unique()
 
         # Get the ROIPool and/or RandomRegionsPool
@@ -109,6 +109,13 @@ class ValidationData(object):
         return validation_dataframe
 
     def write_validation_pool(self, prefix="test", output_dir="./ROI"):
+        """
+        Write the pool dataframe into a TSV, BED and a summary stats file.
+
+        :param prefix:
+        :param output_dir:
+        :return:
+        """
         output_directory = get_dir(output_dir)
         bed_filename = os.path.join(output_directory, prefix + "_validation_ROI.bed")
         tsv_filename = os.path.join(output_directory, prefix + "_validation_ROI.tsv")
@@ -158,7 +165,7 @@ class ROIPool(object):
         self.region_length = region_length
 
         # Import meta txt as dataframe
-        self.meta_dataframe = import_meta(self.meta_path)
+        self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
 
         self.cell_types = self.meta_dataframe["Cell_Type"].unique()
 
@@ -345,6 +352,10 @@ class RandomRegionsPool(object):
         return df
 
     def __get_interval_weights(self):
+        """
+        Get the weights associated with the intervals of interest.
+        :return:
+        """
         length_sum = 0
 
         for chromosome in self.chromosomes:
@@ -407,18 +418,3 @@ def calculate_weight(length, interval_length_sum):
     :return: a weight for the interval
     """
     return length / interval_length_sum
-
-
-def import_meta(meta_path):
-    """
-    Import the meta file into a pandas dataframe
-
-    The meta file must contain specific column names that are tab separated. The names will be referenced using
-    strings. The names that are required are:
-
-    TF | Cell_Type | ATAC_Signal_File | Binding_File | ATAC_Peaks | CHIP_Peaks
-
-    :return: Meta data in a pandas dataframe format
-    """
-    return pd.read_csv(meta_path, sep='\t', header=0, index_col=None)
-
