@@ -12,6 +12,7 @@ from maxatac.functions.benchmark import run_benchmarking
 from maxatac.functions.normalize import run_normalization
 from maxatac.functions.predict import run_prediction
 from maxatac.functions.average import run_averaging
+from maxatac.functions.roi import run_roi
 
 from maxatac.utilities.constants import (
     LOG_LEVELS,
@@ -20,7 +21,7 @@ from maxatac.utilities.constants import (
     DEFAULT_TRAIN_RAND_RATIO,
     DEFAULT_VALIDATE_RAND_RATIO,
     DEFAULT_TRAIN_BATCHES_PER_EPOCH,
-    DEFAULT_VALIDATE_BATCHES_PER_EPOCH,
+    COMPLEMENT_REGIONS,
     DEFAULT_TRAIN_BATCH_SIZE,
     CHR_POOL_SIZE,
     BLACKLISTED_REGIONS,
@@ -37,7 +38,8 @@ from maxatac.utilities.constants import (
     DEFAULT_CHROM_SIZES,
     DEFAULT_VALIDATE_BATCH_SIZE,
     DEFAULT_CHRS,
-    BLACKLISTED_REGIONS_BIGWIG
+    BLACKLISTED_REGIONS_BIGWIG,
+    INPUT_LENGTH
 )
 
 
@@ -60,6 +62,107 @@ def get_parser():
     general_parser.add_argument(
         "--version", action="version", version=get_version(),
         help="Print version information and exit")
+
+    # Average parser
+    roi_parser = subparsers.add_parser(
+        "roi",
+        parents=[parent_parser],
+        help="Run maxATAC roi")
+
+    # Set the default function to run averaging
+    roi_parser.set_defaults(func=run_roi)
+
+    roi_parser.add_argument(
+        "--meta_file",
+        dest="meta_file",
+        type=str,
+        required=True,
+        help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)")
+
+    roi_parser.add_argument(
+        "--region_length",
+        dest="region_length",
+        type=int,
+        default=INPUT_LENGTH,
+        help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)")
+
+    roi_parser.add_argument(
+        "--train_chroms",
+        dest="train_chroms",
+        type=str,
+        nargs="+",
+        default=DEFAULT_TRAIN_CHRS,
+        help="Chromosomes from --chromosomes fixed for training. \
+            Default: 3-7,9-18,20-22")
+
+    roi_parser.add_argument(
+        "--validate_chroms",
+        dest="validate_chroms",
+        type=str,
+        nargs="+",
+        default=DEFAULT_VALIDATE_CHRS,
+        help="Chromosomes from fixed for validation. \
+            Default: chr2, chr19")
+
+    roi_parser.add_argument(
+        "--chromosome_sizes",
+        dest="chromosome_sizes",
+        type=str,
+        default=DEFAULT_CHROM_SIZES,
+        help="The chromosome sizes file to reference")
+
+    roi_parser.add_argument(
+        "--blacklist",
+        dest="blacklist",
+        type=str,
+        default=BLACKLISTED_REGIONS,
+        help="The blacklisted regions to exclude")
+
+    roi_parser.add_argument(
+        "--blacklist_complement",
+        dest="preferences",
+        type=str,
+        default=COMPLEMENT_REGIONS,
+        help="The complement to blacklisted regions or regions for random region selection")
+
+    roi_parser.add_argument(
+        "--output",
+        dest="output_dir",
+        type=str,
+        default="./average",
+        help="Output directory.")
+
+    roi_parser.add_argument(
+        "--loglevel",
+        dest="loglevel",
+        type=str,
+        default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+        choices=LOG_LEVELS.keys(),
+        help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
+
+    roi_parser.add_argument(
+        "--validate_random_ratio",
+        dest="validate_random_ratio",
+        type=float,
+        required=False,
+        default=DEFAULT_VALIDATE_RAND_RATIO,
+        help="Ratio for controlling fraction of random seqeuences in each validation batch. float [0, 1]")
+
+    roi_parser.add_argument(
+        "--training_prefix",
+        dest="training_prefix",
+        type=str,
+        default="training_test",
+        required=False,
+        help="Prefix to use for naming the training ROI file")
+
+    roi_parser.add_argument(
+        "--validation_prefix",
+        dest="validation_prefix",
+        type=str,
+        default="validation_test",
+        required=False,
+        help="Prefix to use for naming the validation ROI file")
 
     # Average parser
     average_parser = subparsers.add_parser(
@@ -253,6 +356,27 @@ def get_parser():
         help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)")
 
     train_parser.add_argument(
+        "--train_roi",
+        dest="train_roi",
+        type=str,
+        required=True,
+        help="Training ROI tsv")
+
+    train_parser.add_argument(
+        "--validate_roi",
+        dest="validate_roi",
+        type=str,
+        required=True,
+        help="Validate ROI tsv")
+
+    train_parser.add_argument(
+        "--preferences",
+        dest="preferences",
+        type=str,
+        default=COMPLEMENT_REGIONS,
+        help="Training ROI tsv")
+
+    train_parser.add_argument(
         "--train_chroms",
         dest="train_chroms",
         type=str,
@@ -260,15 +384,6 @@ def get_parser():
         default=DEFAULT_TRAIN_CHRS,
         help="Chromosomes from --chromosomes fixed for training. \
             Default: 3-7,9-18,20-22")
-
-    train_parser.add_argument(
-        "--validate_chroms",
-        dest="validate_chroms",
-        type=str,
-        nargs="+",
-        default=DEFAULT_VALIDATE_CHRS,
-        help="Chromosomes from fixed for validation. \
-            Default: chr2, chr19")
 
     train_parser.add_argument(
         "--arch",
@@ -285,14 +400,6 @@ def get_parser():
         required=False,
         default=DEFAULT_TRAIN_RAND_RATIO,
         help="Ratio for controlling fraction of random sequences in each training batch. float [0, 1]")
-
-    train_parser.add_argument(
-        "--validate_rand_ratio",
-        dest="validate_rand_ratio",
-        type=float,
-        required=False,
-        default=DEFAULT_VALIDATE_RAND_RATIO,
-        help="Ratio for controlling fraction of random seqeuences in each validation batch. float [0, 1]")
 
     train_parser.add_argument(
         "--seed",
@@ -323,28 +430,20 @@ def get_parser():
              "Default: " + str(FILTERS_SCALING_FACTOR))
 
     train_parser.add_argument(
-        "--validate_batch_size",
-        dest="validate_batch_size",
-        type=int,
-        default=DEFAULT_VALIDATE_BATCH_SIZE,
-        help="# of validation examples per batch."
-             "Default: " + str(DEFAULT_VALIDATE_BATCH_SIZE))
-
-    train_parser.add_argument(
-        "--validate_steps_per_epoch",
-        dest="validate_steps_per_epoch",
-        type=int,
-        default=DEFAULT_VALIDATE_BATCHES_PER_EPOCH,
-        help="# of validate batches per epoch."
-             "Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH))
-
-    train_parser.add_argument(
         "--train_batch_size",
         dest="train_batch_size",
         type=int,
         default=DEFAULT_TRAIN_BATCH_SIZE,
         help="# of training examples per batch. \
             Default: " + str(DEFAULT_TRAIN_BATCH_SIZE))
+
+    train_parser.add_argument(
+        "--validate_batch_size",
+        dest="validate_batch_size",
+        type=int,
+        default=DEFAULT_VALIDATE_BATCH_SIZE,
+        help="# of validation examples per batch. \
+            Default: " + str(DEFAULT_VALIDATE_BATCH_SIZE))
 
     train_parser.add_argument(
         "--train_steps_per_epoch",
@@ -367,14 +466,6 @@ def get_parser():
         dest="kernel_size",
         type=int,
         default=INPUT_KERNEL_SIZE,
-        help="Size of the kernel to use in BP. \
-            Default: " + str(INPUT_KERNEL_SIZE))
-
-    train_parser.add_argument(
-        "--chromosome_pool_size",
-        dest="chromosome_pool_size",
-        type=int,
-        default=CHR_POOL_SIZE,
         help="Size of the kernel to use in BP. \
             Default: " + str(INPUT_KERNEL_SIZE))
 

@@ -91,18 +91,29 @@ def get_bigwig_values(bigwig_path, chrom_name, chrom_end, chrom_start=0):
         return np.nan_to_num(input_bw.values(chrom_name, chrom_start, chrom_end, numpy=True))
 
 
-def import_bed(bed_file, region_length, chromosomes, chromosome_sizes_dictionary, blacklist):
+def import_bed(bed_file,
+               region_length,
+               chromosomes,
+               chromosome_sizes_dictionary,
+               blacklist,
+               ROI_type_tag,
+               ROI_cell_tag):
     """
     Import a BED file and format the regions to be compatible with our maxATAC models
 
-    @param bed_file: Input BED file to format
-    @param region_length: Length of the regions to resize BED intervals to
-    @param chromosomes: Chromosomes to filter the BED file for
-    @param chromosome_sizes_dictionary: A dictionary of chromosome sizes to make sure intervals fall in bounds
-    @param blacklist: A BED file of regions to exclude from our analysis
+    :param ROI_cell_tag:
+    :param ROI_type_tag:
+    :param bed_file: Input BED file to format
+    :param region_length: Length of the regions to resize BED intervals to
+    :param chromosomes: List of chromosomes to limit the input
+    :param chromosome_sizes_dictionary: A dictionary of chromosome sizes to make sure intervals fall in bounds
+    :param blacklist: A BED file of regions to exclude from our analysis
+    :param ROI_type_tag: Tag to use in the description column
+    :param ROI_cell_tag: Tag to use in the description column
 
-    @return: A dataframe of BED regions compatible with our model
+    :return: A dataframe of BED regions compatible with our model
     """
+    # Import dataframe
     df = pd.read_csv(bed_file,
                      sep="\t",
                      usecols=[0, 1, 2],
@@ -110,33 +121,53 @@ def import_bed(bed_file, region_length, chromosomes, chromosome_sizes_dictionary
                      names=["chr", "start", "stop"],
                      low_memory=False)
 
+    # Make sure the chromosomes in the ROI file frame are in the target chromosome list
     df = df[df["chr"].isin(chromosomes)]
 
+    # Find the length of the regions
     df["length"] = df["stop"] - df["start"]
 
+    # Find the center of each peak.
+    # TODO Finding the center of the peak might not be the best approach to finding the ROI.
+    # We might want to use bedtools to window the regions of interest around the peak.
     df["center"] = np.floor(df["start"] + (df["length"] / 2)).apply(int)
 
+    # The start of the interval will be the center minus 1/2 the desired region length.
     df["start"] = np.floor(df["center"] - (region_length / 2)).apply(int)
 
+    # the end of the interval will be the center plus 1/2 the desired region length
     df["stop"] = np.floor(df["center"] + (region_length / 2)).apply(int)
 
+    # The chromosome end is defined as the chromosome length
     df["END"] = df["chr"].map(chromosome_sizes_dictionary)
 
+    # Make sure the stop is less than the end
     df = df[df["stop"].apply(int) < df["END"].apply(int)]
 
+    # Make sure the start is greater than the chromosome start of 0
     df = df[df["start"].apply(int) > 0]
 
+    # Select for the first three columns to clean up
     df = df[["chr", "start", "stop"]]
 
+    # Import the dataframe as a pybedtools object so we can remove the blacklist
     BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
 
+    # Import the blacklist as a pybedtools object
     blacklist_bedtool = pybedtools.BedTool(blacklist)
 
+    # Find the intervals that do not intersect blacklisted regions.
     blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
 
+    # Convert the pybedtools object to a pandas dataframe.
     df = blacklisted_df.to_dataframe()
 
+    # Rename the columns
     df.columns = ["chr", "start", "stop"]
+
+    df["ROI_Type"] = ROI_type_tag
+
+    df["ROI_Cell"] = ROI_cell_tag
 
     return df
 
@@ -212,3 +243,44 @@ def get_target_matrix(binding,
 
     return np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
 
+
+def get_synced_chroms(chroms, ignore_regions=None):
+    """
+    This function will generate a nested dictionary of chromosome sizes and the regions available for training.
+
+        {
+            "chr2": {"length": 243199373, "region": [0, 243199373]},
+            "chr3": {"length": 198022430, "region": [0, 198022430]}
+        }
+
+    If ignore_regions is True, set regions to the whole chromosome length
+    Returns something like this
+
+    """
+    chroms_and_regions = {}
+    for chrom in chroms:
+        chrom_name, *region = chrom.replace(",", "").split(":")  # region is either [] or ["start-end", ...]
+        chroms_and_regions[chrom_name] = None
+        if not ignore_regions:
+            try:
+                chroms_and_regions[chrom_name] = [int(i) for i in region[0].split("-")]
+            except (IndexError, ValueError):
+                pass
+
+    loaded_chroms = set()
+
+    synced_chroms = {}
+    for chrom_name, chrom_length in loaded_chroms:
+        if chrom_name not in chroms_and_regions: continue
+        region = chroms_and_regions[chrom_name]
+        if not region or \
+                region[0] < 0 or \
+                region[1] <= 0 or \
+                region[0] >= region[1] or \
+                region[1] > chrom_length:
+            region = [0, chrom_length]
+        synced_chroms[chrom_name] = {
+            "length": chrom_length,
+            "region": region
+        }
+    return synced_chroms

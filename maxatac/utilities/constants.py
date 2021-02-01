@@ -26,10 +26,12 @@ CPP_LOG_LEVEL = {
 blacklist_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_composite_blacklist.bed")
 blacklist_bigwig_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_composite_blacklist.bw")
 chrom_sizes_path = os.path.join(os.path.dirname(__file__), "../../data/hg38.chrom.sizes")
+complement_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_blacklist_complement_regions.bed")
 
 BLACKLISTED_REGIONS = os.path.normpath(blacklist_path)
 BLACKLISTED_REGIONS_BIGWIG = os.path.normpath(blacklist_bigwig_path)
 DEFAULT_CHROM_SIZES = os.path.normpath(chrom_sizes_path)
+COMPLEMENT_REGIONS = os.path.normpath(complement_path)
 
 # Default chromosome sets
 AUTOSOMAL_CHRS = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6",
@@ -47,19 +49,19 @@ DEFAULT_CHRS = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6",
 DEFAULT_TRAIN_CHRS = ["chr3", "chr4", "chr5", "chr6",
                       "chr7", "chr9", "chr10", "chr11", "chr12",
                       "chr13", "chr14", "chr15", "chr16", "chr17",
-                      "chr18", "chr20", "chr21", "chr22", "chr19"]
+                      "chr18", "chr20", "chr21", "chr22"]
 
-DEFAULT_VALIDATE_CHRS = ["chr2"]
+DEFAULT_VALIDATE_CHRS = ["chr2", "chr19"]
 
-DEFAULT_TEST_CHRS = ["chr1"]
+DEFAULT_TEST_CHRS = ["chr1", "chr8"]
 
 # Training  Constants
 DEFAULT_TRAIN_EPOCHS = 20
-DEFAULT_TRAIN_BATCHES_PER_EPOCH = 1000
+DEFAULT_TRAIN_BATCHES_PER_EPOCH = 100
 DEFAULT_VALIDATE_BATCHES_PER_EPOCH = 1000
-DEFAULT_VALIDATE_BATCH_SIZE = 1000
+DEFAULT_VALIDATE_BATCH_SIZE = 1
 DEFAULT_TRAIN_BATCH_SIZE = 1000
-DEFAULT_VALIDATE_RAND_RATIO = .5
+DEFAULT_VALIDATE_RAND_RATIO = .7
 DEFAULT_TRAIN_RAND_RATIO = .5
 
 # Model Constants
