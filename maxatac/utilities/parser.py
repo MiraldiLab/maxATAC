@@ -659,7 +659,7 @@ def parse_arguments(argsl, cwd_abs_path=None):
         argsl.append("")  # otherwise fails with error if empty
     args, _ = get_parser().parse_known_args(argsl)
     
-    if args.func == run_pc_training:
+    if args.func == run_training:
         args = normalize_args(
             args,
             [
