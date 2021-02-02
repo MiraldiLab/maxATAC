@@ -188,7 +188,6 @@ def get_input_matrix(rows,
     :param cols: (int) The number of columns or length
     :param signal_stream: (str) ATAC-seq signal
     :param sequence_stream: (str) One-hot encoded sequence
-    :param bp_order: (list) Order of the bases in matrix
     :param chromosome: (str) Chromosome name
     :param start: (str) Chromosome start
     :param end: (str) Chromosome end

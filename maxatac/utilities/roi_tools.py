@@ -377,7 +377,8 @@ class RandomRegionsPool(object):
         # Randomly select a chromosome from the validation chromosome list with weight proportional to chromosome size
         chrom_name = np.random.choice(self.chromosomes, p=self.weights_list)
 
-        tmp_random_regions_pool = self.preferences_pool[self.preferences_pool["chr"] == chrom_name]
+        # Create a tmp random regions pool that only has the
+        tmp_random_regions_pool = self.preferences_pool[self.preferences_pool["chr"] == chrom_name].sample(n=1, weights="weights")
 
         # Get the interval from the preferences pool with the longer intervals weighed more
         interval = tmp_random_regions_pool.sample(n=1, weights="weights")
@@ -385,6 +386,7 @@ class RandomRegionsPool(object):
         # Randomly generate a start based on the interval start and stop. Subtract length to prevent out of bounds
         start = random.randint(int(interval["start"]), int(interval["stop"] - (self.region_length + 1)))
 
+        # Find the end point based on the start + region length
         end = start + self.region_length
 
         return [chrom_name, start, end, "Random", np.random.choice(self.cell_types)]
