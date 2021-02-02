@@ -199,7 +199,9 @@ def get_scattered_smart_params(args):
             job_id += 1
     return scattered_params
 '''
-def run_pc_prediction(args, save_preds=True):
+
+
+def run_prediction(args, save_preds=True):
     '''
     logging.error(
         "Prediction" +

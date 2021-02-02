@@ -5,7 +5,7 @@ import pyBigWig
 import py2bit
 import random
 
-from maxatac.utilities.system_tools import get_absolute_path
+from maxatac.utilities.helpers import get_absolute_path
 
 
 def build_chrom_sizes_dict(chromosome_list,

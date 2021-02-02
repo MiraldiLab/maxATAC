@@ -7,8 +7,9 @@ from yaml import dump
 
 from maxatac.analyses.prediction import run_prediction
 from maxatac.analyses.training import run_training
-from maxatac.analyses.normalization import run_normalization
-from maxatac.analyses.benchmarking import run_benchmarking
+from maxatac.analyses.normalize import run_normalization
+from maxatac.analyses.benchmark import run_benchmarking
+
 from maxatac.utilities.helpers import (
     get_version,
     get_absolute_path,
@@ -24,10 +25,14 @@ from maxatac.utilities.constants import (
     DEFAULT_ADAM_LEARNING_RATE,
     DEFAULT_ADAM_DECAY,
     DEFAULT_NORMALIZATION_BIN,
-    DEFAULT_MIN_PREDICTION
+    DEFAULT_MIN_PREDICTION,
+    BATCH_SIZE,
+    VAL_BATCH_SIZE
 )
 from maxatac.utilities.bigwig import load_bigwig
 from maxatac.utilities.twobit import load_2bit
+
+
 
 
 def normalize_args(args, skip_list=[], cwd_abs_path=None):
@@ -61,6 +66,7 @@ def get_synced_chroms(chroms, files, ignore_regions=None):
             "chr3": {"length": 198022430, "region": [0, 198022430]}
         }
     """
+    
     chroms_and_regions = {}
     for chrom in chroms:
         chrom_name, *region = chrom.replace(",", "").split(":")  # region is either [] or ["start-end", ...]
@@ -72,6 +78,7 @@ def get_synced_chroms(chroms, files, ignore_regions=None):
                 pass
 
     loaded_chroms = set()
+    
     for file in [f for f in files if f is not None]:
         try:
             with load_2bit(file) as data_stream:
@@ -80,7 +87,8 @@ def get_synced_chroms(chroms, files, ignore_regions=None):
             with load_bigwig(file) as data_stream:
                 avail_chroms = set([(k, v) for k, v in data_stream.chroms().items()])
         loaded_chroms = loaded_chroms.intersection(avail_chroms) if loaded_chroms else avail_chroms  # checks both chrom_name and chrom_length are the same
-
+    
+    
     synced_chroms = {}
     for chrom_name, chrom_length in loaded_chroms:
         if chrom_name not in chroms_and_regions: continue
@@ -95,10 +103,12 @@ def get_synced_chroms(chroms, files, ignore_regions=None):
             "length": chrom_length,
             "region": region
         }
+    
     return synced_chroms
 
 
 def assert_and_fix_args_for_prediction(args):
+
     synced_chroms = get_synced_chroms(
         args.chroms,
         [args.sequence, args.signal, args.average]
@@ -116,29 +126,32 @@ def assert_and_fix_args_for_prediction(args):
 
 
 def assert_and_fix_args_for_training(args):
-    
+
+    setattr(args, "preferences", None)
+    setattr(args, "signal", None)
+    #setattr(args, "filters", None)
+    setattr(args, "tsites", None)
     synced_tchroms = get_synced_chroms(
         args.tchroms,
         [
             args.sequence,
             args.average,
-            args.filters,
-            args.preferences,
-            args.signal,
-            args.tsites
+            #args.filters,
+            #args.preferences,
+            #args.signal,
+            #args.tsites
         ],
         True
     )
-
     synced_vchroms = get_synced_chroms(
         args.vchroms,
         [
             args.sequence,
             args.average,
-            args.filters,
-            args.preferences,
-            args.validation,
-            args.vsites
+            #args.filters,
+            #args.preferences,
+            #args.validation,
+            #args.vsites
         ],
         True
     )
@@ -151,8 +164,6 @@ def assert_and_fix_args_for_training(args):
         [
             args.sequence,
             args.average,
-            args.filters,
-            args.preferences
         ],
         True
     )
@@ -165,12 +176,6 @@ def assert_and_fix_args_for_training(args):
         [
             args.sequence,
             args.average,
-            args.filters,
-            args.preferences,
-            args.signal,
-            args.validation,
-            args.tsites,
-            args.vsites
         ],
         True
     )
@@ -216,9 +221,10 @@ def assert_and_fix_args_for_benchmarking(args):
 
 
 def assert_and_fix_args(args):
+
     args.loglevel = LOG_LEVELS[args.loglevel]
     if args.func == run_prediction:
-        assert_and_fix_args_for_prediction(args)
+        pass
     elif args.func == run_training:
         assert_and_fix_args_for_training(args)
     elif args.func == run_normalization:
@@ -249,21 +255,26 @@ def get_parser():
     predict_parser.set_defaults(func=run_prediction)
 
     predict_parser.add_argument(
-        "--quant", dest="quant", type=bool, 
-        required=True,
-        help="This argument should be set to true to build models based on quantitative data"
-    )
-
-    predict_parser.add_argument(
         "--models", dest="models", type=str, nargs="+",
         required=True,
         help="Trained model file(s)"
     )
+    predict_parser.add_argument(
+        "--quant", dest="quant", action='store_true',
+        default=False,
+        help="This argument should be set to true to build models based on quantitative data"
+    )
 
     predict_parser.add_argument(
-        "--signal", dest="signal", type=str,
+        "--train_tf", dest="train_tf", type=str,
         required=True,
-        help="Input signal bigWig file"
+        help="Transcription Factor to train on. Restricted to only 1 TF."
+    )
+
+    predict_parser.add_argument(
+        "--test_cell_lines", dest="test_cell_lines", type=str, nargs="+",
+        required=True,
+        help="Cell lines for model testing. These cell lines will not be used in model training. cell lines must be delimited with , "
     )
 
     predict_parser.add_argument(
@@ -279,11 +290,9 @@ def get_parser():
     )
 
     predict_parser.add_argument(
-        "--chroms", dest="chroms", type=str, nargs="+",
-        default=DEFAULT_CHRS,
-        help="Chromosomes list for analysis. \
-            Optionally with regions in a form of chrN:start-end. \
-            Default: main human chromosomes, whole length"
+        "--meta_file", dest="meta_file", type=str,
+        required=True,
+        help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
     )
 
     predict_parser.add_argument(
@@ -319,6 +328,7 @@ def get_parser():
         choices=LOG_LEVELS.keys(),
         help="Logging level. Default: " + DEFAULT_LOG_LEVEL
     )
+    
     predict_parser.add_argument(
         "--predict_roi", dest="predict_roi", type=str,
         help="Bed file with ranges for input sequences to be predicted. \
@@ -334,21 +344,15 @@ def get_parser():
     train_parser.set_defaults(func=run_training)
 
     train_parser.add_argument(
-        "--signal", dest="signal", type=str,
+        "--sequence", dest="sequence", type=str,
         required=True,
-        help="Input signal bigWig file"
+        help="Genome sequence 2bit file"
     )
-
+    
     train_parser.add_argument(
-        "--quant", dest="quant", type=bool, 
-        required=True,
+        "--quant", dest="quant", action='store_true',
+        default=False,
         help="This argument should be set to true to build models based on quantitative data"
-    )
-
-    train_parser.add_argument(
-        "--validation", dest="validation", type=str,
-        required=True,
-        help="Validation signal bigWig file"
     )
 
     train_parser.add_argument(
@@ -358,23 +362,41 @@ def get_parser():
     )
 
     train_parser.add_argument(
-        "--sequence", dest="sequence", type=str,
+        "--meta_file", dest="meta_file", type=str,
         required=True,
-        help="Genome sequence 2bit file"
+        help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
     )
 
     train_parser.add_argument(
+        "--train_roi", dest="train_roi", type=str,
+        required=True,
+        help="Bed file with ranges for input sequences. Required for peak-centric training of the model."
+    )
+
+    train_parser.add_argument(
+        "--validate_roi", dest="validate_roi", type=str,
+        required=True,
+        help="Bed file  with ranges for input sequences to validate the model"
+    )
+
+    train_parser.add_argument(
+        "--eval_roi", dest="eval_roi", type=str,
+        required=True,
+        help="Bed file  with ranges for input sequences to evaluate the model performance"
+    )
+    
+    train_parser.add_argument(
         "--chroms", dest="chroms", type=str, nargs="+",
-        default=DEFAULT_CHRS,
+        required=True,
         help="Chromosome list for analysis. \
             Regions in a form of chrN:start-end are ignored. \
             Use --filters instead \
             Default: main human chromosomes, whole length"
     )
-
+    
     train_parser.add_argument(
         "--tchroms", dest="tchroms", type=str, nargs="+",
-        default=[],
+        required=True,
         help="Chromosomes from --chroms fixed for training. \
             Regions in a form of chrN:start-end are ignored. \
             Use --filters instead \
@@ -383,65 +405,42 @@ def get_parser():
 
     train_parser.add_argument(
         "--vchroms", dest="vchroms", type=str, nargs="+",
-        default=[],
+        required=True,
         help="Chromosomes from --chroms fixed for validation. \
             Regions in a form of chrN:start-end are ignored. \
             Use --filters instead \
             Default: None, whole length"
     )
-
-    train_parser.add_argument(
-        "--filters", dest="filters", type=str,
-        help="BigWig file to filter training regions. \
-            Filters out (sets to 0) all signal values from --signal, --validation and --average files \
-            if the correspondent position in the --filter file has value <= 0 or not set. \
-            Default: None, do not apply any filters"
-    )
-
-    train_parser.add_argument(
-        "--preferences", dest="preferences", type=str,
-        help="BigBed file to set ranges for training regions selection. \
-            Default: None, training regions are selected randomly from \
-            the whole chromosome length"
-    )
     
     train_parser.add_argument(
-        "--train_roi", dest="train_roi", type=str,
-        help="Bed file with ranges for input sequences. Required for training the model on specific regions. \
-            Default: None, training regions are selected randomly from \
-            the whole chromosome length"
+        "--train_tf", dest="train_tf", type=str,
+        required=True,
+        help="Transcription Factor to train on. Restricted to only 1 TF."
     )
+
     train_parser.add_argument(
-        "--validate_roi", dest="validate_roi", type=str,
-        help="Bed file  with ranges for input sequences to validate the model\
-            Default: None, training regions are selected randomly from \
-            the whole chromosome length"
+        "--arch", dest="arch", type=str,
+        required=True,
+        help="Specify the model architecture. Currently support DCNN_V2, RES_DCNN_V2, MM_DCNN_V2 and MM_Res_DCNN_V2"
     )
+
     train_parser.add_argument(
-        "--proportion", dest="proportion", type=float,
-        default=DEFAULT_CHR_PROPORTION,
-        help="Proportion of training chromosomes among those which are not set in either of --tchroms or --vchroms. \
-            The rest will be used as validation chromosoemes. \
-            Applied for [--chroms] - [--tchroms] - [--vchroms]. \
-            Default: " + str(DEFAULT_CHR_PROPORTION)
+        "--test_cell_lines", dest="test_cell_lines", type=str, nargs="+",
+        required=True,
+        help="Cell lines for model testing. These cell lines will not be used in model training. cell lines must be delimited with , "
     )
+
+    train_parser.add_argument(
+        "--rand_ratio", dest="rand_ratio", type=float,
+        required=True,
+        help="Ratio for controlling fraction of random seqeuences in each traning batch. float [0, 1]"
+    )
+
 
     train_parser.add_argument(
         "--seed", dest="seed", type=int,
         default=random.randint(1, 99999),
         help="Seed for pseudo-random generanor. Default: random int [1, 99999]"
-    )
-
-    train_parser.add_argument(
-        "--tsites", dest="tsites", type=str,
-        required=True,
-        help="Training binding sites bigWig file"
-    )
-
-    train_parser.add_argument(
-        "--vsites", dest="vsites", type=str,
-        required=True,
-        help="Validation binding sites bigWig file"
     )
 
     train_parser.add_argument(
@@ -460,6 +459,20 @@ def get_parser():
         default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
         help="# of training batches per epoch. \
             Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH)
+    )
+
+    train_parser.add_argument(
+        "--batch_size", dest="batch_size", type=int,
+        default=BATCH_SIZE,
+        help="# of training batch size \
+            Default: " + str(BATCH_SIZE)
+    )
+
+    train_parser.add_argument(
+        "--val_batch_size", dest="val_batch_size", type=int,
+        default=VAL_BATCH_SIZE,
+        help="# of training validation batch size \
+            Default: " + str(VAL_BATCH_SIZE)
     )
 
     train_parser.add_argument(
@@ -486,6 +499,7 @@ def get_parser():
 
     train_parser.add_argument(
         "--plot", dest="plot", action="store_true",
+        default=True,
         help="Plot model structure and training history. \
             Default: False"
     )
@@ -513,7 +527,7 @@ def get_parser():
 
     normalize_parser.add_argument(
         "--signal", dest="signal", type=str, nargs="+",
-        required=True,
+        required=False,
         help="Input signal bigWig file(s) to be normalized by reference"
     )
 
@@ -644,16 +658,21 @@ def parse_arguments(argsl, cwd_abs_path=None):
     if len(argsl) == 0:
         argsl.append("")  # otherwise fails with error if empty
     args, _ = get_parser().parse_known_args(argsl)
-    args = normalize_args(
-        args,
-        [
-            "func", "loglevel", "threads", "seed",
-            "proportion", "vchroms", "tchroms",
-            "chroms", "keep", "epochs", "batches",
-            "prefix", "plot", "lrate", "decay", "bin",
-            "minimum"
-        ],
-        cwd_abs_path
-    )
+    
+    if args.func == run_pc_training:
+        args = normalize_args(
+            args,
+            [
+                "func", "loglevel", "threads", "seed",
+                "proportion", "vchroms", "tchroms",
+                "chroms", "keep", "epochs", "batches",
+                "prefix", "plot", "lrate", "decay", "bin",
+                "minimum", "test_cell_lines", "rand_ratio", 
+                "train_tf", "arch", "quant", "batch_size",
+                "val_batch_size"
+            ],
+            cwd_abs_path
+        )
+    
     assert_and_fix_args(args)
     return args
