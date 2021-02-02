@@ -227,7 +227,6 @@ def run_training(args):
                                 args.tchroms,
                                 bp_resolution=BP_RESOLUTION,
                                 quant=args.quant,
-                                filters=None,
                                 batch_size=args.batch_size
                                 )
 
