@@ -171,10 +171,10 @@ class ROIPool(object):
 
         # Get a dictionary of {Cell Types: Peak Paths}
         self.atac_dictionary = pd.Series(self.meta_dataframe.ATAC_Peaks.values,
-                                         index=self.meta_dataframe.Cell_Type).to_dict()
+                                         index=self.meta_dataframe.Cell_Line).to_dict()
 
         self.chip_dictionary = pd.Series(self.meta_dataframe.CHIP_Peaks.values,
-                                         index=self.meta_dataframe.Cell_Type).to_dict()
+                                         index=self.meta_dataframe.Cell_Line).to_dict()
 
         # You must generate the ROI pool before you can get the final shape
         self.atac_roi_pool = self.__get_roi_pool(self.atac_dictionary, "ATAC", )
