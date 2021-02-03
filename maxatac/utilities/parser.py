@@ -349,6 +349,11 @@ def get_parser():
         required=False,
         help="Prefix to use for naming the validation ROI file")
 
+    roi_parser.add_argument(
+        "--threads", dest="threads", type=int,
+        help="# of processes to run training in parallel. \
+            Default: 1"
+    )
     # Average parser
     average_parser = subparsers.add_parser(
         "average",
@@ -666,7 +671,7 @@ def get_parser():
 
     train_parser.add_argument(
         "--loglevel", dest="loglevel", type=str,
-        default=DEFAULT_LOG_LEVEL,
+        default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
         choices=LOG_LEVELS.keys(),
         help="Logging level. Default: " + DEFAULT_LOG_LEVEL
     )

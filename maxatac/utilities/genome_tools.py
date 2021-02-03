@@ -118,37 +118,37 @@ def import_bed(bed_file,
                      sep="\t",
                      usecols=[0, 1, 2],
                      header=None,
-                     names=["chr", "start", "stop"],
+                     names=["Chr", "Start", "Stop"],
                      low_memory=False)
 
     # Make sure the chromosomes in the ROI file frame are in the target chromosome list
-    df = df[df["chr"].isin(chromosomes)]
+    df = df[df["Chr"].isin(chromosomes)]
 
     # Find the length of the regions
-    df["length"] = df["stop"] - df["start"]
+    df["length"] = df["Stop"] - df["Start"]
 
     # Find the center of each peak.
     # TODO Finding the center of the peak might not be the best approach to finding the ROI.
     # We might want to use bedtools to window the regions of interest around the peak.
-    df["center"] = np.floor(df["start"] + (df["length"] / 2)).apply(int)
+    df["center"] = np.floor(df["Start"] + (df["length"] / 2)).apply(int)
 
     # The start of the interval will be the center minus 1/2 the desired region length.
-    df["start"] = np.floor(df["center"] - (region_length / 2)).apply(int)
+    df["Start"] = np.floor(df["center"] - (region_length / 2)).apply(int)
 
     # the end of the interval will be the center plus 1/2 the desired region length
-    df["stop"] = np.floor(df["center"] + (region_length / 2)).apply(int)
+    df["Stop"] = np.floor(df["center"] + (region_length / 2)).apply(int)
 
     # The chromosome end is defined as the chromosome length
-    df["END"] = df["chr"].map(chromosome_sizes_dictionary)
+    df["END"] = df["Chr"].map(chromosome_sizes_dictionary)
 
     # Make sure the stop is less than the end
-    df = df[df["stop"].apply(int) < df["END"].apply(int)]
+    df = df[df["Stop"].apply(int) < df["END"].apply(int)]
 
     # Make sure the start is greater than the chromosome start of 0
-    df = df[df["start"].apply(int) > 0]
+    df = df[df["Start"].apply(int) > 0]
 
     # Select for the first three columns to clean up
-    df = df[["chr", "start", "stop"]]
+    df = df[["Chr", "Start", "Stop"]]
 
     # Import the dataframe as a pybedtools object so we can remove the blacklist
     BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
@@ -163,11 +163,11 @@ def import_bed(bed_file,
     df = blacklisted_df.to_dataframe()
 
     # Rename the columns
-    df.columns = ["chr", "start", "stop"]
+    df.columns = ["Chr", "Start", "Stop"]
 
     df["ROI_Type"] = ROI_type_tag
 
-    df["ROI_Cell"] = ROI_cell_tag
+    df["Cell_Line"] = ROI_cell_tag
 
     return df
 

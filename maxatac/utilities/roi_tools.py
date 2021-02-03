@@ -2,6 +2,7 @@ import os
 import random
 import pandas as pd
 import numpy as np
+from joblib._multiprocessing_helpers import mp
 
 from maxatac.utilities.genome_tools import (build_chrom_sizes_dict,
                                             import_bed)
@@ -29,7 +30,8 @@ class ValidationData(object):
                  region_length,
                  random_ratio,
                  chromosome_sizes,
-                 preferences
+                 preferences,
+                 threads
                  ):
         """
         :param meta_path: Path to run meta file
@@ -47,7 +49,7 @@ class ValidationData(object):
         self.random_ratio = random_ratio
         self.region_length = region_length
         self.preferences = preferences
-
+        self.threads = threads
         self.chromosome_sizes_dictionary = build_chrom_sizes_dict(chromosomes, chromosome_sizes)
 
         # Import meta txt as dataframe
@@ -86,7 +88,8 @@ class ValidationData(object):
                                  chromosome_sizes_dictionary=self.chromosome_sizes_dictionary,
                                  region_length=self.region_length,
                                  preferences=self.preferences,
-                                 cell_types=self.cell_types)
+                                 cell_types=self.cell_types,
+                                 threads=self.threads)
 
     def __get_validation_pool(self):
         """
@@ -104,7 +107,7 @@ class ValidationData(object):
         # Mix batches
         regions_list = random_examples_list + roi_examples_list
 
-        validation_dataframe = pd.DataFrame(regions_list, columns=["chr", "start", "stop", "ROI_Type", "ROI_Cell"])
+        validation_dataframe = pd.DataFrame(regions_list, columns=["Chr", "Start", "Stop", "ROI_Type", "Cell_Line"])
 
         return validation_dataframe
 
@@ -126,7 +129,7 @@ class ValidationData(object):
         self.validation_regions_pool.to_csv(bed_filename, sep="\t", index=False, header=False)
         self.validation_regions_pool.to_csv(tsv_filename, sep="\t", index=False)
 
-        group_ms = self.validation_regions_pool.groupby(["chr", "ROI_Cell", "ROI_Type"], as_index=False).size()
+        group_ms = self.validation_regions_pool.groupby(["Chr", "Cell_Line", "ROI_Type"], as_index=False).size()
         len_ms = self.validation_regions_pool.shape[0]
 
         group_ms.to_csv(stats_filename, sep="\t", index=False)
@@ -236,7 +239,7 @@ class ROIPool(object):
         self.chip_roi_pool.to_csv(chip_TSV_filename, sep="\t", index=False)
         self.combined_pool.to_csv(combined_TSV_filename, sep="\t", index=False)
 
-        group_ms = self.combined_pool.groupby(["chr", "ROI_Cell", "ROI_Type"], as_index=False).size()
+        group_ms = self.combined_pool.groupby(["Chr", "Cell_Line", "ROI_Type"], as_index=False).size()
         len_ms = self.combined_pool.shape[0]
         group_ms.to_csv(stats_filename, sep="\t", index=False)
 
@@ -273,7 +276,8 @@ class RandomRegionsPool(object):
             region_length,
             preferences,
             chromosome_sizes_dictionary,
-            cell_types
+            cell_types,
+            threads
     ):
         """
         This object requires a dictionary of chromosome sizes that are filtered for the training chromosomes of
@@ -292,6 +296,8 @@ class RandomRegionsPool(object):
         self.chromosome_sizes_dictionary = chromosome_sizes_dictionary
         self.cell_types = cell_types
         self.preferences_pool = self.__get_random_regions_pool(preferences)
+        self.threads = threads
+        self.__get_interval_weights()
 
     def __get_random_regions_pool(self, preferences):
         """
@@ -400,8 +406,6 @@ class RandomRegionsPool(object):
         :return: Training examples generated from random regions of the genome
         """
         random_regions_list = []
-
-        self.__get_interval_weights()
 
         for idx in range(number_random_regions):
             random_regions_list.append(self.__get_random_region())

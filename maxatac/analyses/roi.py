@@ -38,7 +38,8 @@ def run_roi(args):
                                      chromosome_sizes=args.chromosome_sizes,
                                      blacklist=args.blacklist,
                                      random_ratio=args.validate_random_ratio,
-                                     preferences=args.preferences)
+                                     preferences=args.preferences,
+                                     threads=args.threads)
 
     logging.error("Writing validation ROI files to BED")
 
