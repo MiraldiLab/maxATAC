@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import logging
+import pyfiglet
 
 from maxatac.utilities.logger import setup_logger
 from maxatac.utilities.parser import parse_arguments, print_args
@@ -8,6 +9,8 @@ from maxatac.utilities.constants import LOG_FORMAT
 
 
 def main(argsl=None):
+    print(pyfiglet.figlet_format("maxATAC", font="big", width=120))
+
     if argsl is None:
         argsl = sys.argv[1:]
     

@@ -6,7 +6,7 @@ import pdb
 from maxatac.utilities.helpers import replace_extension, remove_tags
 
 
-def export_model_structure(model, file_location, suffix="_model_structure", ext=".pdf", skip_tags="_{epoch}"):
+def export_model_structure(model, file_location, suffix="_model_structure", ext=".png", skip_tags="_{epoch}"):
     plot_model(
         model=model,
         show_shapes=True,
@@ -17,7 +17,8 @@ def export_model_structure(model, file_location, suffix="_model_structure", ext=
         )
     )
 
-def export_loss_dice_accuracy(history, tf, TCL, RR, ARC, file_location, suffix="_model_dice_acc", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
+
+def export_loss_dice_accuracy(history, tf, TCL, RR, ARC, file_location, suffix="_model_dice_acc", ext=".png", style="ggplot", log_base=10, skip_tags="_{epoch}"):
     plt.style.use(style)
     fig, ((ax1, ax2, ax3)) = plt.subplots(1, 3, sharex=False, sharey=False, figsize = (24,12))
     fig.suptitle('Training and Validation: Loss, Dice Coefficient and Accuracy for PCPC training on ' + TCL + '\n' +
@@ -88,7 +89,7 @@ def export_loss_dice_accuracy(history, tf, TCL, RR, ARC, file_location, suffix="
     )
 
 
-def export_model_loss(history, file_location, suffix="_model_loss", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
+def export_model_loss(history, file_location, suffix="_model_loss", ext=".png", style="ggplot", log_base=10, skip_tags="_{epoch}"):
     plt.style.use(style)
     
     #t_y = np.log(history.history["loss"]) / np.log(log_base)
@@ -120,7 +121,7 @@ def export_model_loss(history, file_location, suffix="_model_loss", ext=".pdf", 
 
     plt.close("all")
 
-def export_model_dice(history, file_location, suffix="_model_dice", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
+def export_model_dice(history, file_location, suffix="_model_dice", ext=".png", style="ggplot", log_base=10, skip_tags="_{epoch}"):
     plt.style.use(style)
     
     t_y = history.history['dice_coef']
@@ -151,7 +152,7 @@ def export_model_dice(history, file_location, suffix="_model_dice", ext=".pdf", 
     plt.close("all")
 
 
-def export_model_accuracy(history, file_location, suffix="_model_accuracy", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
+def export_model_accuracy(history, file_location, suffix="_model_accuracy", ext=".png", style="ggplot", log_base=10, skip_tags="_{epoch}"):
     plt.style.use(style)
     
     t_y = history.history['acc']
@@ -181,7 +182,7 @@ def export_model_accuracy(history, file_location, suffix="_model_accuracy", ext=
 
     plt.close("all")
 
-def export_boxplot(data, file_location, title="Quantile Normalization", names=None, suffix="_boxplot",  ext=".pdf", style="ggplot"):
+def export_boxplot(data, file_location, title="Quantile Normalization", names=None, suffix="_boxplot",  ext=".png", style="ggplot"):
 
     plt.style.use(style)
     
@@ -199,7 +200,7 @@ def export_boxplot(data, file_location, title="Quantile Normalization", names=No
 
     plt.close("all")
     
-def export_loss_mse_coeff(history, tf, TCL, RR, ARC, file_location, suffix="_model_loss_mse_coeff", ext=".pdf", style="ggplot", log_base=10, skip_tags="_{epoch}"):
+def export_loss_mse_coeff(history, tf, TCL, RR, ARC, file_location, suffix="_model_loss_mse_coeff", ext=".png", style="ggplot", log_base=10, skip_tags="_{epoch}"):
     plt.style.use(style)
     fig, ((ax1, ax2, ax3, ax4)) = plt.subplots(1, 4, sharex=False, sharey=False, figsize = (24,12))
     fig.suptitle('Training and Validation: Loss, Mean Squared Error and Coefficiennt of Determination for PCPC training on ' + TCL + '\n' +
@@ -289,7 +290,7 @@ def export_loss_mse_coeff(history, tf, TCL, RR, ARC, file_location, suffix="_mod
     )
 
 
-def export_prc(precision, recall, file_location,  title="Precision Recall Curve", suffix="_prc", ext=".pdf", style="ggplot"):
+def export_prc(precision, recall, file_location,  title="Precision Recall Curve", suffix="_prc", ext=".png", style="ggplot"):
     
     plt.style.use(style)
 
