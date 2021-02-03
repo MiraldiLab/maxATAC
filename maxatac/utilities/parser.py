@@ -17,7 +17,8 @@ from maxatac.utilities.helpers import (
 )
 from maxatac.utilities.constants import (
     DEFAULT_CHRS,
-    DEFAULT_CHR_PROPORTION,
+    DEFAULT_TRAIN_CHRS,
+    DEFAULT_VALIDATE_CHRS,
     LOG_LEVELS,
     DEFAULT_LOG_LEVEL,
     DEFAULT_TRAIN_EPOCHS,
@@ -31,8 +32,6 @@ from maxatac.utilities.constants import (
 )
 from maxatac.utilities.bigwig import load_bigwig
 from maxatac.utilities.twobit import load_2bit
-
-
 
 
 def normalize_args(args, skip_list=[], cwd_abs_path=None):
@@ -87,8 +86,7 @@ def get_synced_chroms(chroms, files, ignore_regions=None):
             with load_bigwig(file) as data_stream:
                 avail_chroms = set([(k, v) for k, v in data_stream.chroms().items()])
         loaded_chroms = loaded_chroms.intersection(avail_chroms) if loaded_chroms else avail_chroms  # checks both chrom_name and chrom_length are the same
-    
-    
+
     synced_chroms = {}
     for chrom_name, chrom_length in loaded_chroms:
         if chrom_name not in chroms_and_regions: continue
@@ -381,13 +379,12 @@ def get_parser():
 
     train_parser.add_argument(
         "--eval_roi", dest="eval_roi", type=str,
-        required=True,
+        required=False,
         help="Bed file  with ranges for input sequences to evaluate the model performance"
     )
     
     train_parser.add_argument(
-        "--chroms", dest="chroms", type=str, nargs="+",
-        required=True,
+        "--chroms", dest="chroms", type=str, nargs="+", default=DEFAULT_CHRS,
         help="Chromosome list for analysis. \
             Regions in a form of chrN:start-end are ignored. \
             Use --filters instead \
@@ -395,8 +392,7 @@ def get_parser():
     )
     
     train_parser.add_argument(
-        "--tchroms", dest="tchroms", type=str, nargs="+",
-        required=True,
+        "--tchroms", dest="tchroms", type=str, nargs="+", default=DEFAULT_TRAIN_CHRS,
         help="Chromosomes from --chroms fixed for training. \
             Regions in a form of chrN:start-end are ignored. \
             Use --filters instead \
@@ -404,8 +400,7 @@ def get_parser():
     )
 
     train_parser.add_argument(
-        "--vchroms", dest="vchroms", type=str, nargs="+",
-        required=True,
+        "--vchroms", dest="vchroms", type=str, nargs="+", default=DEFAULT_VALIDATE_CHRS,
         help="Chromosomes from --chroms fixed for validation. \
             Regions in a form of chrN:start-end are ignored. \
             Use --filters instead \
@@ -435,7 +430,6 @@ def get_parser():
         required=True,
         help="Ratio for controlling fraction of random seqeuences in each traning batch. float [0, 1]"
     )
-
 
     train_parser.add_argument(
         "--seed", dest="seed", type=int,

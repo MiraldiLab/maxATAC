@@ -50,23 +50,10 @@ from maxatac.utilities.plot import (
 )
 
 with Mute():  # hide stdout from loading the modules
-    from maxatac.utilities.unet import (
-        get_unet,
-        get_callbacks
-    )
-    from maxatac.utilities.d_cnn import (
-        get_dilated_cnn, tp, tn, fp, fn, acc
-
-    )
-    from maxatac.utilities.res_dcnn import (
-        get_res_dcnn, tp, tn, fp, fn, acc
-
-    )
-
-    from maxatac.utilities.multi_modal_models import (
-        MM_DCNN_V2
-
-    )
+    from maxatac.utilities.unet import get_callbacks
+    from maxatac.utilities.d_cnn import get_dilated_cnn
+    from maxatac.utilities.res_dcnn import get_res_dcnn
+    from maxatac.utilities.multi_modal_models import MM_DCNN_V2
 
 
 def run_training(args):
