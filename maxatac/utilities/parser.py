@@ -9,6 +9,8 @@ from maxatac.analyses.prediction import run_prediction
 from maxatac.analyses.training import run_training
 from maxatac.analyses.normalize import run_normalization
 from maxatac.analyses.benchmark import run_benchmarking
+from maxatac.analyses.roi import run_roi
+from maxatac.analyses.average import run_averaging
 
 from maxatac.utilities.helpers import (
     get_version,
@@ -28,7 +30,8 @@ from maxatac.utilities.constants import (
     DEFAULT_NORMALIZATION_BIN,
     DEFAULT_MIN_PREDICTION,
     BATCH_SIZE,
-    VAL_BATCH_SIZE
+    VAL_BATCH_SIZE, COMPLEMENT_REGIONS, BLACKLISTED_REGIONS, DEFAULT_CHROM_SIZES, INPUT_LENGTH,
+    DEFAULT_VALIDATE_RAND_RATIO
 )
 from maxatac.utilities.bigwig import load_bigwig
 from maxatac.utilities.twobit import load_2bit
@@ -219,14 +222,16 @@ def assert_and_fix_args_for_benchmarking(args):
 
 
 def assert_and_fix_args(args):
-
-    args.loglevel = LOG_LEVELS[args.loglevel]
     if args.func == run_prediction:
         pass
     elif args.func == run_training:
         assert_and_fix_args_for_training(args)
     elif args.func == run_normalization:
         assert_and_fix_args_for_normalization(args)
+    elif args.func == run_roi:
+        pass
+    elif args.func == run_averaging():
+        pass
     else:
         assert_and_fix_args_for_benchmarking(args)
 
@@ -243,6 +248,161 @@ def get_parser():
         "--version", action="version", version=get_version(),
         help="Print version information and exit"
     )
+    # Average parser
+    roi_parser = subparsers.add_parser(
+        "roi",
+        parents=[parent_parser],
+        help="Run maxATAC roi")
+
+    # Set the default function to run averaging
+    roi_parser.set_defaults(func=run_roi)
+
+    roi_parser.add_argument(
+        "--meta_file",
+        dest="meta_file",
+        type=str,
+        required=True,
+        help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)")
+
+    roi_parser.add_argument(
+        "--region_length",
+        dest="region_length",
+        type=int,
+        default=INPUT_LENGTH,
+        help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)")
+
+    roi_parser.add_argument(
+        "--train_chroms",
+        dest="train_chroms",
+        type=str,
+        nargs="+",
+        default=DEFAULT_TRAIN_CHRS,
+        help="Chromosomes from --chromosomes fixed for training. \
+            Default: 3-7,9-18,20-22")
+
+    roi_parser.add_argument(
+        "--validate_chroms",
+        dest="validate_chroms",
+        type=str,
+        nargs="+",
+        default=DEFAULT_VALIDATE_CHRS,
+        help="Chromosomes from fixed for validation. \
+            Default: chr2, chr19")
+
+    roi_parser.add_argument(
+        "--chromosome_sizes",
+        dest="chromosome_sizes",
+        type=str,
+        default=DEFAULT_CHROM_SIZES,
+        help="The chromosome sizes file to reference")
+
+    roi_parser.add_argument(
+        "--blacklist",
+        dest="blacklist",
+        type=str,
+        default=BLACKLISTED_REGIONS,
+        help="The blacklisted regions to exclude")
+
+    roi_parser.add_argument(
+        "--blacklist_complement",
+        dest="preferences",
+        type=str,
+        default=COMPLEMENT_REGIONS,
+        help="The complement to blacklisted regions or regions for random region selection")
+
+    roi_parser.add_argument(
+        "--output",
+        dest="output_dir",
+        type=str,
+        default="./average",
+        help="Output directory.")
+
+    roi_parser.add_argument(
+        "--loglevel",
+        dest="loglevel",
+        type=str,
+        default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+        choices=LOG_LEVELS.keys(),
+        help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
+
+    roi_parser.add_argument(
+        "--validate_random_ratio",
+        dest="validate_random_ratio",
+        type=float,
+        required=False,
+        default=DEFAULT_VALIDATE_RAND_RATIO,
+        help="Ratio for controlling fraction of random seqeuences in each validation batch. float [0, 1]")
+
+    roi_parser.add_argument(
+        "--training_prefix",
+        dest="training_prefix",
+        type=str,
+        default="training_test",
+        required=False,
+        help="Prefix to use for naming the training ROI file")
+
+    roi_parser.add_argument(
+        "--validation_prefix",
+        dest="validation_prefix",
+        type=str,
+        default="validation_test",
+        required=False,
+        help="Prefix to use for naming the validation ROI file")
+
+    # Average parser
+    average_parser = subparsers.add_parser(
+        "average",
+        parents=[parent_parser],
+        help="Run maxATAC average")
+
+    # Set the default function to run averaging
+    average_parser.set_defaults(func=run_averaging)
+
+    average_parser.add_argument(
+        "--bigwigs",
+        dest="bigwig_files",
+        type=str,
+        nargs="+",
+        required=True,
+        help="Input bigwig files to average.")
+
+    average_parser.add_argument(
+        "--prefix",
+        dest="prefix",
+        type=str,
+        required=True,
+        help="Output prefix.")
+
+    average_parser.add_argument(
+        "--chrom_sizes",
+        dest="chrom_sizes",
+        type=str,
+        default=DEFAULT_CHROM_SIZES,
+        help="Input chromosome sizes file. Default is hg38.")
+
+    average_parser.add_argument(
+        "--chromosomes",
+        dest="chromosomes",
+        type=str,
+        nargs="+",
+        default=DEFAULT_CHRS,
+        help="Chromosomes for averaging. \
+                Default: 1-22,X,Y")
+
+    average_parser.add_argument(
+        "--output",
+        dest="output_dir",
+        type=str,
+        default="./average",
+        help="Output directory.")
+
+    average_parser.add_argument(
+        "--loglevel",
+        dest="loglevel",
+        type=str,
+        default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+        choices=LOG_LEVELS.keys(),
+        help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
 
     # Predict parser
     predict_parser = subparsers.add_parser(

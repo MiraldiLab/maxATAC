@@ -1,5 +1,6 @@
 from logging import FATAL, ERROR, WARNING, INFO, DEBUG
 from keras.initializers import he_normal
+import os
 
 # Internal use
 
@@ -19,8 +20,16 @@ CPP_LOG_LEVEL = {
     DEBUG: 0
 }
 
+# Genomic resource constants
+blacklist_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_composite_blacklist.bed")
+blacklist_bigwig_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_composite_blacklist.bw")
+chrom_sizes_path = os.path.join(os.path.dirname(__file__), "../../data/hg38.chrom.sizes")
+complement_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_blacklist_complement_regions.bed")
 
-# Defaults for not provided arguments
+BLACKLISTED_REGIONS = os.path.normpath(blacklist_path)
+BLACKLISTED_REGIONS_BIGWIG = os.path.normpath(blacklist_bigwig_path)
+DEFAULT_CHROM_SIZES = os.path.normpath(chrom_sizes_path)
+COMPLEMENT_REGIONS = os.path.normpath(complement_path)
 
 # Default chromosome sets
 AUTOSOMAL_CHRS = [
@@ -52,6 +61,8 @@ DEFAULT_LOG_LEVEL = "error"
 DEFAULT_TRAIN_EPOCHS = 20
 
 DEFAULT_TRAIN_BATCHES_PER_EPOCH = 100 #100
+DEFAULT_VALIDATE_RAND_RATIO = .7
+DEFAULT_TRAIN_RAND_RATIO = .5
 
 DEFAULT_NORMALIZATION_BIN = 100
 DEFAULT_ADAM_LEARNING_RATE = 1e-3

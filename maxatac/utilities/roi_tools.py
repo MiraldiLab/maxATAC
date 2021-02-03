@@ -52,7 +52,7 @@ class ValidationData(object):
 
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
-        self.cell_types = self.meta_dataframe["Cell_Type"].unique()
+        self.cell_types = self.meta_dataframe["Cell_Line"].unique()
 
         # Get the ROIPool and/or RandomRegionsPool
         self.ROI_pool = self.__get_ROIPool()
@@ -167,7 +167,7 @@ class ROIPool(object):
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
 
-        self.cell_types = self.meta_dataframe["Cell_Type"].unique()
+        self.cell_types = self.meta_dataframe["Cell_Line"].unique()
 
         # Get a dictionary of {Cell Types: Peak Paths}
         self.atac_dictionary = pd.Series(self.meta_dataframe.ATAC_Peaks.values,
