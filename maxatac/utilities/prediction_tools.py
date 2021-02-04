@@ -3,8 +3,9 @@ import logging
 import numpy as np
 import pandas as pd
 import pybedtools
+import random
 
-from maxatac.utilities.genome_tools import load_bigwig, load_2bit, get_input_matrix, dump_bigwig, import_bed
+from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig, get_one_hot_encoded
 
 
 def make_predictions(
@@ -21,7 +22,6 @@ def make_predictions(
 ):
     """
     Make predictions on the input ROIs
-
     :param signal: The ATAC-seq signal file
     :param sequence: The 2bit DNA sequence file
     :param average: The average ATAC-seq signal file
@@ -32,7 +32,6 @@ def make_predictions(
     :param input_channels: Number of input channels
     :param input_length: Length of the input regions of interest
     :param predictions: empty and used to hold predictions.
-
     :return: A dataframe of scores associated with the regions of interest
     """
     logging.error("Load Model")
@@ -92,13 +91,11 @@ def write_predictions_to_bigwig(df,
                                 ):
     """
     Write the predictions dataframe into a bigwig file
-
     :param df: The dataframe of BED regions with prediction scores
     :param output_filename: The output bigwig filename
     :param chromosome_length_dictionary: A dictionary of chromosome sizes used to form the bigwig file
     :param chromosomes: A list of chromosomes that you are predicting in
     :param number_intervals: The number of 32 bp intervals found in the sequence
-
     :return: Writes a bigwig file
     """
     # Create BedTool object from the dataframe
@@ -142,14 +139,12 @@ def get_roi_values(
 ):
     """
     Get the bigwig values for each ROI in the ROI pool
-
     @param signal: ATAC-seq signal file
     @param sequence: 2bit DNA file
     @param average: Average ATAC-seq signal file
     @param roi_pool: Pool of regions to predict on
     @param input_channels: Number of input channels
     @param input_length: Length of the input regions
-
     @return: Array of examples
     """
     inputs_batch, targets_batch = [], []
@@ -182,3 +177,91 @@ def get_roi_values(
             inputs_batch.append(input_matrix)
 
     return np.array(inputs_batch)
+
+
+def import_bed(bed_file, region_length, chromosomes, chromosome_sizes_dictionary, blacklist):
+    """
+    Import a BED file and format the regions to be compatible with our maxATAC models
+    @param bed_file: Input BED file to format
+    @param region_length: Length of the regions to resize BED intervals to
+    @param chromosomes: Chromosomes to filter the BED file for
+    @param chromosome_sizes_dictionary: A dictionary of chromosome sizes to make sure intervals fall in bounds
+    @param blacklist: A BED file of regions to exclude from our analysis
+    @return: A dataframe of BED regions compatible with our model
+    """
+    df = pd.read_csv(bed_file,
+                     sep="\t",
+                     usecols=[0, 1, 2],
+                     header=None,
+                     names=["chr", "start", "stop"],
+                     low_memory=False)
+
+    df = df[df["chr"].isin(chromosomes)]
+
+    df["length"] = df["stop"] - df["start"]
+
+    df["center"] = np.floor(df["start"] + (df["length"] / 2)).apply(int)
+
+    df["start"] = np.floor(df["center"] - (region_length / 2)).apply(int)
+
+    df["stop"] = np.floor(df["center"] + (region_length / 2)).apply(int)
+
+    df["END"] = df["chr"].map(chromosome_sizes_dictionary)
+
+    df = df[df["stop"].apply(int) < df["END"].apply(int)]
+
+    df = df[df["start"].apply(int) > 0]
+
+    df = df[["chr", "start", "stop"]]
+
+    BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
+
+    blacklist_bedtool = pybedtools.BedTool(blacklist)
+
+    blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
+
+    df = blacklisted_df.to_dataframe()
+
+    df.columns = ["chr", "start", "stop"]
+
+    return df
+
+
+def get_input_matrix(rows,
+                     cols,
+                     signal_stream,
+                     average_stream,
+                     sequence_stream,
+                     bp_order,
+                     chromosome,
+                     start,  # end - start = cols
+                     end
+                     ):
+    """
+    Generate the matrix of values from the signal, sequence, and average data tracks
+    :param rows: (int) The number of channels or rows
+    :param cols: (int) The number of columns or length
+    :param signal_stream: (str) ATAC-seq signal
+    :param average_stream: (str) Average ATAC-seq signal
+    :param sequence_stream: (str) One-hot encoded sequence
+    :param bp_order: (list) Order of the bases in matrix
+    :param chromosome: (str) Chromosome name
+    :param start: (str) Chromosome start
+    :param end: (str) Chromosome end
+    :return: A matrix that is rows x columns with the values from each file
+    """
+    input_matrix = np.zeros((rows, cols))
+
+    for n, bp in enumerate(bp_order):
+        input_matrix[n, :] = get_one_hot_encoded(
+            sequence_stream.sequence(chromosome, start, end),
+            bp
+        )
+
+    signal_array = np.array(signal_stream.values(chromosome, start, end))
+    avg_array = np.array(average_stream.values(chromosome, start, end))
+    input_matrix[4, :] = signal_array
+    input_matrix[5, :] = input_matrix[4, :] - avg_array
+
+    return input_matrix.T
+

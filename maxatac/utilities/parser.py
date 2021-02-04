@@ -31,7 +31,7 @@ from maxatac.utilities.constants import (
     DEFAULT_MIN_PREDICTION,
     BATCH_SIZE,
     VAL_BATCH_SIZE, COMPLEMENT_REGIONS, BLACKLISTED_REGIONS, DEFAULT_CHROM_SIZES, INPUT_LENGTH,
-    DEFAULT_VALIDATE_RAND_RATIO
+    DEFAULT_VALIDATE_RAND_RATIO, DEFAULT_ROUND, DEFAULT_TEST_CHRS
 )
 from maxatac.utilities.bigwig import load_bigwig
 from maxatac.utilities.twobit import load_2bit
@@ -68,7 +68,7 @@ def get_synced_chroms(chroms, files, ignore_regions=None):
             "chr3": {"length": 198022430, "region": [0, 198022430]}
         }
     """
-    
+
     chroms_and_regions = {}
     for chrom in chroms:
         chrom_name, *region = chrom.replace(",", "").split(":")  # region is either [] or ["start-end", ...]
@@ -80,7 +80,7 @@ def get_synced_chroms(chroms, files, ignore_regions=None):
                 pass
 
     loaded_chroms = set()
-    
+
     for file in [f for f in files if f is not None]:
         try:
             with load_2bit(file) as data_stream:
@@ -88,28 +88,28 @@ def get_synced_chroms(chroms, files, ignore_regions=None):
         except RuntimeError:
             with load_bigwig(file) as data_stream:
                 avail_chroms = set([(k, v) for k, v in data_stream.chroms().items()])
-        loaded_chroms = loaded_chroms.intersection(avail_chroms) if loaded_chroms else avail_chroms  # checks both chrom_name and chrom_length are the same
+        loaded_chroms = loaded_chroms.intersection(
+            avail_chroms) if loaded_chroms else avail_chroms  # checks both chrom_name and chrom_length are the same
 
     synced_chroms = {}
     for chrom_name, chrom_length in loaded_chroms:
         if chrom_name not in chroms_and_regions: continue
         region = chroms_and_regions[chrom_name]
         if not region or \
-               region[0] < 0 or \
-               region[1] <= 0 or \
-               region[0] >= region[1] or \
-               region[1] > chrom_length:
+                region[0] < 0 or \
+                region[1] <= 0 or \
+                region[0] >= region[1] or \
+                region[1] > chrom_length:
             region = [0, chrom_length]
         synced_chroms[chrom_name] = {
             "length": chrom_length,
             "region": region
         }
-    
+
     return synced_chroms
 
 
 def assert_and_fix_args_for_prediction(args):
-
     synced_chroms = get_synced_chroms(
         args.chroms,
         [args.sequence, args.signal, args.average]
@@ -123,24 +123,24 @@ def assert_and_fix_args_for_prediction(args):
         "-".join([strftime("%Y-%m-%d-%H-%M-%S"), str(uuid4())]))
 
     if args.threads is None:
-        args.threads = len(args.models) * len(args.chroms)  # TODO: make sure that it's not more than available core count in GPU, or we are not using CPU
+        args.threads = len(args.models) * len(
+            args.chroms)  # TODO: make sure that it's not more than available core count in GPU, or we are not using CPU
 
 
 def assert_and_fix_args_for_training(args):
-
     setattr(args, "preferences", None)
     setattr(args, "signal", None)
-    #setattr(args, "filters", None)
+    # setattr(args, "filters", None)
     setattr(args, "tsites", None)
     synced_tchroms = get_synced_chroms(
         args.tchroms,
         [
             args.sequence,
             args.average,
-            #args.filters,
-            #args.preferences,
-            #args.signal,
-            #args.tsites
+            # args.filters,
+            # args.preferences,
+            # args.signal,
+            # args.tsites
         ],
         True
     )
@@ -149,10 +149,10 @@ def assert_and_fix_args_for_training(args):
         [
             args.sequence,
             args.average,
-            #args.filters,
-            #args.preferences,
-            #args.validation,
-            #args.vsites
+            # args.filters,
+            # args.preferences,
+            # args.validation,
+            # args.vsites
         ],
         True
     )
@@ -429,18 +429,6 @@ def get_parser():
     )
 
     predict_parser.add_argument(
-        "--train_tf", dest="train_tf", type=str,
-        required=True,
-        help="Transcription Factor to train on. Restricted to only 1 TF."
-    )
-
-    predict_parser.add_argument(
-        "--test_cell_lines", dest="test_cell_lines", type=str, nargs="+",
-        required=True,
-        help="Cell lines for model testing. These cell lines will not be used in model training. cell lines must be delimited with , "
-    )
-
-    predict_parser.add_argument(
         "--average", dest="average", type=str,
         required=True,
         help="Average signal bigWig file"
@@ -453,10 +441,11 @@ def get_parser():
     )
 
     predict_parser.add_argument(
-        "--meta_file", dest="meta_file", type=str,
+        "--signal",
+        dest="signal",
+        type=str,
         required=True,
-        help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
-    )
+        help="Input signal file")
 
     predict_parser.add_argument(
         "--minimum", dest="minimum", type=float,
@@ -465,9 +454,11 @@ def get_parser():
     )
 
     predict_parser.add_argument(
-        "--tmp", dest="tmp", type=str,
-        default="./temp",
-        help="Folder to save temporary data. Default: ./temp")
+        "--output_directory",
+        dest="output_directory",
+        type=str,
+        default="./prediction_results",
+        help="Folder for prediction results. Default: ./prediction_results")
 
     predict_parser.add_argument(
         "--output", dest="output", type=str,
@@ -475,28 +466,83 @@ def get_parser():
         help="Folder for prediction results. Default: ./prediction_results")
 
     predict_parser.add_argument(
+        "--blacklist",
+        dest="blacklist",
+        type=str,
+        default=BLACKLISTED_REGIONS,
+        help="The blacklisted regions to exclude")
+
+    predict_parser.add_argument(
+        "--roi",
+        dest="roi",
+        type=str,
+        required=True,
+        help="Bed file with ranges for input sequences to be predicted. \
+            Default: None, predictions are done on the whole chromosome length")
+
+    predict_parser.add_argument(
         "--keep", dest="keep", action="store_true",
         help="Keep temporary files. Default: False"
     )
 
     predict_parser.add_argument(
-        "--threads", dest="threads", type=int,
+        "--threads",
+        dest="threads",
+        default=get_cpu_count(),
+        type=int,
         help="# of processes to run prediction in parallel. \
-            Default: # of --models multiplied by # of --chroms"
-    )
+            Default: # of --models multiplied by # of --chromosomes")
 
     predict_parser.add_argument(
-        "--loglevel", dest="loglevel", type=str,
-        default=DEFAULT_LOG_LEVEL,
+        "--loglevel",
+        dest="loglevel",
+        type=str,
+        default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
         choices=LOG_LEVELS.keys(),
-        help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-    )
-    
+        help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
+
     predict_parser.add_argument(
         "--predict_roi", dest="predict_roi", type=str,
         help="Bed file with ranges for input sequences to be predicted. \
             Default: None, predictions are done on the whole chromosome length"
     )
+
+    predict_parser.add_argument(
+        "--round",
+        dest="round",
+        type=int,
+        default=DEFAULT_ROUND,
+        help="Float precision that you want to round predictions to")
+
+    predict_parser.add_argument(
+        "--batch_size",
+        dest="batch_size",
+        type=int,
+        default=10000,
+        help="Number of regions to predict on at a time")
+
+    predict_parser.add_argument(
+        "--prefix",
+        dest="prefix",
+        type=str,
+        default="maxatac_predict",
+        help="Prefix for filename")
+
+    predict_parser.add_argument(
+        "--chromosome_sizes",
+        dest="chromosome_sizes",
+        type=str,
+        default=DEFAULT_CHROM_SIZES,
+        help="The chromosome sizes file to reference")
+
+    predict_parser.add_argument(
+        "--predict_chromosomes",
+        dest="predict_chromosomes",
+        type=str,
+        nargs="+",
+        default=DEFAULT_TEST_CHRS,
+        help="Chromosomes from --chromosomes fixed for prediction. \
+            Default: 1, 8")
 
     # Train parser
     train_parser = subparsers.add_parser(
@@ -504,6 +550,7 @@ def get_parser():
         parents=[parent_parser],
         help="Run maxATAC training"
     )
+
     train_parser.set_defaults(func=run_training)
 
     train_parser.add_argument(
@@ -511,7 +558,7 @@ def get_parser():
         required=True,
         help="Genome sequence 2bit file"
     )
-    
+
     train_parser.add_argument(
         "--quant", dest="quant", action='store_true',
         default=False,
@@ -547,7 +594,7 @@ def get_parser():
         required=False,
         help="Bed file  with ranges for input sequences to evaluate the model performance"
     )
-    
+
     train_parser.add_argument(
         "--chroms", dest="chroms", type=str, nargs="+", default=DEFAULT_CHRS,
         help="Chromosome list for analysis. \
@@ -555,7 +602,7 @@ def get_parser():
             Use --filters instead \
             Default: main human chromosomes, whole length"
     )
-    
+
     train_parser.add_argument(
         "--tchroms", dest="tchroms", type=str, nargs="+", default=DEFAULT_TRAIN_CHRS,
         help="Chromosomes from --chroms fixed for training. \
@@ -571,7 +618,7 @@ def get_parser():
             Use --filters instead \
             Default: None, whole length"
     )
-    
+
     train_parser.add_argument(
         "--train_tf", dest="train_tf", type=str,
         required=True,
@@ -786,7 +833,7 @@ def get_parser():
         default="./benchmarking_results",
         help="Folder for benchmarking results. Default: ./benchmarking_results"
     )
-    
+
     benchmark_parser.add_argument(
         "--threads", dest="threads", type=int,
         help="# of processes to run benchmarking in parallel. \
@@ -817,7 +864,7 @@ def parse_arguments(argsl, cwd_abs_path=None):
     if len(argsl) == 0:
         argsl.append("")  # otherwise fails with error if empty
     args, _ = get_parser().parse_known_args(argsl)
-    
+
     if args.func == run_training:
         args = normalize_args(
             args,
@@ -826,12 +873,12 @@ def parse_arguments(argsl, cwd_abs_path=None):
                 "proportion", "vchroms", "tchroms",
                 "chroms", "keep", "epochs", "batches",
                 "prefix", "plot", "lrate", "decay", "bin",
-                "minimum", "test_cell_lines", "rand_ratio", 
+                "minimum", "test_cell_lines", "rand_ratio",
                 "train_tf", "arch", "quant", "batch_size",
                 "val_batch_size"
             ],
             cwd_abs_path
         )
-    
+
     assert_and_fix_args(args)
     return args

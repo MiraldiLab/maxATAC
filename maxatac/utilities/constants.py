@@ -76,7 +76,7 @@ MIN_PREDICTION = 0.01  # min prediction value to report in output
 BATCH_SIZE = 1000
 VAL_BATCH_SIZE = 1000
 
-
+DEFAULT_ROUND=6
 CHR_POOL_SIZE = 1000
 FLANK_LENGTH = 100  # make sure that 2 * FLANK_LENGTH < INPUT_LENGTH
 BP_ORDER = ["A", "C", "G", "T"]
