@@ -2,30 +2,22 @@
 import sys
 import logging
 import pyfiglet
-from maxatac.utilities.system_tools import setup_logger, Mute
 
-with Mute():
-    from maxatac.utilities.parser import parse_arguments, print_args
-    from maxatac.utilities.constants import LOG_FORMAT
+from maxatac.utilities.logger import setup_logger
+from maxatac.utilities.parser import parse_arguments, print_args
+from maxatac.utilities.constants import LOG_FORMAT
 
 
 def main(argsl=None):
-    # If the arguments list is none exit
     print(pyfiglet.figlet_format("maxATAC", font="big", width=120))
 
     if argsl is None:
         argsl = sys.argv[1:]
-
-    # Parse input arguments list
+    
     args = parse_arguments(argsl)
-
-    # Set up error logging
+    print(args)
     setup_logger(args.loglevel, LOG_FORMAT)
-
-    # Print the arguments that were input
     print_args(args, logging.debug)
-
-    # Run the function associated with the input argument: ie train, predict, benchmark, normalize, average
     args.func(args)
 
 

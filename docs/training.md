@@ -1,46 +1,40 @@
 # Training
 
+To train a maxATAC model you need to set up a lot of inputs and a meta table to organize those input files.
+
+___
+
+## Requirements
+
+### Meta Table
+
+The large number of examples, targets, inputs, and peaks are tracked using a meta file. The meta file should be in the following format: 
+
+| Cell_Type | TF   | Output type                        | Experiment date released | File accession | priority | CHIP_Peaks                                                                               | ATAC_Peaks                                                                                   | ATAC_Signal_File                                                                                      | Binding_File                                                                            | Peak_Counts | tuple      | Train_Test_Label |
+|-----------|------|------------------------------------|--------------------------|----------------|----------|------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|-------------------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------|-------------|------------|------------------|
+| A549      | CTCF | conservative IDR thresholded peaks | 2012-08-20               | ENCFF277ZAR    | 1        | /Users/caz3so/scratch/maxATAC/data/20201215_ENCODE_refined_CHIP_rename/A549__CTCF.bed    | /Users/caz3so/scratch/20201127_maxATAC_refined_samples/ATAC/cell_type_peaks/A549_ATAC.bed    | /Users/caz3so/scratch/20201127_maxATAC_refined_samples/ATAC/cell_type_average/A549_RPM_minmax01.bw    | /Users/caz3so/scratch/maxATAC/data/20201215_ENCODE_refined_CHIP_rename/A549__CTCF.bw    | 36415       | CTCF_36415 | Train            |
+| GM12878   | CTCF | conservative IDR thresholded peaks | 2011-02-10               | ENCFF017XLW    | 1        | /Users/caz3so/scratch/maxATAC/data/20201215_ENCODE_refined_CHIP_rename/GM12878__CTCF.bed | /Users/caz3so/scratch/20201127_maxATAC_refined_samples/ATAC/cell_type_peaks/GM12878_ATAC.bed | /Users/caz3so/scratch/20201127_maxATAC_refined_samples/ATAC/cell_type_average/GM12878_RPM_minmax01.bw | /Users/caz3so/scratch/maxATAC/data/20201215_ENCODE_refined_CHIP_rename/GM12878__CTCF.bw | 39892       | CTCF_39892 | Train            |
+| HCT116    | CTCF | conservative IDR thresholded peaks | 2012-01-17               | ENCFF832GBA    | 1        | /Users/caz3so/scratch/maxATAC/data/20201215_ENCODE_refined_CHIP_rename/HCT116__CTCF.bed  | /Users/caz3so/scratch/20201127_maxATAC_refined_samples/ATAC/cell_type_peaks/HCT116_ATAC.bed  | /Users/caz3so/scratch/20201127_maxATAC_refined_samples/ATAC/cell_type_average/HCT116_RPM_minmax01.bw  | /Users/caz3so/scratch/maxATAC/data/20201215_ENCODE_refined_CHIP_rename/HCT116__CTCF.bw  | 49964       | CTCF_49964 | Train            |
+| HepG2     | CTCF | conservative IDR thresholded peaks | 2011-03-17               | ENCFF704ECS    | 1        | /Users/caz3so/scratch/maxATAC/data/20201215_ENCODE_refined_CHIP_rename/HepG2__CTCF.bed   | /Users/caz3so/scratch/20201127_maxATAC_refined_samples/ATAC/cell_type_peaks/HepG2_ATAC.bed   | /Users/caz3so/scratch/20201127_maxATAC_refined_samples/ATAC/cell_type_average/HepG2_RPM_minmax01.bw   | /Users/caz3so/scratch/maxATAC/data/20201215_ENCODE_refined_CHIP_rename/HepG2__CTCF.bw   | 44930       | CTCF_44930 | Train            |
+
+
+
+You will need to have ATAC-seq and ChIP-seq data in a bigwig format. You will also need peak file for both ATAC-seq and ChIP-seq. If no ATAC-seq or ChIP-seq files are used then you will get an error when building the ROI based training regions. 
+
+___
+
 ## run_training
 
 The main function of the training module is the `run_training` function.
 
-Input: The args namespace object with the following attributes
+The first step of training a maxATAC model is to initialize the Keras model with the architecture of interest. 
 
-* args.arch
-* args.seed
-* args.prefix
-* args.output
-* args.KERNEL_SIZE
-* args.FILTER_NUMBER
-* args.lrate
-* args.decay
-* args.weights
 
 ___
 
 ### get_dilated_cnn
 
-The get_dilated_cnn function takes as input the following parameters defined by the arg parser and constants file:
-
-* input_filters,
-* input_kernel_size,
-* adam_learning_rate,
-* adam_decay,
-* input_length=INPUT_LENGTH,
-* input_channels=INPUT_CHANNELS,
-* input_activation=INPUT_ACTIVATION,
-* output_filters=OUTPUT_FILTERS,
-* output_kernel_size=OUTPUT_KERNEL_SIZE,
-* output_activation=OUTPUT_ACTIVATION,
-* filters_scaling_factor=FILTERS_SCALING_FACTOR,
-* conv_blocks=CONV_BLOCKS,
-* padding=PADDING,
-* pool_size=POOL_SIZE,
-* adam_beta_1=ADAM_BETA_1,
-* adam_beta_2=ADAM_BETA_2,
-* dilation_rate=DILATION_RATE,                                  
-* weights=None
-
+The get_dilated_cnn function takes as input the following 
 The function get_dilated_cnn will build the CNN model.
 
 The first part of building the CNN model is to set up the input layer and the temporary variables used for the input layer and filters. The input layer is the shape of the input lengths (1024 bp) and the input channels (5;4 DNA + ATAC).
@@ -159,34 +153,4 @@ for i in range(n):
 
 return inbound_layer
 </pre>
-
-___
-
-### get_roi_pool
-
-
-<pre>
-def get_roi_pool(seq_len=None, roi=None, shuffle=False):
-    roi_df = pd.read_csv(roi, sep="\t", header=0, index_col=None)
-    temp = roi_df['Stop'] - roi_df['Start']
-    ##############################
-    #Temporary Workaround. Needs to be deleted later 
-    roi_ok = (temp == seq_len)
-    temp_df = roi_df[roi_ok==True]
-    roi_df = temp_df
-    ###############################
-
-    #roi_ok = (temp == seq_len).all()
-    #if not roi_ok:
-        
-        #sys.exit("ROI Length Does Not Match Input Length")
-        
-    if shuffle:
-        roi_df = roi_df.sample(frac=1)
-    return roi_df
-</pre>
-
-___
-
-### validate_pool
 

@@ -105,4 +105,3 @@ class Mute():
         os.dup2(self.BACKUP_FDS[1], 2)
         os.close(self.NULL_FDS[0])
         os.close(self.NULL_FDS[1])
-

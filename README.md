@@ -7,15 +7,11 @@ This version lacks documentation of functions and code still.
 ## TODO
 
 - [ ] Learn how to create tests 
-- [ ] ***Optimize training***
 - [ ] Expand prediction to multi-chromosome
 - [ ] Clean up code
 - [ ] Document code
 - [ ] Expand benchmarking multi-chromosome
-- [ ] Update to latest tensorflow
-- [ ] Incorporate quantitative predictions
-- [ ] Incorporate resnet
-- [ ] Incorporate multi-modal
+- [ ] Organize the utilities
 
 ## Dependencies
 
@@ -24,8 +20,10 @@ maxATAC uses python 3.6 and can be run with or without a GPU. Package requiremen
 <pre>
 bedtools           bioconda/osx-64::bedtools-2.29.2-h37cfd92_0
 </pre>
+# Work in progress
 
 The following python packages are required:
+
 <pre>
 "tensorflow-gpu==1.14.0",
 "tensorboard==1.14.0",
@@ -41,6 +39,16 @@ The following python packages are required:
 "pybedtools==0.8.1",
 "tqdm"
 </pre>
+
+        "tensorflow-gpu==1.14.0",
+        "keras==2.2.5",
+        "pyBigWig==0.3.16",
+        "py2bit==0.3.0",
+        "numpy==1.16.2",
+        "pydot==1.4.1",
+        "matplotlib==3.2.1",
+        "scikit-learn==0.22.2",
+        "pandas==1.0.3"
 
 ## Functions
 
