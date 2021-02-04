@@ -31,7 +31,8 @@ from maxatac.utilities.constants import (
     DEFAULT_MIN_PREDICTION,
     BATCH_SIZE,
     VAL_BATCH_SIZE, COMPLEMENT_REGIONS, BLACKLISTED_REGIONS, DEFAULT_CHROM_SIZES, INPUT_LENGTH,
-    DEFAULT_VALIDATE_RAND_RATIO, DEFAULT_ROUND, DEFAULT_TEST_CHRS
+    DEFAULT_VALIDATE_RAND_RATIO, DEFAULT_ROUND, DEFAULT_TEST_CHRS, DEFAULT_BENCHMARKING_BIN_SIZE,
+    DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION, BLACKLISTED_REGIONS_BIGWIG
 )
 from maxatac.utilities.bigwig import load_bigwig
 from maxatac.utilities.twobit import load_2bit
@@ -230,10 +231,10 @@ def assert_and_fix_args(args):
         assert_and_fix_args_for_normalization(args)
     elif args.func == run_roi:
         pass
-    elif args.func == run_averaging():
+    elif args.func == run_averaging:
         pass
     else:
-        assert_and_fix_args_for_benchmarking(args)
+        pass
 
 
 def get_parser():
@@ -410,18 +411,18 @@ def get_parser():
         help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
 
     # Predict parser
-    predict_parser = subparsers.add_parser(
-        "predict",
-        parents=[parent_parser],
-        help="Run maxATAC prediction",
-    )
+    predict_parser = subparsers.add_parser("predict",
+                                           parents=[parent_parser],
+                                           help="Run maxATAC prediction",
+                                           )
+
     predict_parser.set_defaults(func=run_prediction)
 
-    predict_parser.add_argument(
-        "--models", dest="models", type=str, nargs="+",
-        required=True,
-        help="Trained model file(s)"
-    )
+    predict_parser.add_argument("--models", dest="models", type=str, nargs="+",
+                                required=True,
+                                help="Trained model file(s)"
+                                )
+
     predict_parser.add_argument(
         "--quant", dest="quant", action='store_true',
         default=False,
@@ -796,56 +797,79 @@ def get_parser():
     benchmark_parser.set_defaults(func=run_benchmarking)
 
     benchmark_parser.add_argument(
-        "--prediction", dest="prediction", type=str,
+        "--prediction",
+        dest="prediction",
+        type=str,
         required=True,
-        help="Prediction bigWig file"
-    )
+        help="Prediction bigWig file")
 
     benchmark_parser.add_argument(
-        "--control", dest="control", type=str,
+        "--gold_standard",
+        dest="gold_standard",
+        type=str,
         required=True,
-        help="Control bigWig file"
-    )
+        help="Gold Standard bigWig file")
 
     benchmark_parser.add_argument(
-        "--chroms", dest="chroms", type=str, nargs="+",
-        default=DEFAULT_CHRS,
+        "--chromosomes",
+        dest="chromosomes",
+        type=str,
+        default=DEFAULT_TEST_CHRS,
         help="Chromosomes list for analysis. \
             Optionally with regions in a form of chrN:start-end. \
-            Default: main human chromosomes, whole length"
-    )
+            Default: main human chromosomes, whole length")
 
     benchmark_parser.add_argument(
-        "--bin", dest="bin", type=int,
-        default=DEFAULT_NORMALIZATION_BIN,
+        "--bin_size",
+        dest="bin_size",
+        type=int,
+        default=DEFAULT_BENCHMARKING_BIN_SIZE,
         help="Bin size to split prediction and control data before running prediction. \
-            Default: " + str(DEFAULT_NORMALIZATION_BIN)
-    )
+            Default: " + str(DEFAULT_BENCHMARKING_BIN_SIZE))
 
     benchmark_parser.add_argument(
-        "--plot", dest="plot", action="store_true",
-        help="Plot PRC plot for every chromosome. \
-            Default: False"
-    )
+        "--agg",
+        dest="agg_function",
+        type=str,
+        default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
+        help="Aggregation function to use for combining results into bins: \
+            max, sum, mean, median, min")
 
     benchmark_parser.add_argument(
-        "--output", dest="output", type=str,
+        "--round_predictions",
+        dest="round_predictions",
+        type=int,
+        default=DEFAULT_ROUND,
+        help="Round binned values to this number of decimal places")
+
+    benchmark_parser.add_argument(
+        "--prefix",
+        dest="prefix",
+        type=str,
+        required=True,
+        help="Prefix for the file name")
+
+    benchmark_parser.add_argument(
+        "--output_directory",
+        dest="output_directory",
+        type=str,
         default="./benchmarking_results",
-        help="Folder for benchmarking results. Default: ./benchmarking_results"
-    )
+        help="Folder for benchmarking results. Default: ./benchmarking_results")
 
     benchmark_parser.add_argument(
-        "--threads", dest="threads", type=int,
-        help="# of processes to run benchmarking in parallel. \
-            Default: # of available CPUs minus 25 percent, min 1"
-    )
-
-    benchmark_parser.add_argument(
-        "--loglevel", dest="loglevel", type=str,
-        default=DEFAULT_LOG_LEVEL,
+        "--loglevel",
+        dest="loglevel",
+        type=str,
+        default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
         choices=LOG_LEVELS.keys(),
-        help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-    )
+        help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
+
+    benchmark_parser.add_argument(
+        "--blacklist",
+        dest="blacklist",
+        type=str,
+        default=BLACKLISTED_REGIONS_BIGWIG,
+        help="The blacklisted regions to exclude")
 
     return general_parser
 

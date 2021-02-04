@@ -14,11 +14,11 @@ def get_blacklist_mask(blacklist,
     """
     Get a numpy array that will allow you to select non-blacklisted regions for benchmarking
 
-    @param blacklist: Input blacklist bigwig file
-    @param chromosome:  Chromosome that you are benchmarking on
-    @param bin_size: Size of the bins for comparison
+    :param blacklist: Input blacklist bigwig file
+    :param chromosome:  Chromosome that you are benchmarking on
+    :param bin_size: Size of the bins for comparison
 
-    @return: An array that has True in positions that are not blacklisted
+    :return : An array that has True in positions that are not blacklisted
     """
     with load_bigwig(blacklist) as blacklist_stream:
         # Get the chromosome ends
@@ -50,15 +50,15 @@ def calculate_predictions_AUPR(prediction,
     """
     Calculate the precision and recall of a ChIP-seq gold standard
 
-    @param prediction: The input prediction bigwig file
-    @param gold_standard: The input gold standard file
-    @param bin_size: The bin size to compare the predictions at
-    @param chromosome: The chromosome to limit the analysis to
-    @param results_location: The location to write the results to
-    @param blacklist_mask: The blacklist mask that is used to remove bins overlapping blacklist regions
-    @param agg_function: The function to use to aggregate scores in bins
+    :param prediction: The input prediction bigwig file
+    :param gold_standard: The input gold standard file
+    :param bin_size: The bin size to compare the predictions at
+    :param chromosome: The chromosome to limit the analysis to
+    :param results_location: The location to write the results to
+    :param blacklist_mask: The blacklist mask that is used to remove bins overlapping blacklist regions
+    :param agg_function: The function to use to aggregate scores in bins
 
-    @return: Writes a TSV for the P/R curve
+    :return: Writes a TSV for the P/R curve
     """
     with load_bigwig(prediction) as prediction_stream, load_bigwig(gold_standard) as goldstandard_stream:
         # Get the end of the chromosome
