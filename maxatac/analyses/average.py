@@ -19,7 +19,7 @@ def run_averaging(args):
     ________________________
     Workflow Overview
 
-    1) Create Directories and file set up
+    1) Create directories and set up filenames
     2) Build a dictionary of chromosome sizes and filter it based on desired chromosomes to average
     3) Open the bigwig file for writing
     4) Loop through each entry in the chromosome sizes dictionary and calculate the average across all inputs

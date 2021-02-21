@@ -27,9 +27,9 @@ def run_prediction(args):
 
     Workflow overview
 
-    1) import_prediction_regions: Set up the output directory and filenames
-    2) make_predictions: Import regions to predict on
-    3) write_predictions_to_bigwig: Convert predictions to bigwig format and write results
+    1) Create directories and set up filenames
+    2) Make predictions
+    3) Convert predictions to bigwig format and write results
 
 
     :param args : output_directory, prefix, signal, sequence, models, predict_chromosomes, minimum, threads, batch_size

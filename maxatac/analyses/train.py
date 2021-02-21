@@ -16,7 +16,9 @@ def run_training(args):
     The primary input to the training function is a meta file that contains all of the information for the locations of
     ATAC-seq signal, ChIP-seq signal, TF, and Cell type.
 
-    Example header for meta file:
+    Example header for meta file. The meta file must be a tsv file, but the order of the columns does not matter. As
+    long as the column names are the same:
+
     TF | Cell_Type | ATAC_Signal_File | Binding_File | ATAC_Peaks | ChIP_peaks
 
     _________________

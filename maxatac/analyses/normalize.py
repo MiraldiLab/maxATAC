@@ -15,16 +15,15 @@ def run_normalization(args):
     """
     Run minmax normalization on a bigwig file
 
-    This function will minmax a bigwig file genome-wide. The code will loop through each chromosome and find the min and
-    max values. It will then create a dataframe of the values per chromosome. It will then find the minimum and maximum
-    values in the dataset and then scale all other values between 0,1.
+    This function will min-max a bigwig file based on the minimum and maximum values in the chromosomes of interest.
+    The code will loop through each chromosome and find the min and max values. It will then create a dataframe of
+    the values per chromosome. It will then scale all other values between 0,1.
     _________________
     Workflow Overview
 
-    1) Create directories and set up
-    2) build_chrom_sizes_dict: build a dictionary of the chromosomes sizes.
-    3) find_genomic_min_max: Find the genomic min and max values by looping through and using numpy
-    3) Create a bigwig file based on the chromosomes in the dictionary
+    1) Create directories and set up filenames
+    2) Build a dictionary of the chromosomes sizes.
+    3) Find the genomic min and max values by looping through each chromosome
     5) Loop through each chromosome and minmax normalize the values based on the genomic values.
 
     :param args: signal, output, chrom_sizes
