@@ -5,7 +5,7 @@ from functools import partial
 
 from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH, BP_ORDER
 from maxatac.utilities.genome_tools import safe_load_bigwig, load_bigwig, load_2bit
-from maxatac.utilities.training_tools import get_pc_input_matrix
+from maxatac.utilities.training_tools import get_input_matrix
 
 
 def dinuc_shuffle_DNA_only_several_times(list_containing_input_modes_for_an_example,
@@ -116,7 +116,7 @@ def process_map(row_idx,
             load_bigwig(signal) as signal_stream, \
             load_bigwig(binding) as binding_stream:
         try:
-            input_matrix = get_pc_input_matrix(
+            input_matrix = get_input_matrix(
                 rows=INPUT_CHANNELS,
                 cols=INPUT_LENGTH,
                 batch_size=1,  # we will combine into batch later

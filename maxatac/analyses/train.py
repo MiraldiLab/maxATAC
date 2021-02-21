@@ -51,16 +51,16 @@ def run_training(args):
                                  )
 
     # Initialize the training generator
-    train_gen = DataGenerator(args.sequence,
-                              args.average,
-                              maxatac_model.meta_dataframe,
-                              get_roi_pool(filepath=args.train_roi,
-                                           shuffle=True
-                                           ),
-                              maxatac_model.cell_types,
-                              args.rand_ratio,
-                              args.train_tf,
-                              args.tchroms,
+    train_gen = DataGenerator(sequence=args.sequence,
+                              average=args.average,
+                              meta_table=maxatac_model.meta_dataframe,
+                              roi_pool=get_roi_pool(filepath=args.train_roi,
+                                                    chroms=args.tchroms,
+                                                    shuffle=True
+                                                    ),
+                              cell_type_list=maxatac_model.cell_types,
+                              rand_ratio=args.rand_ratio,
+                              chroms=args.tchroms,
                               quant=args.quant,
                               batch_size=args.batch_size,
                               target_scale_factor=args.target_scale_factor,
@@ -68,16 +68,16 @@ def run_training(args):
                               )
 
     # Initialize the validation generator
-    val_gen = DataGenerator(args.sequence,
-                            args.average,
-                            maxatac_model.meta_dataframe,
-                            get_roi_pool(filepath=args.validate_roi,
-                                         shuffle=True
-                                         ),
-                            maxatac_model.cell_types,
-                            args.rand_ratio,
-                            args.train_tf,
-                            args.vchroms,
+    val_gen = DataGenerator(sequence=args.sequence,
+                            average=args.average,
+                            meta_table=maxatac_model.meta_dataframe,
+                            roi_pool=get_roi_pool(filepath=args.validate_roi,
+                                                  chroms=args.vchroms,
+                                                  shuffle=True
+                                                  ),
+                            cell_type_list=maxatac_model.cell_types,
+                            rand_ratio=args.rand_ratio,
+                            chroms=args.vchroms,
                             quant=args.quant,
                             batch_size=args.batch_size,
                             target_scale_factor=args.target_scale_factor,
@@ -95,7 +95,7 @@ def run_training(args):
                                                                 log_location=maxatac_model.log_location,
                                                                 tensor_board_log_dir=maxatac_model.tensor_board_log_dir,
                                                                 monitor=TRAIN_MONITOR
-                                                                                    ),
+                                                            ),
                                                             use_multiprocessing=args.threads > 1,
                                                             workers=args.threads,
                                                             verbose=1
@@ -103,7 +103,7 @@ def run_training(args):
 
     # If plot then plot the model structure and training metrics
     if args.plot:
-        quant = args.quant
+        quant = args.quants
         tf = args.train_tf
         TCL = '_'.join(maxatac_model.cell_types)
         ARC = args.arch

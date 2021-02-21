@@ -78,7 +78,7 @@ def run_interpretation(args):
                                     custom_objects={'loss_function': loss_function, 'dice_coef': dice_coef}
                                     )
 
-    interpret_pool = get_roi_pool(filepath=args.interpret_roi, shuffle=True)
+    interpret_pool = get_roi_pool(filepath=args.interpret_roi, chroms=args.chroms, shuffle=True)
 
     print('Interpretation pool loaded, total size: ', interpret_pool.shape)
 

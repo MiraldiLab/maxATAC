@@ -621,14 +621,6 @@ def get_parser():
                               help="activation function for model output layer. Support for Linear and Sigmoid"
                               )
 
-    # Set to required=False since it is not used
-    train_parser.add_argument("--eval_roi",
-                              dest="eval_roi",
-                              type=str,
-                              required=False,
-                              help="Bed file  with ranges for input sequences to evaluate the model performance"
-                              )
-
     train_parser.add_argument("--chroms",
                               dest="chroms",
                               type=str,
@@ -678,15 +670,6 @@ def get_parser():
                               required=True,
                               help="Specify the model architecture. Currently support DCNN_V2, RES_DCNN_V2, "
                                    "MM_DCNN_V2 and MM_Res_DCNN_V2 "
-                              )
-
-    train_parser.add_argument("--test_cell_lines",
-                              dest="test_cell_lines",
-                              type=str,
-                              nargs="+",
-                              required=True,
-                              help="Cell lines for model testing. These cell lines will not be used in model "
-                                   "training. cell lines must be delimited with , "
                               )
 
     train_parser.add_argument("--rand_ratio",

@@ -81,12 +81,15 @@ class MaxATACModel(object):
         self.nn_model = self.__get_model()
 
         if interpret:
-            self.interpret_location = get_dir(path.join(self.output_directory, 'interpret'))
-            self.metacluster_patterns_location = get_dir(path.join(self.interpret_location,'metacluster_patterns'))
-            self.meme_query_pattern_location= get_dir(path.join(self.interpret_location, 'meme_query'))
-            self.interpret_model_file=path.join(self.interpret_location,'tmp.model')
-
+            assert (interpret_cell_type is not None, "Set the interpretation cell type argument")
             self.interpret_cell_type = interpret_cell_type
+            self.__get_interpretation_attributes()
+
+    def __get_interpretation_attributes(self):
+        self.interpret_location = get_dir(path.join(self.output_directory, 'interpret'))
+        self.metacluster_patterns_location = get_dir(path.join(self.interpret_location, 'metacluster_patterns'))
+        self.meme_query_pattern_location = get_dir(path.join(self.interpret_location, 'meme_query'))
+        self.interpret_model_file = path.join(self.interpret_location, 'tmp.model')
 
     def __get_model(self):
         # Get the neural network model based on the specified model architecture
@@ -134,7 +137,6 @@ def DataGenerator(
         roi_pool,
         cell_type_list,
         rand_ratio,
-        train_tf,
         chroms,
         bp_resolution=BP_RESOLUTION,
         quant=False,
@@ -160,7 +162,6 @@ def DataGenerator(
     :param roi_pool: The pool of regions to use centered on peaks
     :param cell_type_list: The training cell lines to use
     :param rand_ratio: The number of random examples to use per batch
-    :param train_tf: The training TF
     :param chroms: The training chromosomes
     :param bp_resolution: The resolution of the predictions to use
     :param quant: Whether to use quantitative predictions
@@ -185,32 +186,28 @@ def DataGenerator(
                                                   )
 
     # Initialize the ROI generator
-    roi_gen = create_roi_batch(sequence,
-                               average,
-                               meta_table,
-                               roi_pool,
-                               n_roi,
-                               train_tf,
-                               chroms,
+    roi_gen = create_roi_batch(sequence=sequence,
+                               average=average,
+                               meta_table=meta_table,
+                               roi_pool=roi_pool,
+                               n_roi=n_roi,
+                               cell_type_list=cell_type_list,
                                bp_resolution=bp_resolution,
                                quant=quant,
                                target_scale_factor=target_scale_factor,
-                               filters=None,
                                shuffle_cell_type=shuffle_cell_type
                                )
 
     # Initialize the random regions generator
-    rand_gen = create_random_batch(sequence,
-                                   average,
-                                   meta_table,
-                                   cell_type_list,
-                                   n_rand,
-                                   train_tf,
-                                   train_random_regions_pool,
+    rand_gen = create_random_batch(sequence=sequence,
+                                   average=average,
+                                   meta_table=meta_table,
+                                   cell_type_list=cell_type_list,
+                                   n_rand=n_rand,
+                                   regions_pool=train_random_regions_pool,
                                    bp_resolution=bp_resolution,
                                    quant=quant,
-                                   target_scale_factor=target_scale_factor,
-                                   filters=None
+                                   target_scale_factor=target_scale_factor
                                    )
 
     while True:
@@ -234,53 +231,18 @@ def DataGenerator(
         yield inputs_batch, targets_batch
 
 
-def get_input_matrix(
-        rows,
-        cols,
-        batch_size,  # make sure that cols % batch_size == 0
-        signal_stream,
-        average_stream,
-        sequence_stream,
-        bp_order,
-        chrom,
-        start,  # end - start = cols
-        end,
-        reshape=True,
-        scale_signal=None,  # (min, max) ranges to scale signal
-        filters_stream=None  # defines regions that should be set to 0
-):
-    input_matrix = np.zeros((rows, cols))
-
-    for n, bp in enumerate(bp_order):
-        input_matrix[n, :] = get_one_hot_encoded(sequence_stream.sequence(chrom, start, end), bp)
-
-    signal_array = np.array(signal_stream.values(chrom, start, end))
-    avg_array = np.array(average_stream.values(chrom, start, end))
-
-    if filters_stream is not None:
-        exclude_mask = np.array(filters_stream.values(chrom, start, end)) <= 0
-        signal_array[exclude_mask] = 0
-        avg_array[exclude_mask] = 0
-
-    input_matrix[4, :] = signal_array
-    input_matrix[5, :] = input_matrix[4, :] - avg_array
-
-    if scale_signal is not None:
-        scaling_factor = random.random() * (scale_signal[1] - scale_signal[0]) + scale_signal[0]
-        input_matrix[4, :] = input_matrix[4, :] * scaling_factor
-
-    input_matrix = input_matrix.T
-
-    if reshape:
-        input_matrix = np.reshape(input_matrix, (batch_size, round(cols / batch_size), rows))
-
-    return input_matrix
-
-
-def get_roi_pool(filepath, shuffle=False):
+def get_roi_pool(filepath, chroms, shuffle=False):
     """
-    Import the ROI file containing the regios of interest. This file is similar to a bed file, but with a header
+    Import the ROI file containing the regions of interest. This file is similar to a bed file, but with a header
 
+    The roi DF is read in from a TSV file that is formatted similarly as a BED file with a header. The following columns
+    are required:
+
+    Chr | Start | Stop | ROI_Type | Cell_Line
+
+    The chroms list is used to filter the ROI df to make sure that only training chromosomes are included.
+
+    :param chroms: A list of chromosomes to filter the ROI pool by. This is a double check that it is prefiltered
     :param filepath: The path to the roi file to be used
     :param shuffle: Whether to shuffle the dataframe upon import
 
@@ -288,62 +250,81 @@ def get_roi_pool(filepath, shuffle=False):
     """
     roi_df = pd.read_csv(filepath, sep="\t", header=0, index_col=None)
 
+    roi_df = roi_df[roi_df['Chr'].isin(chroms)]
+
     if shuffle:
         roi_df = roi_df.sample(frac=1)
 
     return roi_df
 
 
-def get_pc_input_matrix(
-        rows,
-        cols,
-        batch_size,  # make sure that cols % batch_size == 0
-        signal_stream,
-        average_stream,
-        sequence_stream,
-        bp_order,
-        chrom,
-        start,  # end - start = cols
-        end,
-        reshape=True,
+def get_input_matrix(rows,
+                     cols,
+                     signal_stream,
+                     average_stream,
+                     sequence_stream,
+                     bp_order,
+                     chrom,
+                     start,  # end - start = cols
+                     end
+                     ):
+    """
+    Get the matrix of values from the corresponding genomic position
 
-):
+    :param rows: Number of rows == channels
+    :param cols: Number of cols == region length
+    :param signal_stream: Signal bigwig stream
+    :param average_stream: Average bigwig stream
+    :param sequence_stream: 2bit DNA sequence stream
+    :param bp_order: BP order
+    :param chrom: chromosome
+    :param start: start
+    :param end: end
+
+    :return: a matrix (rows x cols) of values from the input bigwig files
+    """
     input_matrix = np.zeros((rows, cols))
+
     for n, bp in enumerate(bp_order):
         input_matrix[n, :] = get_one_hot_encoded(sequence_stream.sequence(chrom, start, end), bp)
 
     signal_array = np.array(signal_stream.values(chrom, start, end))
     avg_array = np.array(average_stream.values(chrom, start, end))
+
     input_matrix[4, :] = signal_array
     input_matrix[5, :] = input_matrix[4, :] - avg_array
-    input_matrix = input_matrix.T
 
-    if reshape:
-        input_matrix = np.reshape(
-            input_matrix,
-            (batch_size, round(cols / batch_size), rows)
-        )
-
-    return input_matrix
+    return input_matrix.T
 
 
-def create_roi_batch(
-        sequence,
-        average,
-        meta_table,
-        roi_pool,
-        n_roi,
-        train_tf,
-        tchroms,
-        bp_resolution=1,
-        quant=False,
-        target_scale_factor=1,
-        filters=None,
-        shuffle_cell_type=False
-):
+def create_roi_batch(sequence,
+                     average,
+                     meta_table,
+                     roi_pool,
+                     n_roi,
+                     cell_type_list,
+                     bp_resolution=1,
+                     quant=False,
+                     target_scale_factor=1,
+                     shuffle_cell_type=False
+                     ):
+    """
+    Create a batch of examples from regions of interest
+
+    :param sequence:
+    :param average:
+    :param meta_table:
+    :param roi_pool:
+    :param n_roi:
+    :param cell_type_list:
+    :param bp_resolution:
+    :param quant:
+    :param target_scale_factor:
+    :param shuffle_cell_type:
+
+    :return: np.array(inputs_batch), np.array(targets_batch
+    """
     while True:
-        cell_line_list = roi_pool["Cell_Line"].unique()
-
         inputs_batch, targets_batch = [], []
         roi_size = roi_pool.shape[0]
 
@@ -354,70 +335,58 @@ def create_roi_batch(
             roi_row = roi_pool.iloc[row_idx, :]
 
             if shuffle_cell_type:
-                cell_line = random.choice(cell_line_list)
+                cell_line = random.choice(cell_type_list)
 
             else:
                 cell_line = roi_row['Cell_Line']
 
-            tf = train_tf
             chrom_name = roi_row['Chr']
-            try:
-                assert chrom_name in tchroms, \
-                    "Chromosome in roi file not in chroms list. Exiting"
-            except:
-                # print("Skipped {0} because it is not in chroms".format(chrom_name))
-                continue
+
             start = int(roi_row['Start'])
             end = int(roi_row['Stop'])
-            meta_row = meta_table[((meta_table['Cell_Line'] == cell_line) & (meta_table['TF'] == tf))]
+
+            meta_row = meta_table[(meta_table['Cell_Line'] == cell_line)]
             meta_row = meta_row.reset_index(drop=True)
-            try:
-                signal = meta_row.loc[0, 'ATAC_Signal_File']
-                binding = meta_row.loc[0, 'Binding_File']
-            except:
-                # print("could not read meta_row. row_idx = {0}".format(row_idx))
-                continue
+
+            signal = meta_row.loc[0, 'ATAC_Signal_File']
+            binding = meta_row.loc[0, 'Binding_File']
+
             with \
-                    safe_load_bigwig(filters) as filters_stream, \
                     load_bigwig(average) as average_stream, \
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
-                try:
-                    input_matrix = get_pc_input_matrix(
-                        rows=INPUT_CHANNELS,
-                        cols=INPUT_LENGTH,
-                        batch_size=1,  # we will combine into batch later
-                        reshape=False,
-                        bp_order=BP_ORDER,
-                        signal_stream=signal_stream,
-                        average_stream=average_stream,
-                        sequence_stream=sequence_stream,
-                        chrom=chrom_name,
-                        start=start,
-                        end=end
-                    )
-                    inputs_batch.append(input_matrix)
-                    if not quant:
-                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-                        target_vector = np.nan_to_num(target_vector, 0.0)
-                        n_bins = int(target_vector.shape[0] / bp_resolution)
-                        split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                        bin_sums = np.sum(split_targets, axis=1)
-                        bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-                        targets_batch.append(bin_vector)
-                    else:
-                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-                        target_vector = np.nan_to_num(target_vector, 0.0)
-                        n_bins = int(target_vector.shape[0] / bp_resolution)
-                        split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                        bin_vector = np.mean(split_targets,
-                                             axis=1)  # Perhaps we can change np.mean to np.median. Something to think about.
-                        targets_batch.append(bin_vector)
 
-                except:
-                    here = 3
-                    continue
+                input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
+                                                cols=INPUT_LENGTH,
+                                                bp_order=BP_ORDER,
+                                                signal_stream=signal_stream,
+                                                average_stream=average_stream,
+                                                sequence_stream=sequence_stream,
+                                                chrom=chrom_name,
+                                                start=start,
+                                                end=end
+                                                )
+
+                inputs_batch.append(input_matrix)
+
+                if not quant:
+                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+                    target_vector = np.nan_to_num(target_vector, 0.0)
+                    n_bins = int(target_vector.shape[0] / bp_resolution)
+                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+                    bin_sums = np.sum(split_targets, axis=1)
+                    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+                    targets_batch.append(bin_vector)
+
+                else:
+                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+                    target_vector = np.nan_to_num(target_vector, 0.0)
+                    n_bins = int(target_vector.shape[0] / bp_resolution)
+                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+                    bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
+                    targets_batch.append(bin_vector)
+
         if quant:
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
@@ -429,48 +398,46 @@ def create_random_batch(
         sequence,
         average,
         meta_table,
-        train_cell_lines,
+        cell_type_list,
         n_rand,
-        train_tf,
         regions_pool,
         bp_resolution=1,
         quant=False,
-        target_scale_factor=1,
-        filters=None
+        target_scale_factor=1
 ):
     while True:
         inputs_batch, targets_batch = [], []
+
         for idx in range(n_rand):
-            cell_line = random.choice(train_cell_lines)  # Randomly select a cell line
+            cell_line = random.choice(cell_type_list)  # Randomly select a cell line
+
             chrom_name, seq_start, seq_end = regions_pool.get_region()  # returns random region (chrom_name, start, end)
-            meta_row = meta_table[((meta_table['Cell_Line'] == cell_line) & (
-                    meta_table['TF'] == train_tf))]  # get meta table row corresponding to selected cell line
+
+            meta_row = meta_table[(meta_table['Cell_Line'] == cell_line)]  # get meta row for selected cell line
             meta_row = meta_row.reset_index(drop=True)
+
             signal = meta_row.loc[0, 'ATAC_Signal_File']
             binding = meta_row.loc[0, 'Binding_File']
+
             with \
-                    safe_load_bigwig(filters) as filters_stream, \
                     load_bigwig(average) as average_stream, \
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
                 try:
-                    input_matrix = get_input_matrix(
-                        rows=INPUT_CHANNELS,
-                        cols=INPUT_LENGTH,
-                        batch_size=1,  # we will combine into batch later
-                        reshape=False,
-                        bp_order=BP_ORDER,
-                        signal_stream=signal_stream,
-                        average_stream=average_stream,
-                        sequence_stream=sequence_stream,
-                        chrom=chrom_name,
-                        start=seq_start,
-                        end=seq_end,
-                        scale_signal=TRAIN_SCALE_SIGNAL,
-                        filters_stream=filters_stream
-                    )
+                    input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
+                                                    cols=INPUT_LENGTH,
+                                                    bp_order=BP_ORDER,
+                                                    signal_stream=signal_stream,
+                                                    average_stream=average_stream,
+                                                    sequence_stream=sequence_stream,
+                                                    chrom=chrom_name,
+                                                    start=seq_start,
+                                                    end=seq_end
+                                                    )
+
                     inputs_batch.append(input_matrix)
+
                     if not quant:
                         target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
                         target_vector = np.nan_to_num(target_vector, 0.0)
@@ -479,6 +446,7 @@ def create_random_batch(
                         bin_sums = np.sum(split_targets, axis=1)
                         bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
                         targets_batch.append(bin_vector)
+
                     else:
                         target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
                         target_vector = np.nan_to_num(target_vector, 0.0)
@@ -492,9 +460,11 @@ def create_random_batch(
                 except:
                     here = 2
                     continue
+
         if quant:
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
+
         yield (np.array(inputs_batch), np.array(targets_batch))
 
 
