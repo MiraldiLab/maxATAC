@@ -10,7 +10,7 @@
 - [ ] Organize the utilities
 - [ ] Test all architectures
 
-## Predicting TF Binding Prediction Workflow Overview
+## Predicting TF Binding Workflow Overview
 
 Steps in training and assessing a maxATAC model. Relevant functions are listed below each step. 
 
