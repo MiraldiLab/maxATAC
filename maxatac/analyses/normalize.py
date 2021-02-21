@@ -1,22 +1,35 @@
 import logging
-import numpy as np
 import pyBigWig
 import os
 import tqdm
+from maxatac.utilities.system_tools import get_dir, Mute
 
-from maxatac.utilities.genome_tools import build_chrom_sizes_dict
-from maxatac.utilities.normalization_tools import find_genomic_min_max, minmax_normalize_array
-from maxatac.utilities.system_tools import get_dir
-from maxatac.utilities.constants import DEFAULT_CHRS
+with Mute():
+    from maxatac.utilities.genome_tools import build_chrom_sizes_dict
+    from maxatac.utilities.normalization_tools import find_genomic_min_max, minmax_normalize_array
+    from maxatac.utilities.constants import DEFAULT_CHRS
+    import numpy as np
 
 
 def run_normalization(args):
     """
     Run minmax normalization on a bigwig file
 
-    @param args: Input arguments list from the parser
+    This function will minmax a bigwig file genome-wide. The code will loop through each chromosome and find the min and
+    max values. It will then create a dataframe of the values per chromosome. It will then find the minimum and maximum
+    values in the dataset and then scale all other values between 0,1.
+    _________________
+    Workflow Overview
 
-    @return: A minmax normalized bigwig file
+    1) Create directories and set up
+    2) build_chrom_sizes_dict: build a dictionary of the chromosomes sizes.
+    3) find_genomic_min_max: Find the genomic min and max values by looping through and using numpy
+    3) Create a bigwig file based on the chromosomes in the dictionary
+    5) Loop through each chromosome and minmax normalize the values based on the genomic values.
+
+    :param args: signal, output, chrom_sizes
+
+    :return: A minmax normalized bigwig file
     """
     basename = os.path.basename(args.signal).split(".bw")[0]
 
@@ -30,7 +43,7 @@ def run_normalization(args):
                   "\n  Output directory: " + output_dir
                   )
 
-    chromosome_length_dictionary = build_chrom_sizes_dict(DEFAULT_CHRS, args.chrom_sizes)
+    chromosome_length_dictionary = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
 
     genome_min, genome_max = find_genomic_min_max(args.signal)
 

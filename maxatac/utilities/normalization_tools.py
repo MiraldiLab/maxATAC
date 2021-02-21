@@ -1,6 +1,5 @@
 import logging
 import os
-
 import numpy as np
 import pandas as pd
 import pyBigWig
@@ -20,7 +19,7 @@ def find_genomic_min_max(bigwig_path):
     with pyBigWig.open(bigwig_path) as input_bigwig:
         minmax_results = []
 
-        # Create a status bar for to look fancy and count what chromosome you are on
+        # Create a status bar to look fancy and count what chromosome you are on
         chromosome_status_bar = tqdm.tqdm(total=len(input_bigwig.chroms()), desc='Chromosomes Processed', position=0)
 
         for chromosome in input_bigwig.chroms():

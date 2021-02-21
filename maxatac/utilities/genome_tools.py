@@ -1,25 +1,25 @@
 import pandas as pd
-import pybedtools
 import numpy as np
 import pyBigWig
 import py2bit
 import random
 
-from maxatac.utilities.helpers import get_absolute_path
+from maxatac.utilities.system_tools import get_absolute_path
 
 
-def build_chrom_sizes_dict(chromosome_list,
-                           chrom_sizes_filename
-                           ):
+def build_chrom_sizes_dict(chromosome_list, chrom_sizes_filename):
     """
-    Build a dictionary of chromosome sizes.
+    Build a dictionary of chromosome sizes filtered for chromosomes in the input chromosome_list
 
-    :param chromosome_list: (str) path to the chromosome sizes file.
-    :param chrom_sizes_filename: (str) a list of chromosomes of interest.
+    :param chromosome_list: list of chromosome to filter dictionary by
+    :param chrom_sizes_filename: path to the chromosome sizes file
+
     :return: A dictionary of chromosome sizes filtered by chromosome list.
     """
+    # Import the data as pandas dataframe
     chrom_sizes_df = pd.read_csv(chrom_sizes_filename, header=None, names=["chr", "len"], sep="\t")
 
+    # Filter the dataframe for the chromosomes of interest
     chrom_sizes_df = chrom_sizes_df[chrom_sizes_df["chr"].isin(chromosome_list)]
 
     return pd.Series(chrom_sizes_df.len.values, index=chrom_sizes_df.chr).to_dict()
@@ -80,96 +80,15 @@ def get_bigwig_values(bigwig_path, chrom_name, chrom_end, chrom_start=0):
     """
     Get the values for a genomic region of interest from a bigwig file.
 
-    @param bigwig_path: Path to the bigwig file
-    @param chrom_name: Chromosome name
-    @param chrom_end: chromosome end
-    @param chrom_start: chromosome start
+    :param bigwig_path: Path to the bigwig file
+    :param chrom_name: Chromosome name
+    :param chrom_end: chromosome end
+    :param chrom_start: chromosome start
 
-    @return: Bigwig values from the region given
+    :return: Bigwig values from the region given
     """
     with pyBigWig.open(bigwig_path) as input_bw:
         return np.nan_to_num(input_bw.values(chrom_name, chrom_start, chrom_end, numpy=True))
-
-
-def import_bed(bed_file,
-               region_length,
-               chromosomes,
-               chromosome_sizes_dictionary,
-               blacklist,
-               ROI_type_tag,
-               ROI_cell_tag):
-    """
-    Import a BED file and format the regions to be compatible with our maxATAC models
-
-    :param ROI_cell_tag:
-    :param ROI_type_tag:
-    :param bed_file: Input BED file to format
-    :param region_length: Length of the regions to resize BED intervals to
-    :param chromosomes: List of chromosomes to limit the input
-    :param chromosome_sizes_dictionary: A dictionary of chromosome sizes to make sure intervals fall in bounds
-    :param blacklist: A BED file of regions to exclude from our analysis
-    :param ROI_type_tag: Tag to use in the description column
-    :param ROI_cell_tag: Tag to use in the description column
-
-    :return: A dataframe of BED regions compatible with our model
-    """
-    # Import dataframe
-    df = pd.read_csv(bed_file,
-                     sep="\t",
-                     usecols=[0, 1, 2],
-                     header=None,
-                     names=["Chr", "Start", "Stop"],
-                     low_memory=False)
-
-    # Make sure the chromosomes in the ROI file frame are in the target chromosome list
-    df = df[df["Chr"].isin(chromosomes)]
-
-    # Find the length of the regions
-    df["length"] = df["Stop"] - df["Start"]
-
-    # Find the center of each peak.
-    # TODO Finding the center of the peak might not be the best approach to finding the ROI.
-    # We might want to use bedtools to window the regions of interest around the peak.
-    df["center"] = np.floor(df["Start"] + (df["length"] / 2)).apply(int)
-
-    # The start of the interval will be the center minus 1/2 the desired region length.
-    df["Start"] = np.floor(df["center"] - (region_length / 2)).apply(int)
-
-    # the end of the interval will be the center plus 1/2 the desired region length
-    df["Stop"] = np.floor(df["center"] + (region_length / 2)).apply(int)
-
-    # The chromosome end is defined as the chromosome length
-    df["END"] = df["Chr"].map(chromosome_sizes_dictionary)
-
-    # Make sure the stop is less than the end
-    df = df[df["Stop"].apply(int) < df["END"].apply(int)]
-
-    # Make sure the start is greater than the chromosome start of 0
-    df = df[df["Start"].apply(int) > 0]
-
-    # Select for the first three columns to clean up
-    df = df[["Chr", "Start", "Stop"]]
-
-    # Import the dataframe as a pybedtools object so we can remove the blacklist
-    BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
-
-    # Import the blacklist as a pybedtools object
-    blacklist_bedtool = pybedtools.BedTool(blacklist)
-
-    # Find the intervals that do not intersect blacklisted regions.
-    blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
-
-    # Convert the pybedtools object to a pandas dataframe.
-    df = blacklisted_df.to_dataframe()
-
-    # Rename the columns
-    df.columns = ["Chr", "Start", "Stop"]
-
-    df["ROI_Type"] = ROI_type_tag
-
-    df["Cell_Line"] = ROI_cell_tag
-
-    return df
 
 
 def get_input_matrix(rows,
@@ -282,3 +201,18 @@ def get_synced_chroms(chroms, ignore_regions=None):
             "region": region
         }
     return synced_chroms
+
+
+class EmptyStream():
+    def __enter__(self):
+        return None
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+
+def safe_load_bigwig(location):
+    try:
+        return pyBigWig.open(get_absolute_path(location))
+    except (RuntimeError, TypeError):
+        return EmptyStream()

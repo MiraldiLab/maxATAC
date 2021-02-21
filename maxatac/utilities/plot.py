@@ -1,9 +1,8 @@
+from maxatac.utilities.system_tools import replace_extension, remove_tags, Mute
 import matplotlib.pyplot as plt
-import numpy as np
-from keras.utils import plot_model
-import pdb
 
-from maxatac.utilities.helpers import replace_extension, remove_tags
+with Mute():
+    from keras.utils import plot_model
 
 
 def export_model_structure(model, file_location, suffix="_model_structure", ext=".png", skip_tags="_{epoch}"):

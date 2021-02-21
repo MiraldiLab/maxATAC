@@ -1,18 +1,32 @@
 import logging
 import pyBigWig
 import os
-import numpy as np
 import tqdm
 
-from maxatac.utilities.genome_tools import build_chrom_sizes_dict, get_bigwig_values
-from maxatac.utilities.system_tools import get_dir
+from maxatac.utilities.system_tools import get_dir, Mute
+
+with Mute():
+    from maxatac.utilities.genome_tools import build_chrom_sizes_dict, get_bigwig_values
+    import numpy as np
 
 
 def run_averaging(args):
     """
-    Average multiple bigwig files into one file
+    Average multiple bigwig files into one file.
 
-    :param args:
+    This function can take a list of input bigwig files and average their scores using pyBigWig. The only requirement
+    for the bigwig files is that they contain the same chromosomes or there might be an error about retrieving scores.
+    ________________________
+    Workflow Overview
+
+    1) Create Directories and file set up
+    2) Build a dictionary of chromosome sizes and filter it based on desired chromosomes to average
+    3) Open the bigwig file for writing
+    4) Loop through each entry in the chromosome sizes dictionary and calculate the average across all inputs
+    5) Write the bigwig file
+
+    :param args: bigwig_files, output_dir, prefix, chromosomes, chrom_sizes
+
     :return: One bigwig file that is the average of input files
     """
     # Get the number of files in the input args parser
@@ -32,6 +46,7 @@ def run_averaging(args):
                   "Restricting to chromosomes: \n   - " + "\n   - ".join(args.chromosomes) + "\n"
                   )
 
+    # TODO add a flag for different reference genomes
     # Build a dictionary of chromosomes sizes using the chromosomes and chromosome sizes files provided
     # The function will filter the dictionary based on the input list
     chromosome_sizes_dictionary = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
