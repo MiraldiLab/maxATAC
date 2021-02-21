@@ -1,15 +1,16 @@
 # maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq
 
-The maxATAC package is a collection of tools used for learning to predict TF binding from ATAC-seq data. MaxATAC also provides functions for interpreting trained models and preparing the input data.
-## TODO
+## Introduction
 
-- [ ] Learn how to create tests
-- [ ] Expand prediction to multi-chromosome
-- [ ] Clean up code
-- [ ] Document code
-- [ ] Expand benchmarking multi-chromosome
-- [ ] Organize the utilities
-- [ ] Test all architectures
+Cellular behavior is the result of complex genomic regulation partially controlled by the activity of DNA binding proteins called transcription factors (TFs). TFs bind DNA in a sequence specific manner to regulate gene transcription. TFs, other DNA binding proteins, nucleosomes, and structural proteins are all involved in the regulation of gene expression and their physical interaction with DNA molecules results in changes in the accessibility of the underlying DNA sequence. The assay for transposase accessible chromatin uses a hyperactive Tn5 transposase to probe for genomic regions that are accessible to cleavage, and in turn, accessible to TF binding. It has been shown that distinct patterns in genomic Tn5 cleavage signal can be used to identify TF binding positions that are partially protected from Tn5 cleavage, known as TF footprints. ATAC-seq can also be used to identify regions of the genome that are generally accessible. Here we present a method to predict TF binding by learning from ATAC-seq accessibility signal and the underlying DNA sequence of TF binding locations identified by ChIP-seq. 
+
+
+The maxATAC package is a collection of tools used for learning to predict TF binding from ATAC-seq data. MaxATAC also provides functions for interpreting trained models and preparing the input data.
+
+
+## Requirements
+
+This version requires python 3.6 and BEDTools. 
 
 ## Predicting TF Binding Workflow Overview
 
