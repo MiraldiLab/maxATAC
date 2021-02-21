@@ -104,7 +104,7 @@ def run_training(args):
     # If plot then plot the model structure and training metrics
     if args.plot:
         quant = args.quants
-        tf = args.train_tf
+        tf = maxatac_model.train_tf
         TCL = '_'.join(maxatac_model.cell_types)
         ARC = args.arch
         RR = args.rand_ratio

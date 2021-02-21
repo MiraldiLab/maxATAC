@@ -78,6 +78,8 @@ class MaxATACModel(object):
         # Find the unique number of cell types in the meta file
         self.cell_types = self.meta_dataframe["Cell_Line"].unique().tolist()
 
+        self.train_tf = self.meta_dataframe["TF"].unique()[0]
+
         self.nn_model = self.__get_model()
 
         if interpret:

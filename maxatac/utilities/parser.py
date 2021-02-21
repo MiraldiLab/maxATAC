@@ -657,13 +657,6 @@ def get_parser():
                                     Default: None, whole length"
                               )
 
-    train_parser.add_argument("--train_tf",
-                              dest="train_tf",
-                              type=str,
-                              required=True,
-                              help="Transcription Factor to train on. Restricted to only 1 TF."
-                              )
-
     train_parser.add_argument("--arch",
                               dest="arch",
                               type=str,
