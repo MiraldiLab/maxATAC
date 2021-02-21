@@ -1,5 +1,6 @@
 # maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq
 
+The maxATAC package is a collection of tools used for learning to predict TF binding from ATAC-seq data. MaxATAC also provides functions for interpreting trained models and preparing the input data.
 ## TODO
 
 - [ ] Learn how to create tests
@@ -66,7 +67,7 @@ This function can take a list of input bigwig files and average their scores usi
 
 The `normalize` function will take an input bigwig file and minmax normalize the values genome wide.
 
-This function will min-max a bigwig file based on the minimum and maximum values in the chromosomes of interest. The code will loop through each chromosome and find the min and max values. It will then create a dataframe of the values per chromosome. It will then scale all other values between 0,1.
+This function will min-max a bigwig file based on the minimum and maximum values in the chromosomes of interest. The code will loop through each chromosome and find the min and max values. It will then create a dataframe of the values per chromosome. It will then scale all other values between [0,1].
 
 **Workflow Overview**
 
