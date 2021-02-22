@@ -49,7 +49,6 @@ def run_prediction(args):
                   "Sequence data: " + args.sequence + "\n" +
                   "Models: \n   - " + "\n   - ".join(args.models) + "\n" +
                   "Chromosomes: " + str(args.predict_chromosomes) + "\n" +
-                  "Minimum prediction value to be reported: " + str(args.minimum) + "\n" +
                   "Threads count: " + str(args.threads) + "\n" +
                   "Output directory: " + str(output_directory) + "\n" +
                   "Batch Size: " + str(args.batch_size) + "\n" +
