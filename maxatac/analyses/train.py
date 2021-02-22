@@ -103,7 +103,7 @@ def run_training(args):
 
     # If plot then plot the model structure and training metrics
     if args.plot:
-        quant = args.quants
+        quant = args.quant
         tf = maxatac_model.train_tf
         TCL = '_'.join(maxatac_model.cell_types)
         ARC = args.arch

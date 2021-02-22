@@ -41,6 +41,7 @@ setup(name="maxatac",
                         "grpcio==1.35.0",
                         "deeplift",
                         "seaborn",
+                        "graphviz",
                         "shap @ git+https://github.com/AvantiShri/shap.git@master#egg=shap",
                         "modisco @ git+https://github.com/XiaotingChen/tfmodisco.git@0.5.9.2#egg-modisco"
                         ],
