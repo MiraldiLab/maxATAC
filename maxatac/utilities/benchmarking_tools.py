@@ -1,7 +1,7 @@
 import logging
-
 import numpy as np
 import pandas as pd
+
 from maxatac.utilities.genome_tools import load_bigwig
 from sklearn import metrics
 from sklearn.metrics import precision_recall_curve
@@ -12,7 +12,8 @@ def get_blacklist_mask(blacklist,
                        bin_size
                        ):
     """
-    Get a numpy array that will allow you to select non-blacklisted regions for benchmarking
+    Get a numpy array that will allow you to select non-blacklisted regions for benchmarking. This currently only works
+    for a single chromosome.
 
     :param blacklist: Input blacklist bigwig file
     :param chromosome:  Chromosome that you are benchmarking on
@@ -27,13 +28,9 @@ def get_blacklist_mask(blacklist,
         # Get the number of bins for the genome
         bin_count = int(int(chromosome_length) / int(bin_size))  # need to floor the number
 
+        # TODO rewrite to maybe have pybigwig.stats calculate the bin number based on span and width
         # Get the blacklist values as an array
-        return np.array(blacklist_stream.stats(chromosome,
-                                               0,
-                                               chromosome_length,
-                                               type="max",
-                                               nBins=bin_count
-                                               ),
+        return np.array(blacklist_stream.stats(chromosome, 0, chromosome_length, type="max", nBins=bin_count),
                         dtype=float  # need it to have NaN instead of None
                         ) != 1  # Convert to boolean array, select areas that are not 1
 
@@ -56,10 +53,12 @@ def calculate_predictions_AUPR(prediction,
     :param chromosome: The chromosome to limit the analysis to
     :param results_location: The location to write the results to
     :param blacklist_mask: The blacklist mask that is used to remove bins overlapping blacklist regions
+    :param round_predictions: Round the prediction values to this many floating points
     :param agg_function: The function to use to aggregate scores in bins
 
     :return: Writes a TSV for the P/R curve
     """
+    # TODO There is a way to use pybigwig to bin the data with specific intervals and steps. We need to use this
     with load_bigwig(prediction) as prediction_stream, load_bigwig(gold_standard) as goldstandard_stream:
         # Get the end of the chromosome
         chromosome_length = prediction_stream.chroms(chromosome)
@@ -125,6 +124,8 @@ def calculate_predictions_AUPR(prediction,
 
         except:
             PR_CURVE_DF["AUPR"] = 0
+
+        # TODO Draw a line from the first point to 0.
 
         # Write the precision recall curve to a file
         PR_CURVE_DF.to_csv(results_location, sep="\t", header=True, index=False)

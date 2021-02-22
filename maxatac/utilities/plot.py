@@ -1,9 +1,8 @@
+from maxatac.utilities.system_tools import replace_extension, remove_tags, Mute
 import matplotlib.pyplot as plt
-import numpy as np
-from keras.utils import plot_model
-import pdb
 
-from maxatac.utilities.helpers import replace_extension, remove_tags
+with Mute():
+    from keras.utils import plot_model
 
 
 def export_model_structure(model, file_location, suffix="_model_structure", ext=".png", skip_tags="_{epoch}"):
@@ -59,10 +58,10 @@ def export_loss_dice_accuracy(history, tf, TCL, RR, ARC, file_location, suffix="
     ax2.legend(["Training", "Validation"], loc="upper left")
     
     ###
-    t_y = history.history['acc']
+    t_y = history.history['accuracy']
     t_x = [int(i) for i in range(1, len(t_y) + 1)]
 
-    v_y = history.history["val_acc"]
+    v_y = history.history["val_accuracy"]
     v_x = [int(i) for i in range(1, len(v_y) + 1)]
 
     ax3.plot(t_x, t_y, marker='o')

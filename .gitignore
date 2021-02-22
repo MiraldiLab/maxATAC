@@ -7,6 +7,9 @@ maxatac.egg-info/requires.txt
 maxatac.egg-info/SOURCES.txt
 maxatac.egg-info/top_level.txt
 maxatac.egg-info/top_level.txt
+.idea
+.idea/
 .idea/maxATAC.iml
 .idea/maxATAC.iml
 .idea/maxATAC.iml
+/data/test/

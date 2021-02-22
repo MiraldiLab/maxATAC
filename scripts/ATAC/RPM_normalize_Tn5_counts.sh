@@ -20,7 +20,8 @@
 # 5: BED of Tn5 Sites
 # example: GM12878_IS_slop10.bed
 
-# OUTPUT: Bigwig file of Tn5 counts that have been normalized by sequencing depth
+# OUTPUT: 
+# Bigwig file of Tn5 counts that have been normalized by sequencing depth
 
 ### Rename Input Variables ###
 bedgraph=${4}.bg
@@ -28,11 +29,12 @@ bigwig=${4}.bw
 
 ### Process ###
 
-mapped_reads=$(samtools view -c -F 260 ${1})
+# http://www.metagenomics.wiki/tools/samtools/number-of-reads-in-bam-file
+mapped_reads=$(samtools view -@ 4 -c -F 260 ${1})
 reads_factor=$(bc -l <<< "1/${mapped_reads}")
 rpm_factor=$(bc -l <<< "${reads_factor} * ${3}")
 
-echo "Scale factor: " "${rpm_factor}"
+echo "Scale factor: " ${rpm_factor}
 
 # Use bedtools to obtain genome coverage
 echo "Using Bedtools to convert BAM to bedgraph"

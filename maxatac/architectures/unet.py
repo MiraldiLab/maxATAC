@@ -1,31 +1,28 @@
 import logging
-import tensorflow as tf
-import numpy as np
-from keras.models import Model
-from keras.layers import (
-    Input,
-    concatenate,
-    Conv1D,
-    MaxPooling1D,
-    Conv2DTranspose,
-    Lambda,
-    BatchNormalization
-)
-from keras.optimizers import Adam
-from keras.callbacks import (
-    ModelCheckpoint,
-    CSVLogger,
-    TensorBoard
-)
-from keras import backend as K
+from maxatac.utilities.system_tools import Mute
+
+with Mute():
+    import tensorflow as tf
+    from keras.models import Model
+    from keras.layers import (
+        Input,
+        concatenate,
+        Conv1D,
+        MaxPooling1D,
+        Conv2DTranspose,
+        Lambda,
+        BatchNormalization
+    )
+    from keras.optimizers import Adam
+    from keras import backend as K
 
 
 def loss_function(
-    y_true,
-    y_pred,
-    y_pred_min=0.0000001,  # 1e-7
-    y_pred_max=0.9999999,  # 1 - 1e-7
-    y_true_min=-0.5
+        y_true,
+        y_pred,
+        y_pred_min=0.0000001,  # 1e-7
+        y_pred_max=0.9999999,  # 1 - 1e-7
+        y_true_min=-0.5
 ):
     y_true = K.flatten(y_true)
     y_pred = tf.clip_by_value(
@@ -41,10 +38,10 @@ def loss_function(
 
 
 def dice_coef(
-    y_true,
-    y_pred,
-    y_true_min=-0.5,
-    unknown_coef=10
+        y_true,
+        y_pred,
+        y_true_min=-0.5,
+        unknown_coef=10
 ):
     y_true = K.flatten(y_true)
     y_pred = K.flatten(y_pred)
@@ -55,7 +52,7 @@ def dice_coef(
     intersection = K.sum(y_true * y_pred * mask)
     numerator = 2.0 * intersection + unknown_coef
     denominator = K.sum(y_true * mask) + K.sum(y_pred * mask) + unknown_coef
-    return numerator/denominator
+    return numerator / denominator
 
 
 # TODO should be refactored into something easy to understand without lambda
@@ -72,16 +69,16 @@ def Conv1DTranspose(inbound_layer, filters, kernel_size, strides, padding):
 
 
 def get_layer(
-    inbound_layer,
-    filters,
-    kernel_size,
-    activation,
-    padding,
-    skip_batch_norm=False,
-    concat_layer=None,
-    transpose_kernel_size=None,
-    transpose_strides=None,
-    n=2
+        inbound_layer,
+        filters,
+        kernel_size,
+        activation,
+        padding,
+        skip_batch_norm=False,
+        concat_layer=None,
+        transpose_kernel_size=None,
+        transpose_strides=None,
+        n=2
 ):
     """
     Returns new layer without max pooling. If concat_layer,
@@ -118,23 +115,23 @@ def get_layer(
 
 
 def get_unet(
-    input_length,
-    input_channels,
-    input_filters,
-    input_kernel_size,
-    input_activation,
-    output_filters,
-    output_kernel_size,
-    output_activation,
-    filters_scaling_factor,
-    conv_blocks,
-    padding,
-    pool_size,
-    adam_learning_rate,
-    adam_beta_1,
-    adam_beta_2,
-    adam_decay,
-    weights=None
+        input_length,
+        input_channels,
+        input_filters,
+        input_kernel_size,
+        input_activation,
+        output_filters,
+        output_kernel_size,
+        output_activation,
+        filters_scaling_factor,
+        conv_blocks,
+        padding,
+        pool_size,
+        adam_learning_rate,
+        adam_beta_1,
+        adam_beta_2,
+        adam_decay,
+        weights=None
 ):
     """
     If weights are provided they will be loaded into created model
@@ -145,20 +142,20 @@ def get_unet(
     input_layer = Input(shape=(input_length, input_channels))
 
     # Temporary variables
-    layer = input_layer                   # redefined in encoder/decoder loops
-    filters = input_filters               # redefined in encoder/decoder loops
+    layer = input_layer  # redefined in encoder/decoder loops
+    filters = input_filters  # redefined in encoder/decoder loops
 
     logging.debug("Added inputs layer: " + "\n - " + str(layer))
 
     # Encoder
     encoder_layers = []
-    for i in range(conv_blocks):          # [0, 1, 2, 3, 4, 5]
+    for i in range(conv_blocks):  # [0, 1, 2, 3, 4, 5]
         layer = get_layer(
-                    inbound_layer=layer,  # input_layer is used wo MaxPooling1D
-                    filters=filters,
-                    kernel_size=input_kernel_size,
-                    activation=input_activation,
-                    padding=padding
+            inbound_layer=layer,  # input_layer is used wo MaxPooling1D
+            filters=filters,
+            kernel_size=input_kernel_size,
+            activation=input_activation,
+            padding=padding
         )
         logging.debug("Added encoder layer: " + str(i) + "\n - " + str(layer))
         encoder_layers.append(layer)  # save all layers wo MaxPooling1D
@@ -167,17 +164,17 @@ def get_unet(
             layer = MaxPooling1D(pool_size=pool_size, strides=pool_size)(layer)
 
     # Decoder
-    for i in range(conv_blocks-2, -1, -1):  # [4, 3, 2, 1, 0]
+    for i in range(conv_blocks - 2, -1, -1):  # [4, 3, 2, 1, 0]
         filters = round(filters / filters_scaling_factor)
         layer = get_layer(
-                    inbound_layer=layer,
-                    concat_layer=encoder_layers[i],
-                    transpose_kernel_size=pool_size,
-                    transpose_strides=pool_size,
-                    filters=filters,
-                    kernel_size=input_kernel_size,
-                    activation=input_activation,
-                    padding=padding
+            inbound_layer=layer,
+            concat_layer=encoder_layers[i],
+            transpose_kernel_size=pool_size,
+            transpose_strides=pool_size,
+            filters=filters,
+            kernel_size=input_kernel_size,
+            activation=input_activation,
+            padding=padding
         )
         logging.debug("Added decoder layer: " + str(i) + "\n - " + str(layer))
 
@@ -216,30 +213,3 @@ def get_unet(
     return model
 
 
-def get_callbacks(
-    model_location,
-    log_location,
-    tensor_board_log_dir,
-    monitor,
-    save_weights_only=False,
-    save_best_only=False,
-    append_log=False,
-    tensor_board_write_images=False,
-    tensor_board_write_graph=True,
-):
-    callbacks = [
-        ModelCheckpoint(
-            filepath=model_location,
-            save_weights_only=save_weights_only,
-            save_best_only=save_best_only,
-            monitor=monitor
-        ),
-        CSVLogger(log_location, separator=",", append=append_log),
-        TensorBoard(
-            tensor_board_log_dir,
-            write_images=tensor_board_write_images,
-            write_graph=tensor_board_write_graph,
-            update_freq="batch"
-        )
-    ]
-    return callbacks

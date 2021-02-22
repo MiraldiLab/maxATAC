@@ -1,52 +1,26 @@
 import logging
-import tensorflow as tf
-import numpy as np
-from keras.models import Model
-from keras.layers import (
-    Add,
-    Input,
-    Conv1D,
-    MaxPooling1D,
-    BatchNormalization,
-    Flatten,
-    Dense
-)
-from keras.layers.core import Reshape
-from keras.optimizers import Adam
-from keras.callbacks import ModelCheckpoint
-from keras import backend as K
-import keras
+from maxatac.utilities.system_tools import Mute
 
+with Mute():
+    import tensorflow as tf
+    from keras import backend as K
+    from keras.callbacks import ModelCheckpoint
+    from keras.layers import (
+        Input,
+        Conv1D,
+        MaxPooling1D,
+        Lambda,
+        BatchNormalization,
+        Dense,
+        Flatten
+    )
+    from keras.models import Model
+    from keras.optimizers import Adam
 
-from maxatac.utilities.constants import (
-    INPUT_CHANNELS,
-    MIN_PREDICTION,  # min prediction value to report in output
-    BATCH_SIZE,
-    CHR_POOL_SIZE,
-    FLANK_LENGTH,
-    BP_ORDER,
-    PHASES,
-    INPUT_FILTERS,
-    INPUT_KERNEL_SIZE,
-    INPUT_LENGTH,
-    INPUT_ACTIVATION,
-    PADDING,
-    FILTERS_SCALING_FACTOR,
-    CONV_BLOCKS,
-    DILATION_RATE,
-    BP_RESOLUTION,
-    OUTPUT_LENGTH,
-    OUTPUT_FILTERS,
-    OUTPUT_KERNEL_SIZE,
-    QUANT_OUTPUT_ACTIVATION,
-    BINARY_OUTPUT_ACTIVATION,
-    POOL_SIZE,
-    ADAM_BETA_1,
-    ADAM_BETA_2,
-    TRAIN_SCALE_SIGNAL,
-    DEFAULT_ADAM_LEARNING_RATE,
+    from maxatac.utilities.constants import KERNEL_INITIALIZER, INPUT_LENGTH, INPUT_CHANNELS, INPUT_FILTERS, \
+    INPUT_KERNEL_SIZE, INPUT_ACTIVATION, OUTPUT_FILTERS, OUTPUT_KERNEL_SIZE, FILTERS_SCALING_FACTOR, DILATION_RATE, \
+    OUTPUT_LENGTH, CONV_BLOCKS, PADDING, POOL_SIZE, ADAM_BETA_1, ADAM_BETA_2, DEFAULT_ADAM_LEARNING_RATE, \
     DEFAULT_ADAM_DECAY
-)
 
 
 def loss_function(
@@ -88,7 +62,6 @@ def dice_coef(
 
 
 def tp(y_true, y_pred, pred_thresh=0.5):
-    # pdb.set_trace()
     y_true = K.cast(K.flatten(y_true), dtype='float32')
     y_pred = K.cast(K.flatten(y_pred), dtype='float32')
     binary_preds = K.cast(K.greater_equal(y_pred, pred_thresh), dtype="float32")
@@ -143,44 +116,15 @@ def acc(y_true, y_pred, pred_thresh=0.5):
     # conf_vector = K.constant(value= val, dtype='float32', name='conf_values')
     return (accuracy)
 
+
 def coeff_determination(y_true, y_pred):
-    #verify if below line is required.
     from keras import backend as K
-    SS_res =  K.sum(K.square( y_true-y_pred ))
-    SS_tot = K.sum(K.square( y_true - K.mean(y_true) ) )
-    return ( 1 - SS_res/(SS_tot + K.epsilon()) )
+    SS_res = K.sum(K.square(y_true - y_pred))
+    SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
+    return (1 - SS_res / (SS_tot + K.epsilon()))
+
 
 def get_layer(
-    inbound_layer,
-    filters,
-    kernel_size,
-    activation,
-    padding,
-    dilation_rate=1,
-    skip_batch_norm=False,
-    n=2
-):
-    """
-    Returns new layer without max pooling. If concat_layer,
-    transpose_kernel_size and transpose_strides are provided
-    run Conv1DTranspose and Concatenation. Optionally, you
-    can skip batch normalization
-    """
-    for i in range(n):
-        inbound_layer = Conv1D(
-            filters=filters,
-            kernel_size=kernel_size,
-            activation=activation,
-            padding=padding,
-            dilation_rate=dilation_rate
-        )(inbound_layer)
-        if not skip_batch_norm:
-            inbound_layer = BatchNormalization()(inbound_layer)
-    return inbound_layer
-
-
-
-def get_res_block(
         inbound_layer,
         filters,
         kernel_size,
@@ -188,6 +132,10 @@ def get_res_block(
         padding,
         dilation_rate=1,
         skip_batch_norm=False,
+        kernel_initializer='glorot_uniform',
+        concat_layer=None,
+        transpose_kernel_size=None,
+        transpose_strides=None,
         n=2
 ):
     """
@@ -196,47 +144,42 @@ def get_res_block(
     run Conv1DTranspose and Concatenation. Optionally, you
     can skip batch normalization
     """
-    identity = Conv1D(filters=filters,
-                      kernel_size=1,
-                      activation=activation,
-                      padding=padding,
-                      dilation_rate=1
-                      )(inbound_layer)
-    identity = BatchNormalization()(identity)
     for i in range(n):
         inbound_layer = Conv1D(
             filters=filters,
             kernel_size=kernel_size,
             activation=activation,
             padding=padding,
-            dilation_rate=dilation_rate
+            dilation_rate=dilation_rate,
+            kernel_initializer=kernel_initializer
         )(inbound_layer)
         if not skip_batch_norm:
             inbound_layer = BatchNormalization()(inbound_layer)
-    add_layer = Add()([inbound_layer, identity])
-    return add_layer
+    return inbound_layer
 
 
-def get_res_dcnn(
-        input_length,
-        input_channels,
-        input_filters,
-        input_kernel_size,
-        input_activation,
-        output_filters,
-        output_kernel_size,
+def get_dilated_cnn(
         output_activation,
-        filters_scaling_factor,
-        dilation_rate,
-        output_length,
-        conv_blocks,
-        padding,
-        pool_size,
-        adam_learning_rate,
-        adam_beta_1,
-        adam_beta_2,
-        adam_decay,
+        adam_learning_rate=DEFAULT_ADAM_LEARNING_RATE,
+        adam_decay=DEFAULT_ADAM_DECAY,
+        input_length=INPUT_LENGTH,
+        input_channels=INPUT_CHANNELS,
+        input_filters=INPUT_FILTERS,
+        input_kernel_size=INPUT_KERNEL_SIZE,
+        input_activation=INPUT_ACTIVATION,
+        output_filters=OUTPUT_FILTERS,
+        output_kernel_size=OUTPUT_KERNEL_SIZE,
+        filters_scaling_factor=FILTERS_SCALING_FACTOR,
+        dilation_rate=DILATION_RATE,
+        output_length=OUTPUT_LENGTH,
+        conv_blocks=CONV_BLOCKS,
+        padding=PADDING,
+        pool_size=POOL_SIZE,
+        adam_beta_1=ADAM_BETA_1,
+        adam_beta_2=ADAM_BETA_2,
         quant=False,
+        target_scale_factor=1,
+        dense_b=False,
         weights=None
 ):
     """
@@ -255,16 +198,16 @@ def get_res_dcnn(
 
     # Encoder
     all_layers = []
-
     for i in range(conv_blocks - 1):  # [0, 1, 2, 3, 4, 5]
         layer_dilation_rate = dilation_rate[i]
-        layer = get_res_block(
+        layer = get_layer(
             inbound_layer=layer,  # input_layer is used wo MaxPooling1D
             filters=filters,
             kernel_size=input_kernel_size,
             activation=input_activation,
             padding=padding,
-            dilation_rate=layer_dilation_rate
+            dilation_rate=layer_dilation_rate,
+            kernel_initializer=KERNEL_INITIALIZER
         )
         logging.debug("Added convolution layer: " + str(i) + "\n - " + str(layer))
         # encoder_layers.append(layer)  # save all layers wo MaxPooling1D
@@ -275,21 +218,41 @@ def get_res_dcnn(
 
     # Outputs
     layer_dilation_rate = dilation_rate[-1]
-    output_layer = get_res_block(
-        inbound_layer=layer,
-        filters=output_filters,
-        kernel_size=output_kernel_size,
-        activation=input_activation,
-        padding=padding,
-        dilation_rate=layer_dilation_rate,
-        skip_batch_norm=True,
-        n=1
-    )
+    if dense_b:
+        output_layer = get_layer(
+            inbound_layer=layer,
+            filters=output_filters,
+            kernel_size=output_kernel_size,
+            activation=input_activation,
+            padding=padding,
+            dilation_rate=layer_dilation_rate,
+            kernel_initializer=KERNEL_INITIALIZER,
+            skip_batch_norm=True,
+            n=1
+        )
+    else:
+        output_layer = get_layer(
+            inbound_layer=layer,
+            filters=output_filters,
+            kernel_size=output_kernel_size,
+            activation=output_activation,
+            padding=padding,
+            dilation_rate=layer_dilation_rate,
+            kernel_initializer=KERNEL_INITIALIZER,
+            skip_batch_norm=True,
+            n=1
+        )
+
+    # Depending on the output activation functions, model outputs need to be scaled appropriately
     output_layer = Flatten()(output_layer)
-    output_layer = Dense(output_length, activation=output_activation)(output_layer)
-    #newdim = tuple([x for x in output_layer.shape.as_list() if x != 1 and x is not None])
-    #output_layer = Reshape(newdim)(output_layer)
-    #logging.debug("Added outputs layer: " + "\n - " + str(output_layer))
+    if dense_b:
+        output_layer = Dense(output_length, activation=output_activation, kernel_initializer='glorot_uniform')(
+            output_layer)
+
+    if quant and output_activation in ["sigmoid"]:
+        output_layer = Lambda(lambda x: x * target_scale_factor, name='Target_Scale_Layer')(output_layer)
+
+    logging.debug("Added outputs layer: " + "\n - " + str(output_layer))
 
     # Model
     model = Model(inputs=[input_layer], outputs=[output_layer])
@@ -305,7 +268,8 @@ def get_res_dcnn(
             metrics=[dice_coef, 'accuracy']
         )
     else:
-        mse = tf.keras.losses.MeanSquaredError(reduction="auto", name="mean_squared_error") #May wnat to change Reduction methods possibly
+        mse = tf.keras.losses.MeanSquaredError(reduction="auto",
+                                               name="mean_squared_error")  # May wnat to change Reduction methods possibly
         model.compile(
             optimizer=Adam(
                 lr=adam_learning_rate,
@@ -314,7 +278,7 @@ def get_res_dcnn(
                 decay=adam_decay
             ),
             loss=mse,
-            metrics=[tf.keras.metrics.RootMeanSquaredError(), coeff_determination]
+            metrics=[mse, coeff_determination]  # tf.keras.metrics.RootMeanSquaredError()
         )
 
     logging.debug("Model compiled")
@@ -342,10 +306,8 @@ def get_callbacks(
     ]
     return callbacks
 
-
-
 # start =1
-# model = get_res_dcnn(
+# model = get_dilated_cnn(
 #     input_length=INPUT_LENGTH,
 #     input_channels=INPUT_CHANNELS,
 #     input_filters=INPUT_FILTERS,
@@ -353,10 +315,9 @@ def get_callbacks(
 #     input_activation=INPUT_ACTIVATION,
 #     output_filters=OUTPUT_FILTERS,
 #     output_kernel_size=OUTPUT_KERNEL_SIZE,
-#     output_activation=OUTPUT_ACTIVATION,
+#     output_activation="sigmoid",
 #     filters_scaling_factor=FILTERS_SCALING_FACTOR,
 #     dilation_rate=DILATION_RATE,
-#     output_length=OUTPUT_LENGTH,
 #     conv_blocks=CONV_BLOCKS,
 #     padding=PADDING,
 #     pool_size=POOL_SIZE,
@@ -364,6 +325,9 @@ def get_callbacks(
 #     adam_beta_1=ADAM_BETA_1,
 #     adam_beta_2=ADAM_BETA_2,
 #     adam_decay=DEFAULT_ADAM_DECAY,
+#     quant=True,
+#     target_scale_factor=10,
+#     dense_b = True,
 #     weights=None)
 #
 # debug = 1

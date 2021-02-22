@@ -1,49 +1,75 @@
 import logging
 import os
 
-from maxatac.utilities.genome_tools import build_chrom_sizes_dict, import_bed
+from maxatac.utilities.system_tools import get_dir, Mute
 
-from maxatac.utilities.constants import INPUT_LENGTH, INPUT_CHANNELS
-
-from maxatac.utilities.prediction_tools import make_predictions, write_predictions_to_bigwig
-
-from maxatac.utilities.session import configure_session
-from maxatac.utilities.system_tools import get_dir
+with Mute():
+    from maxatac.utilities.genome_tools import build_chrom_sizes_dict
+    from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH
+    from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, make_predictions, import_prediction_regions
+    from maxatac.utilities.session import configure_session
 
 
 def run_prediction(args):
     """
-    Run prediction on regions of interest using a maxATAC model
+    Run prediction on compatible regions using a maxATAC model. The input could be any bed file that has the correct
+    input parameters
 
-    @param args: The arguments list from the argsparser
-    @return:
+    BED file requirements for prediction. You must have at least a 3 column file with chromosome, start,
+    and stop coordinates. The interval distance has to be the same as the distance used to train the model. If you
+    trained a model with a resolution 1024, you need to make sure your intervals are spaced 1024 bp apart for
+    prediction with your model.
+
+    Example input BED file for prediction:
+
+    chr1 | 1000  | 2024
+    ___________
+
+    Workflow overview
+
+    1) Create directories and set up filenames
+    2) Make predictions
+    3) Convert predictions to bigwig format and write results
+
+
+    :param args : output_directory, prefix, signal, sequence, models, predict_chromosomes, minimum, threads, batch_size
+    roi, chromosome_sizes, blacklist, average, round
+
+    :return : A bigwig file of TF binding predictions
     """
+    # Create the output directory set by the parser
     output_directory = get_dir(args.output_directory)
 
+    # Output filename for the bigwig predictions file based on the output directory and the prefix. Add the bw extension
     outfile_name_bigwig = os.path.join(output_directory, args.prefix + ".bw")
 
     logging.error("Prediction Parameters \n" +
-                  "Output filename: " + outfile_name_bigwig + "\n"
-                  "Target signal: " + args.signal + "\n"
-                  "Sequence data: " + args.sequence + "\n"
-                  "Models: \n   - " + "\n   - ".join(args.models) + "\n"
-                  "Chromosomes: " + str(args.predict_chromosomes) + "\n"
-                  "Minimum prediction value to be reported: " + str(args.minimum) + "\n"
-                  "Threads count: " + str(args.threads) + "\n"
-                  "Output directory: " + str(output_directory) + "\n"
+                  "Output filename: " + outfile_name_bigwig + "\n" +
+                  "Target signal: " + args.signal + "\n" +
+                  "Sequence data: " + args.sequence + "\n" +
+                  "Models: \n   - " + "\n   - ".join(args.models) + "\n" +
+                  "Chromosomes: " + str(args.predict_chromosomes) + "\n" +
+                  "Threads count: " + str(args.threads) + "\n" +
+                  "Output directory: " + str(output_directory) + "\n" +
+                  "Batch Size: " + str(args.batch_size) + "\n" +
                   "Output filename: " + outfile_name_bigwig + "\n"
                   )
 
-    roi_pool = import_bed(bed_file=args.roi,
-                          region_length=INPUT_LENGTH,
-                          chromosomes=args.predict_chromosomes,
-                          chromosome_sizes_dictionary=build_chrom_sizes_dict(args.predict_chromosomes,
-                                                                             args.chromosome_sizes
-                                                                             ),
-                          blacklist=args.blacklist
-                          )
+    logging.error("Import BED file of regions for prediction")
 
-    logging.error("Make predictions on ROIs of interest")
+    # TODO flag for whole genome vs chromosome vs regions
+    # Import the regions for prediction.
+    # The function build_chrom_sizes_dict is used to make sure regions fall within chromosome bounds.
+    regions_pool = import_prediction_regions(bed_file=args.roi,
+                                             region_length=INPUT_LENGTH,
+                                             chromosomes=args.predict_chromosomes,
+                                             chrom_sizes_dictionary=build_chrom_sizes_dict(args.predict_chromosomes,
+                                                                                           args.chromosome_sizes
+                                                                                           ),
+                                             blacklist=args.blacklist
+                                             )
+
+    logging.error("Make predictions")
 
     configure_session(args.threads)
 
@@ -52,7 +78,7 @@ def run_prediction(args):
                                           args.sequence,
                                           args.average,
                                           args.models[0],
-                                          roi_pool,
+                                          regions_pool,
                                           args.batch_size,
                                           args.round,
                                           INPUT_CHANNELS,
@@ -61,10 +87,13 @@ def run_prediction(args):
 
     logging.error("Write predictions to a bigwig file")
 
+    # TODO before writing sort the data
+    # TODO currently assumes that input is sorted by chr, start, stop in input
+    # Write the predictions to a bigwig file
     write_predictions_to_bigwig(prediction_results,
                                 output_filename=outfile_name_bigwig,
-                                chromosome_length_dictionary=build_chrom_sizes_dict(args.predict_chromosomes,
-                                                                                    args.chromosome_sizes
-                                                                                    ),
+                                chrom_sizes_dictionary=build_chrom_sizes_dict(args.predict_chromosomes,
+                                                                              args.chromosome_sizes
+                                                                              ),
                                 chromosomes=args.predict_chromosomes
                                 )

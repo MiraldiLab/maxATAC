@@ -76,6 +76,9 @@ echo "Filter for unique reads from STAR: i.e. quality score 255."
 echo "Filter for properly paired and oriented reads: i.e. samflag 3."
 
 # Remove unwanted chroms, sort, index
+# The -f 3 flag will select reads that are properly aligned and paired. read paired (0x1) + read mapped in proper pair (0x2) = 3
+# The -q 255 corresponds to selecting the MAPQ score == 255 which is STAR specific for uniquely mapped reads
+# https://physiology.med.cornell.edu/faculty/skrabanek/lab/angsd/lecture_notes/STARmanual.pdf
 samtools view -@ "${cores}" -f 3 -b -q 255 "${deduped}" chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr1 chr20 chr21 chr22 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chrX chrY | \
 samtools sort -@ "${cores}" -o "${final_bam}" -
 
