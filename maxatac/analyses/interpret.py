@@ -1,37 +1,32 @@
-import os
-from os import path
-import keras
-import pickle, h5py
-import shap
-import seaborn as sns
-import modisco
-import pandas as pd
-
-from maxatac.utilities.training_tools import get_roi_pool
-
-from maxatac.utilities.system_tools import get_dir
-from maxatac.utilities.interpretation_tools import generating_interpret_data, dinuc_shuffle_DNA_only_several_times, \
-    combine_DNA_only_mult_and_diffref, output_meme_pwm
-
-from maxatac.utilities.constants import (
-    BP_RESOLUTION,
-)
-from maxatac.utilities.training_tools import MaxATACModel
-
+import pickle
 from collections import OrderedDict
-from matplotlib import pyplot as plt
+from os import path
 
-from modisco.visualization import viz_sequence
-from modisco.tfmodisco_workflow import workflow
+import keras
+import modisco
 import modisco.affinitymat.core
-import modisco.cluster.phenograph.core
-import modisco.cluster.phenograph.cluster
-import modisco.cluster.core
 import modisco.aggregator
+import modisco.cluster.core
+import modisco.cluster.phenograph.cluster
+import modisco.cluster.phenograph.core
+import pandas as pd
+import seaborn as sns
+import shap
+from matplotlib import pyplot as plt
+from modisco.tfmodisco_workflow import workflow
 from modisco.util import *
+from modisco.visualization import viz_sequence
 
 # custom objects
 from maxatac.architectures.dcnn import loss_function, dice_coef
+from maxatac.utilities.constants import (
+    BP_RESOLUTION,
+)
+from maxatac.utilities.interpretation_tools import generating_interpret_data, dinuc_shuffle_DNA_only_several_times, \
+    combine_DNA_only_mult_and_diffref, output_meme_pwm
+from maxatac.utilities.system_tools import get_dir
+from maxatac.utilities.training_tools import MaxATACModel
+from maxatac.utilities.training_tools import get_roi_pool
 
 keras_model_custom_objects_dict = {
     'loss_function': loss_function,
