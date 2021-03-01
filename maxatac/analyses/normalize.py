@@ -1,7 +1,6 @@
 import logging
 import pyBigWig
 import os
-import tqdm
 from maxatac.utilities.system_tools import get_dir, Mute
 import sys
 
@@ -70,9 +69,9 @@ def run_normalization(args):
                                  values=normalized_signal.tolist()
                                  )
 
-        logging.error("Results saved to: " + output_dir)
+        output_bw.close()
+        input_bw.close()
 
-    input_bw.close()
-    output_bw.close()
+    logging.error("Results saved to: " + output_dir)
 
     sys.exit()

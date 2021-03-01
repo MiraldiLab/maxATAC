@@ -27,7 +27,7 @@ def find_genomic_min_max(bigwig_path, chrom_sizes_dict):
 
             minmax_results.append([chromosome, np.min(chr_vals), np.max(chr_vals)])
 
-        logging.error("Finding genome min and max values")
+        logging.error("Finding genomic min and max values")
 
         minmax_results_df = pd.DataFrame(minmax_results)
 
