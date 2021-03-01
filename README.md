@@ -7,10 +7,17 @@ Cellular behavior is the result of complex genomic regulation partially controll
 
 The maxATAC package is a collection of tools used for learning to predict TF binding from ATAC-seq data. MaxATAC also provides functions for interpreting trained models and preparing the input data.
 
+## ChangLog
+
+Version 0.1.0
+
+Stable Merge
 
 ## Requirements
 
 This version requires python 3.6 and BEDTools. 
+
+## Installation
 
 ## Predicting TF Binding Workflow Overview
 
@@ -19,9 +26,9 @@ Steps in training and assessing a maxATAC model. Relevant functions are listed b
 1. Prepare Input Data
    * `average`
     * `normalize`
-    
-2. Train a model
    * `roi`
+
+2. Train a model
     * `train`
     
 3. Predict in new cell type
@@ -39,16 +46,16 @@ The maxATAC bundle has several useful functions needed for building a deep learn
 
 **Data Pre-processing:**
 
-* average
-* normalize
+* `average`
+* `normalize`
   
 **TF Binding Prediction Functions:**
 
-* train
-* predict
-* benchmark
-* roi
-* interpret
+* `train`
+* `predict`
+* `benchmark`
+* `roi`
+* `interpret`
 
 ### Average
 

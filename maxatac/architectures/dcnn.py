@@ -256,6 +256,7 @@ def get_dilated_cnn(
 
     # Model
     model = Model(inputs=[input_layer], outputs=[output_layer])
+
     if not quant:
         model.compile(
             optimizer=Adam(
@@ -267,6 +268,7 @@ def get_dilated_cnn(
             loss=loss_function,
             metrics=[dice_coef, 'accuracy']
         )
+
     else:
         mse = tf.keras.losses.MeanSquaredError(reduction="auto",
                                                name="mean_squared_error")  # May wnat to change Reduction methods possibly

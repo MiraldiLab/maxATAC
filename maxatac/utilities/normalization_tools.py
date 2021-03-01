@@ -3,13 +3,13 @@ import os
 import numpy as np
 import pandas as pd
 import pyBigWig
-import tqdm
 
 
-def find_genomic_min_max(bigwig_path):
+def find_genomic_min_max(bigwig_path, chrom_sizes_dict):
     """
     Find the genomic minimum and maximum values in the chromosomes of interest
 
+    :param chrom_sizes_dict: (dict) A dictionary of chromosome sizes filtered for the chroms of interest
     :param bigwig_path: (str) Path to the input bigwig file
 
     :return: Genomic minimum and maximum values
@@ -19,15 +19,13 @@ def find_genomic_min_max(bigwig_path):
     with pyBigWig.open(bigwig_path) as input_bigwig:
         minmax_results = []
 
-        # Create a status bar to look fancy and count what chromosome you are on
-        chromosome_status_bar = tqdm.tqdm(total=len(input_bigwig.chroms()), desc='Chromosomes Processed', position=0)
+        if not chrom_sizes_dict:
+            chrom_sizes_dict = input_bigwig.chroms()
 
-        for chromosome in input_bigwig.chroms():
+        for chromosome in chrom_sizes_dict:
             chr_vals = np.nan_to_num(input_bigwig.values(chromosome, 0, input_bigwig.chroms(chromosome), numpy=True))
 
             minmax_results.append([chromosome, np.min(chr_vals), np.max(chr_vals)])
-
-            chromosome_status_bar.update(1)
 
         logging.error("Finding genome min and max values")
 

@@ -3,10 +3,9 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():
     from maxatac.utilities.genome_tools import build_chrom_sizes_dict
-    from maxatac.utilities.roi_tools import TrainingData, ValidationData
+    from maxatac.utilities.roi_tools import GenomicRegions
 
 
-# TODO Add flag to remove test cell line like original code from Faiz
 def run_roi(args):
     """
     Generate the training and validation pools of genomic regions
@@ -16,7 +15,7 @@ def run_roi(args):
 
     The input meta file must have the columns in any order:
 
-    TF | Cell_Type | ATAC_Signal_File | Binding_File | ATAC_Peaks | ChIP_peaks
+    TF | Cell_Line | ATAC_Signal_File | Binding_File | ATAC_Peaks | ChIP_peaks
     _________________
     Workflow Overview
 
@@ -36,40 +35,38 @@ def run_roi(args):
                   "Training chromosomes: \n   - " + "\n   - ".join(args.train_chroms) + "\n")
 
     # The ROI pool is used to import the training data based on the meta file and window size
-    training_data = TrainingData(meta_path=args.meta_file,
-                                 region_length=1024,
-                                 chromosomes=args.train_chroms,
-                                 chromosome_sizes_dictionary=build_chrom_sizes_dict(args.train_chroms,
+    training_data = GenomicRegions(meta_path=args.meta_file,
+                                   region_length=1024,
+                                   chromosomes=args.train_chroms,
+                                   chromosome_sizes_dictionary=build_chrom_sizes_dict(args.train_chroms,
                                                                                     args.chromosome_sizes),
-                                 blacklist=args.blacklist)
+                                   blacklist=args.blacklist)
 
     logging.error("Writing training ROI files to BED")
 
     # Write the ROI pool stats and BED files
     training_data.write_data(prefix=args.training_prefix,
-                             output_dir=args.output_dir)
+                             output_dir=args.output_dir,
+                             set_tag="training")
 
     logging.error("Generating validation regions of interest file: \n" +
                   "Meta Path: " + args.meta_file + "\n" +
-                  "Validation random ratio proportion: " + str(args.validate_random_ratio) + "\n" +
-                  "Validation chromosomes: \n   - " + "\n   - ".join(args.validate_chroms) + "\n"
-                                                                                             "Blacklist Regions BED: " + args.blacklist + "\n" +
-                  "Preferences: " + args.preferences)
+                  "Validation chromosomes: \n   - " + "\n   - ".join(args.validate_chroms) + "\n" +
+                  "Blacklist Regions BED: " + args.blacklist + "\n")
 
     # Import the validation data using the meta file
-    validation_data = ValidationData(meta_path=args.meta_file,
+    validation_data = GenomicRegions(meta_path=args.meta_file,
                                      region_length=1024,
                                      chromosomes=args.validate_chroms,
-                                     chromosome_sizes=args.chromosome_sizes,
-                                     blacklist=args.blacklist,
-                                     random_ratio=args.validate_random_ratio,
-                                     preferences=args.preferences,
-                                     threads=args.threads)
+                                     chromosome_sizes_dictionary=build_chrom_sizes_dict(args.validate_chroms,
+                                                                                      args.chromosome_sizes),
+                                     blacklist=args.blacklist)
 
     logging.error("Writing validation ROI files to BED")
 
     # Write the validation pool BED, TSV, and stats files
     validation_data.write_data(prefix=args.validation_prefix,
-                               output_dir=args.output_dir)
+                               output_dir=args.output_dir,
+                               set_tag="validation")
 
     logging.error("Done")

@@ -5,7 +5,7 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():  # hide stdout from loading the modules
     from maxatac.utilities.model_tools import get_callbacks
-    from maxatac.utilities.training_tools import get_roi_pool, DataGenerator, MaxATACModel
+    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool
     from maxatac.utilities.plot import export_loss_dice_accuracy, export_loss_mse_coeff, export_model_structure
 
 
@@ -37,6 +37,7 @@ def run_training(args):
 
     :returns: Trained models saved after each epoch
     """
+    # Initialize the model with the architecture of choice
     maxatac_model = MaxATACModel(arch=args.arch,
                                  seed=args.seed,
                                  output_directory=args.output,
@@ -50,14 +51,29 @@ def run_training(args):
                                  weights=args.weights
                                  )
 
+    # Import training regions
+    train_examples = ROIPool(chroms=args.tchroms,
+                             roi_file_path=args.train_roi,
+                             meta_file=args.meta_file,
+                             prefix=args.prefix,
+                             output_directory=maxatac_model.output_directory,
+                             shuffle=True,
+                             tag="training")
+
+    # Import validation regions
+    validate_examples = ROIPool(chroms=args.vchroms,
+                                roi_file_path=args.validate_roi,
+                                meta_file=args.meta_file,
+                                prefix=args.prefix,
+                                output_directory=maxatac_model.output_directory,
+                                shuffle=True,
+                                tag="validation")
+
     # Initialize the training generator
     train_gen = DataGenerator(sequence=args.sequence,
                               average=args.average,
                               meta_table=maxatac_model.meta_dataframe,
-                              roi_pool=get_roi_pool(filepath=args.train_roi,
-                                                    chroms=args.tchroms,
-                                                    shuffle=True
-                                                    ),
+                              roi_pool=train_examples.ROI_pool,
                               cell_type_list=maxatac_model.cell_types,
                               rand_ratio=args.rand_ratio,
                               chroms=args.tchroms,
@@ -71,10 +87,7 @@ def run_training(args):
     val_gen = DataGenerator(sequence=args.sequence,
                             average=args.average,
                             meta_table=maxatac_model.meta_dataframe,
-                            roi_pool=get_roi_pool(filepath=args.validate_roi,
-                                                  chroms=args.vchroms,
-                                                  shuffle=True
-                                                  ),
+                            roi_pool=validate_examples.ROI_pool,
                             cell_type_list=maxatac_model.cell_types,
                             rand_ratio=args.rand_ratio,
                             chroms=args.vchroms,

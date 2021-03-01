@@ -1,16 +1,17 @@
 import random
+import sys
+from os import path
+
 import numpy as np
 import pandas as pd
-from os import path
-import sys
 
 from maxatac.architectures.dcnn import get_dilated_cnn
 from maxatac.architectures.multi_modal_models import MM_DCNN_V2
 from maxatac.architectures.res_dcnn import get_res_dcnn
 from maxatac.utilities.constants import BP_RESOLUTION, BATCH_SIZE, CHR_POOL_SIZE, INPUT_LENGTH, INPUT_CHANNELS, \
-    BP_ORDER, TRAIN_SCALE_SIGNAL
-
-from maxatac.utilities.genome_tools import load_bigwig, safe_load_bigwig, load_2bit, get_one_hot_encoded
+    BP_ORDER, TRAIN_SCALE_SIGNAL, BLACKLISTED_REGIONS, DEFAULT_CHROM_SIZES
+from maxatac.utilities.genome_tools import load_bigwig, load_2bit, get_one_hot_encoded, build_chrom_sizes_dict
+from maxatac.utilities.roi_tools import GenomicRegions
 from maxatac.utilities.session import configure_session
 from maxatac.utilities.system_tools import get_dir, remove_tags, replace_extension
 
@@ -568,3 +569,55 @@ class RandomRegionsPool:
         random.shuffle(labels)
 
         return labels
+
+
+class ROIPool(object):
+    """
+    Import genomic regions of interest for training or validation
+    """
+    def __init__(self,
+                 chroms,
+                 roi_file_path,
+                 meta_file,
+                 prefix,
+                 output_directory,
+                 shuffle,
+                 tag
+                 ):
+        """
+        :param chroms: Chromosomes to limit the analysis to
+        :param roi_file_path: User provided ROI file path
+        :param meta_file: path to meta file
+        :param prefix: Prefix for saving output file
+        :param output_directory: Output directory to save files to
+        :param shuffle: Whether to shuffle the input ROI file
+        :param tag: Tag to use for writing the file.
+        """
+        self.chroms = chroms
+        self.roi_file_path = roi_file_path
+        self.meta_file = meta_file
+        self.prefix = prefix
+        self.output_directory = output_directory
+        self.tag = tag
+
+        # Import validation regions of interest
+
+        if self.roi_file_path:
+            self.ROI_pool = get_roi_pool(filepath=self.roi_file_path,
+                                         chroms=self.chroms,
+                                         shuffle=shuffle
+                                         )
+
+        else:
+            regions = GenomicRegions(meta_path=self.meta_file,
+                                     region_length=1024,
+                                     chromosomes=self.chroms,
+                                     chromosome_sizes_dictionary=build_chrom_sizes_dict(self.chroms,
+                                                                                        DEFAULT_CHROM_SIZES),
+                                     blacklist=BLACKLISTED_REGIONS)
+
+            regions.write_data(self.prefix,
+                               output_dir=self.output_directory,
+                               set_tag=tag)
+
+            self.ROI_pool = regions.combined_pool

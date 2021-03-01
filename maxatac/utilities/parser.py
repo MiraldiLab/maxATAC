@@ -39,7 +39,7 @@ from maxatac.utilities.constants import (DEFAULT_CHRS,
                                          DEFAULT_ROUND,
                                          DEFAULT_TEST_CHRS, BLACKLISTED_REGIONS_BIGWIG,
                                          DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION, DEFAULT_BENCHMARKING_BIN_SIZE,
-                                         ALL_CHRS
+                                         ALL_CHRS, AUTOSOMAL_CHRS
                                          )
 
 
@@ -593,7 +593,7 @@ def get_parser():
     train_parser.add_argument("--train_roi",
                               dest="train_roi",
                               type=str,
-                              required=True,
+                              required=False,
                               help="Bed file with ranges for input sequences. Required for peak-centric training of "
                                    "the model. "
                               )
@@ -601,7 +601,7 @@ def get_parser():
     train_parser.add_argument("--validate_roi",
                               dest="validate_roi",
                               type=str,
-                              required=True,
+                              required=False,
                               help="Bed file  with ranges for input sequences to validate the model"
                               )
 
@@ -609,6 +609,7 @@ def get_parser():
                               dest="target_scale_factor",
                               type=float,
                               required=False,
+                              default=1,
                               help="Scaling factor for scaling model targets. Use only for Quant models"
                               )
 
@@ -781,6 +782,18 @@ def get_parser():
                                   type=str,
                                   default=DEFAULT_CHROM_SIZES,
                                   help="Chrom sizes file")
+
+    normalize_parser.add_argument("--chroms",
+                                  dest="chroms",
+                                  type=str,
+                                  nargs="+",
+                                  required=False,
+                                  default=AUTOSOMAL_CHRS,
+                                  help="Chromosome list for analysis. \
+                                    Regions in a form of chrN:start-end are ignored. \
+                                    Use --filters instead \
+                                    Default: main human chromosomes, whole length"
+                                  )
 
     normalize_parser.add_argument("--output",
                                   dest="output",

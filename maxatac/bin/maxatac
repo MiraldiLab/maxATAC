@@ -15,7 +15,7 @@ def main(argsl=None):
         argsl = sys.argv[1:]
     
     args = parse_arguments(argsl)
-    print(args)
+    #print(args)
     setup_logger(args.loglevel, LOG_FORMAT)
     print_args(args, logging.debug)
     args.func(args)
