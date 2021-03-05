@@ -1,34 +1,34 @@
 import os
 
 # Overall Parameters
-SEQUENCE="../../../../scratch/maxATAC/data/genome_inf/hg38/hg38.2bit"
-AVERAGE="../../../../scratch/maxATAC/data/genome_inf/hg38/hg38_zeroes_average_file.bw"
+SEQUENCE="/fs/project/PES0738/maxATAC_inputs/genome_inf/hg38.2bit"
+AVERAGE="/fs/project/PES0738/maxATAC_inputs/genome_inf/hg38_zeroes_average_file.bw"
 
 TF="CTCF"
-META_FILE="../../../../scratch/maxATAC/analysis/20210104_maxATAC_CNN_binary/20210113_maxATAC_CTCF_4CT_META.tsv"
+META_FILE="/fs/project/PES0738/maxATAC_inputs/run_meta/20210202_11TF_Correct_ATAC_window_run_meta/20210202_Correct_ATAC_CTCF_slop20_RunMeta.tsv"
 
-TRAIN_OUTPUT="/Users/caz3so/scratch/maxATAC/analysis/20210304_maxatac_snakemake/train"
-PREDICT_OUTPUT="/Users/caz3so/scratch/maxATAC/analysis/20210304_maxatac_snakemake/predict"
-BENCHMARK_OUTPUT="/Users/caz3so/scratch/maxATAC/analysis/20210304_maxatac_snakemake/benchmark"
+TRAIN_OUTPUT="/fs/project/PES0738/maxATAC_models/20210304_snakemake_models"
+PREDICT_OUTPUT="/fs/project/PES0738/maxatac_predictions/20210304_snakemake_predictions"
+BENCHMARK_OUTPUT="/fs/project/PES0738/maxatac_predictions/20210304_snakemake_benchmark"
 
 # Training Parameters
-EPOCHS=10
-VAL_BATCH_SIZE=10
-BATCH_SIZE=10
+EPOCHS=20
+VAL_BATCH_SIZE=100
+BATCH_SIZE=100
 BATCHES=10
 
 # Prediction Parameters
 PREDICTION_CELLTYPE="GM12878"
 PREDICTION_CHROMS="chr1"
-PREDICTION_SIGNAL="/Users/caz3so/scratch/maxATAC/analysis/20210304_maxatac_snakemake/inputs/GM12878__slop20bp_RP20M_minmax01.bw"
-PREDICTION_ROI="/Users/caz3so/scratch/maxATAC/data/genome_inf/hg38/chr1_w1024_PC_10kregions.bed"
-PREDICTION_BATCH_SIZE=100
+PREDICTION_SIGNAL="/fs/project/PES0738/maxATAC_inputs/ATAC/hg38/cell_type_average_RP20M_minmax_bigwig/slop20bp/GM12878__slop20bp_RP20M_minmax01.bw"
+PREDICTION_ROI="/fs/project/PES0738/maxATAC_inputs/genome_inf/chr1_w1024_PC.bed"
+PREDICTION_BATCH_SIZE=10000
 
 # Benchmark Parameters
 BENCHMARK_CELLTYPE="GM12878"
-BENCHMARK_BIN_SIZE=[1000]
+BENCHMARK_BIN_SIZE=[500, 1000]
 BENCHMARK_AGG=["max"]
-GOLD_STANDARD_DIR="/Users/caz3so/scratch/maxATAC/analysis/20201228_maxATAC_interactive/binary"
+GOLD_STANDARD_DIR="/fs/project/PES0738/maxatac_goldstandards/hg38/binary"
 
 rule all:
     input:
@@ -56,7 +56,7 @@ rule maxatac_train:
     resources:
         runtime_min=240
 
-    threads: 4
+    threads: 14
 
     shell:
         "maxatac train "
@@ -90,7 +90,7 @@ rule maxatac_predict:
         output=PREDICT_OUTPUT,
         batch_size=PREDICTION_BATCH_SIZE
 
-    threads: 2
+    threads: 14
 
     resources:
         runtime_min=60
