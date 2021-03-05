@@ -32,7 +32,11 @@ def run_normalization(args):
     # Set up the names and directories
     basename = os.path.basename(args.signal).split(".bw")[0]
 
-    OUTPUT_FILENAME = os.path.join(args.output, basename + "_minmax01.bw")
+    if args.log_transform:
+        OUTPUT_FILENAME = os.path.join(args.output, basename + "_logp1_minmax01.bw")
+
+    else:
+        OUTPUT_FILENAME = os.path.join(args.output, basename + "_minmax01.bw")
 
     output_dir = get_dir(args.output)
 
@@ -58,6 +62,9 @@ def run_normalization(args):
 
         for chrom_name, chrom_length in header:
             chr_vals = np.nan_to_num(input_bw.values(chrom_name, 0, chrom_length, numpy=True))
+
+            if args.log_transform:
+                chr_vals = np.log(chr_vals + 1)
 
             normalized_signal = minmax_normalize_array(chr_vals, genome_min, genome_max)
 

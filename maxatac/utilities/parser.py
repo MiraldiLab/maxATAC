@@ -367,50 +367,6 @@ def get_parser():
                                 help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                 )
 
-    # Normalize parser
-    normalize_parser = subparsers.add_parser("normalize",
-                                             parents=[parent_parser],
-                                             help="Run minmax normalization"
-                                             )
-
-    normalize_parser.set_defaults(func=run_normalization)
-
-    normalize_parser.add_argument("--signal",
-                                  dest="signal",
-                                  type=str,
-                                  required=True,
-                                  help="Input signal bigWig file(s) to be normalized by reference"
-                                  )
-
-    normalize_parser.add_argument("--chroms",
-                                  dest="chromosomes",
-                                  type=str,
-                                  default=ALL_CHRS,
-                                  help="CHromosomes to limit normalization to"
-                                  )
-
-    normalize_parser.add_argument("--chrom_sizes",
-                                  dest="chrom_sizes",
-                                  type=str,
-                                  default=DEFAULT_CHROM_SIZES,
-                                  help="Chrom sizes file"
-                                  )
-
-    normalize_parser.add_argument("--output",
-                                  dest="output",
-                                  type=str,
-                                  default="./normalization_results",
-                                  help="Folder for normalization results. Default: ./normalization_results"
-                                  )
-
-    normalize_parser.add_argument("--loglevel",
-                                  dest="loglevel",
-                                  type=str,
-                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
-                                  choices=LOG_LEVELS.keys(),
-                                  help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                                  )
-
     # Predict parser
     predict_parser = subparsers.add_parser("predict",
                                            parents=[parent_parser],
@@ -457,13 +413,6 @@ def get_parser():
                                 type=float,
                                 default=DEFAULT_MIN_PREDICTION,
                                 help="Minimum prediction value to be reported. Default: " + str(DEFAULT_MIN_PREDICTION)
-                                )
-
-    predict_parser.add_argument("--output_directory",
-                                dest="output_directory",
-                                type=str,
-                                default="./prediction_results",
-                                help="Folder for prediction results. Default: ./prediction_results"
                                 )
 
     predict_parser.add_argument("--output",
@@ -807,6 +756,14 @@ def get_parser():
                                   default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
+
+    normalize_parser.add_argument("--log_transform",
+                                  dest="log_transform",
+                                  action='store_true',
+                                  default=False,
+                                  help="This argument should be set to true to log(counts +1) transform data before "
+                                       "minmax normalization"
+                                  )
 
     # Benchmark parser
     benchmark_parser = subparsers.add_parser("benchmark",

@@ -38,7 +38,7 @@ def run_prediction(args):
     :return : A bigwig file of TF binding predictions
     """
     # Create the output directory set by the parser
-    output_directory = get_dir(args.output_directory)
+    output_directory = get_dir(args.output)
 
     # Output filename for the bigwig predictions file based on the output directory and the prefix. Add the bw extension
     outfile_name_bigwig = os.path.join(output_directory, args.prefix + ".bw")

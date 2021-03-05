@@ -1,0 +1,137 @@
+import os
+
+# Overall Parameters
+SEQUENCE="../../../../scratch/maxATAC/data/genome_inf/hg38/hg38.2bit"
+AVERAGE="../../../../scratch/maxATAC/data/genome_inf/hg38/hg38_zeroes_average_file.bw"
+
+TF="CTCF"
+META_FILE="../../../../scratch/maxATAC/analysis/20210104_maxATAC_CNN_binary/20210113_maxATAC_CTCF_4CT_META.tsv"
+
+TRAIN_OUTPUT="/Users/caz3so/scratch/maxATAC/analysis/20210304_maxatac_snakemake/train"
+PREDICT_OUTPUT="/Users/caz3so/scratch/maxATAC/analysis/20210304_maxatac_snakemake/predict"
+BENCHMARK_OUTPUT="/Users/caz3so/scratch/maxATAC/analysis/20210304_maxatac_snakemake/benchmark"
+
+# Training Parameters
+EPOCHS=10
+VAL_BATCH_SIZE=10
+BATCH_SIZE=10
+BATCHES=10
+
+# Prediction Parameters
+PREDICTION_CELLTYPE="GM12878"
+PREDICTION_CHROMS="chr1"
+PREDICTION_SIGNAL="/Users/caz3so/scratch/maxATAC/analysis/20210304_maxatac_snakemake/inputs/GM12878__slop20bp_RP20M_minmax01.bw"
+PREDICTION_ROI="/Users/caz3so/scratch/maxATAC/data/genome_inf/hg38/chr1_w1024_PC_10kregions.bed"
+PREDICTION_BATCH_SIZE=100
+
+# Benchmark Parameters
+BENCHMARK_CELLTYPE="GM12878"
+BENCHMARK_BIN_SIZE=[1000]
+BENCHMARK_AGG=["max"]
+GOLD_STANDARD_DIR="/Users/caz3so/scratch/maxATAC/analysis/20201228_maxATAC_interactive/binary"
+
+rule all:
+    input:
+        expand(os.path.join(BENCHMARK_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}_{bin_size}bp_PRC.tsv"), epoch=range(1, EPOCHS + 1), agg=BENCHMARK_AGG, bin_size=BENCHMARK_BIN_SIZE)
+
+rule maxatac_train:
+    input:
+        sequence=SEQUENCE,
+        average=AVERAGE,
+        meta_file=META_FILE
+
+    output:
+        expand(os.path.join(TRAIN_OUTPUT, TF + "_{epoch}.h5"), epoch=range(1, EPOCHS + 1))
+
+    params:
+        arch="DCNN_V2",
+        rand_ratio="0",
+        val_batch_size=VAL_BATCH_SIZE,
+        batch_size=BATCH_SIZE,
+        batches=BATCHES,
+        epochs=EPOCHS,
+        output=TRAIN_OUTPUT,
+        prefix=TF
+
+    resources:
+        runtime_min=240
+
+    threads: 4
+
+    shell:
+        "maxatac train "
+        '--arch {params.arch} '
+        "--sequence {input.sequence} "
+        "--average {input.average} "
+        "--meta_file {input.meta_file} "
+        "--rand_ratio {params.rand_ratio} "
+        "--val_batch_size {params.val_batch_size} "
+        "--batch_size {params.batch_size} "
+        "--batches {params.batches} "
+        "--epochs {params.epochs} "
+        "--output {params.output} "
+        "--prefix {params.prefix} "
+        "--threads {threads}"
+
+rule maxatac_predict:
+    input:
+        models=os.path.join(TRAIN_OUTPUT, TF + "_{epoch}.h5"),
+        average=AVERAGE,
+        sequence=SEQUENCE,
+        signal=PREDICTION_SIGNAL,
+        roi=PREDICTION_ROI
+
+    output:
+        os.path.join(PREDICT_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}.bw")
+
+    params:
+        prefix=TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}",
+        chroms=PREDICTION_CHROMS,
+        output=PREDICT_OUTPUT,
+        batch_size=PREDICTION_BATCH_SIZE
+
+    threads: 2
+
+    resources:
+        runtime_min=60
+
+    shell:
+        "maxatac predict "
+        "--models {input.models} "
+        "--average {input.average} "
+        "--sequence {input.sequence} "
+        "--signal {input.signal} "
+        "--roi {input.roi} "
+        "--prefix {params.prefix} "
+        "--output {params.output} "
+        "--predict_chromosomes {params.chroms} "
+        "--batch_size {params.batch_size} "
+        "--threads {threads}"
+
+rule maxatac_benchmark:
+    input:
+        prediction=os.path.join(PREDICT_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}.bw"),
+        gold_standard=os.path.join(GOLD_STANDARD_DIR, PREDICTION_CELLTYPE + "__" + TF + ".bw")
+
+    output:
+        os.path.join(BENCHMARK_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}_{bin_size}bp_PRC.tsv")
+
+    params:
+        bin_size="{bin_size}",
+        prefix=TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}",
+        agg="{agg}",
+        output=BENCHMARK_OUTPUT
+
+    resources:
+        runtime_min=60
+
+    threads: 4
+
+    shell:
+        "maxatac benchmark "
+        "--prediction {input.prediction} "
+        "--gold_standard {input.gold_standard} "
+        "--prefix {params.prefix} "
+        "--output_directory {params.output} "
+        "--bin_size {params.bin_size} "
+        "--agg {params.agg} "

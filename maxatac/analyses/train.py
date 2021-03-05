@@ -1,5 +1,5 @@
 import logging
-
+import sys
 from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
 
@@ -129,5 +129,7 @@ def run_training(args):
             export_loss_mse_coeff(training_history, tf, TCL, RR, ARC, maxatac_model.results_location)
 
     logging.error("Results are saved to: " + maxatac_model.results_location)
+
+    sys.exit()
 
 # TODO write code to output model training statistics. Time to run and resources would be nice
