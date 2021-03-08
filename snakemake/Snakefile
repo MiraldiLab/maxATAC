@@ -1,21 +1,22 @@
 import os
 
 # Overall Parameters
+RUN_DIR="/fs/project/PES0738/maxATAC_outputs/snakemake"
 SEQUENCE="/fs/project/PES0738/maxATAC_inputs/genome_inf/hg38.2bit"
 AVERAGE="/fs/project/PES0738/maxATAC_inputs/genome_inf/hg38_zeroes_average_file.bw"
 
 TF="CTCF"
 META_FILE="/fs/project/PES0738/maxATAC_inputs/run_meta/20210202_11TF_Correct_ATAC_window_run_meta/20210202_Correct_ATAC_CTCF_slop20_RunMeta.tsv"
 
-TRAIN_OUTPUT="/fs/project/PES0738/maxATAC_models/20210304_snakemake_models"
-PREDICT_OUTPUT="/fs/project/PES0738/maxatac_predictions/20210304_snakemake_predictions"
-BENCHMARK_OUTPUT="/fs/project/PES0738/maxatac_predictions/20210304_snakemake_benchmark"
+TRAIN_OUTPUT=os.path.join(RUN_DIR, "train")
+PREDICT_OUTPUT=os.path.join(RUN_DIR, "predict")
+BENCHMARK_OUTPUT=os.path.join(RUN_DIR, "benchmark")
 
 # Training Parameters
 EPOCHS=20
-VAL_BATCH_SIZE=100
-BATCH_SIZE=100
-BATCHES=10
+VAL_BATCH_SIZE=1000
+BATCH_SIZE=1000
+BATCHES=100
 
 # Prediction Parameters
 PREDICTION_CELLTYPE="GM12878"
@@ -26,8 +27,8 @@ PREDICTION_BATCH_SIZE=10000
 
 # Benchmark Parameters
 BENCHMARK_CELLTYPE="GM12878"
-BENCHMARK_BIN_SIZE=[500, 1000]
-BENCHMARK_AGG=["max"]
+BENCHMARK_BIN_SIZE=[32, 64, 128, 256]
+BENCHMARK_AGG=["max", "sum"]
 GOLD_STANDARD_DIR="/fs/project/PES0738/maxatac_goldstandards/hg38/binary"
 
 rule all:
@@ -56,7 +57,7 @@ rule maxatac_train:
     resources:
         runtime_min=240
 
-    threads: 14
+    #threads: 60
 
     shell:
         "maxatac train "
@@ -71,7 +72,7 @@ rule maxatac_train:
         "--epochs {params.epochs} "
         "--output {params.output} "
         "--prefix {params.prefix} "
-        "--threads {threads}"
+        "--threads 60"
 
 rule maxatac_predict:
     input:
@@ -90,7 +91,7 @@ rule maxatac_predict:
         output=PREDICT_OUTPUT,
         batch_size=PREDICTION_BATCH_SIZE
 
-    threads: 14
+    threads: 4
 
     resources:
         runtime_min=60
