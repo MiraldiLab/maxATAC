@@ -201,11 +201,9 @@ def export_boxplot(data, file_location, title="Quantile Normalization", names=No
     
 def export_loss_mse_coeff(history, tf, TCL, RR, ARC, file_location, suffix="_model_loss_mse_coeff", ext=".png", style="ggplot", log_base=10, skip_tags="_{epoch}"):
     plt.style.use(style)
-    fig, ((ax1, ax2, ax3, ax4)) = plt.subplots(1, 4, sharex=False, sharey=False, figsize = (24,12))
+    fig, ([ax1, ax2, ax3, ax4], [ax5, ax6, ax7, ax8]) = plt.subplots(2, 4, sharex=False, sharey=False, figsize = (24,12))
     fig.suptitle('Training and Validation: Loss, Mean Squared Error and Coefficiennt of Determination for PCPC training on ' + TCL + '\n' +
-                ' with random ratio set at ' + str(RR) + '  for ' + tf + ' ' + ARC + ' architecture'  '\n \n', fontsize=24)
-
-    
+            ' with random ratio set at ' + str(RR) + '  for ' + tf + ' ' + ARC + ' architecture'  '\n \n', fontsize=24)
 
     t_y = history.history['loss']
     t_x = [int(i) for i in range(1, len(t_y) + 1)]
@@ -257,7 +255,7 @@ def export_loss_mse_coeff(history, tf, TCL, RR, ARC, file_location, suffix="_mod
     ax3.set_ylabel("R Squared")
     ax3.set_xlabel("Epoch")
     ax3.legend(["Training", "Validation"], loc="upper left")
-    
+
     t_y = history.history['coeff_determination']
     t_x = [int(i) for i in range(1, len(t_y) + 1)]
 
@@ -276,10 +274,81 @@ def export_loss_mse_coeff(history, tf, TCL, RR, ARC, file_location, suffix="_mod
     ax4.set_xlabel("Epoch")
     ax4.legend(["Training", "Validation"], loc="upper left")
 
-    
+    t_y = history.history['precision']
+    t_x = [int(i) for i in range(1, len(t_y) + 1)]
+
+    v_y = history.history["val_precision"]
+    v_x = [int(i) for i in range(1, len(v_y) + 1)]
+
+    ax5.plot(t_x, t_y, marker='o')
+    ax5.plot(v_x, v_y, marker='o')
+    ax5.set_xticks(t_x)
+    ax5.set_ylim([0, 1])
+
+
+    ax5.set_title("Precision")
+    ax5.set_ylabel("Precision")
+    ax5.set_xlabel("Epoch")
+    ax5.legend(["Training", "Validation"], loc="upper left")
+
+    #
+    t_y = history.history['recall']
+    t_x = [int(i) for i in range(1, len(t_y) + 1)]
+
+    v_y = history.history["val_recall"]
+    v_x = [int(i) for i in range(1, len(v_y) + 1)]
+
+    ax6.plot(t_x, t_y, marker='o')
+    ax6.plot(v_x, v_y, marker='o')
+
+    ax6.set_xticks(t_x)
+    ax6.set_ylim([0, 1])
+
+
+    ax6.set_title("Recall")
+    ax6.set_ylabel("Recall")
+    ax6.set_xlabel("Epoch")
+    ax6.legend(["Training", "Validation"], loc="upper left")
+    #
+    t_y = history.history['pearson']
+    t_x = [int(i) for i in range(1, len(t_y) + 1)]
+
+    v_y = history.history["val_pearson"]
+    v_x = [int(i) for i in range(1, len(v_y) + 1)]
+
+    ax7.plot(t_x, t_y, marker='o')
+    ax7.plot(v_x, v_y, marker='o')
+
+    ax7.set_xticks(t_x)
+    ax7.set_ylim([0, 1])
+
+
+    ax7.set_title("Pearson Correlation")
+    ax7.set_ylabel("Pearson Correlation")
+    ax7.set_xlabel("Epoch")
+    ax7.legend(["Training", "Validation"], loc="upper left")
+    #
+    t_y = history.history['spearman']
+    t_x = [int(i) for i in range(1, len(t_y) + 1)]
+
+    v_y = history.history["val_spearman"]
+    v_x = [int(i) for i in range(1, len(v_y) + 1)]
+
+    ax8.plot(t_x, t_y, marker='o')
+    ax8.plot(v_x, v_y, marker='o')
+
+    ax8.set_xticks(t_x)
+    ax8.set_ylim([0, 1])
+
+
+    ax8.set_title("Spearman Correlation")
+    ax8.set_ylabel("Spearman Correlation")
+    ax8.set_xlabel("Epoch")
+    ax8.legend(["Training", "Validation"], loc="upper left")
+
+
     fig.tight_layout(pad=10)
-
-
+    
     fig.savefig(
         replace_extension(
             remove_tags(file_location, skip_tags),

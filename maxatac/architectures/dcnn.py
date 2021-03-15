@@ -1,5 +1,7 @@
 import logging
+from scipy import stats
 from maxatac.utilities.system_tools import Mute
+
 
 with Mute():
     import tensorflow as tf
@@ -42,6 +44,31 @@ def loss_function(
     )
     return tf.reduce_mean(losses)
 
+def pearson(y_true, y_pred):
+    import scipy.stats as measures
+    import numpy as np
+    x = y_true
+    y = y_pred
+    
+    mx= K.cast(K.mean(x), dtype=np.float32)
+    my= K.cast(K.mean(y), dtype=np.float32)
+    
+    xm, ym = x-mx, y-my
+    
+    r_num = K.cast(K.sum(tf.multiply(xm,ym)), dtype=np.float32)
+    r_den = K.cast(K.sqrt(tf.multiply(K.sum(K.square(xm)), K.sum(K.square(ym)))), dtype=np.float32)
+    
+    score = r_num / r_den
+    return score
+'''
+def pearson(y_true, y_pred):
+    return (tf.contrib.metrics.streaming_pearson_correlation(y_pred, y_true))
+'''
+
+def spearman(y_true, y_pred):
+    from scipy.stats import spearmanr
+    
+    return ( tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32), tf.cast(y_true, tf.float32)], Tout = tf.float32) )
 
 def dice_coef(
         y_true,
@@ -266,7 +293,7 @@ def get_dilated_cnn(
                 decay=adam_decay
             ),
             loss=loss_function,
-            metrics=[dice_coef, 'accuracy']
+            metrics=[dice_coef, 'accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall(), pearson, spearman]
         )
 
     else:
@@ -280,7 +307,7 @@ def get_dilated_cnn(
                 decay=adam_decay
             ),
             loss=mse,
-            metrics=[mse, coeff_determination]  # tf.keras.metrics.RootMeanSquaredError()
+            metrics=[mse, coeff_determination, tf.keras.metrics.Precision(), tf.keras.metrics.Recall(), pearson, spearman]  # tf.keras.metrics.RootMeanSquaredError()
         )
 
     logging.debug("Model compiled")

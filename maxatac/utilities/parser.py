@@ -779,7 +779,13 @@ def get_parser():
                                   required=True,
                                   help="Prediction bigWig file"
                                   )
-
+    benchmark_parser.add_argument("--quant",
+                              dest="quant",
+                              action='store_true',
+                              default=False,
+                              help="This argument should be set to true for models based on quantitative data"
+                              )
+                              
     benchmark_parser.add_argument("--gold_standard",
                                   dest="gold_standard",
                                   type=str,

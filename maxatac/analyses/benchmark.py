@@ -4,7 +4,7 @@ import os
 from maxatac.utilities.system_tools import get_dir, Mute
 
 with Mute():
-    from maxatac.utilities.benchmarking_tools import calculate_predictions_AUPR, get_blacklist_mask
+    from maxatac.utilities.benchmarking_tools import calculate_predictions_AUPR, get_blacklist_mask, calculate_R2_pearson_spearman
 
 
 def run_benchmarking(args):
@@ -35,6 +35,7 @@ def run_benchmarking(args):
 
     # Build the results filename
     results_filename = os.path.join(output_dir, args.prefix + "_" + str(args.bin_size) + "bp_PRC.tsv")
+    results_filename2 = os.path.join(output_dir, args.prefix + "_" + "r2_spearman_spearman.tsv")
 
     logging.error(
         "Benchmarking" +
@@ -48,12 +49,13 @@ def run_benchmarking(args):
 
     # Get the blacklist mask
     logging.error("Import blacklist mask")
-
+    
     blacklist_mask = get_blacklist_mask(args.blacklist,
                                         bin_size=args.bin_size,
                                         chromosome=args.chromosomes[0])
 
     # Calculate the AUPR using the prediction and gold standard
+
     calculate_predictions_AUPR(args.prediction,
                                args.gold_standard,
                                args.bin_size,
@@ -62,4 +64,18 @@ def run_benchmarking(args):
                                blacklist_mask,
                                args.agg_function,
                                args.round_predictions)
+
+    if args.quant:
+        blacklist_mask = get_blacklist_mask(
+            args.blacklist,
+            bin_size=1,
+            chromosome=args.chromosomes[0]
+        )
+        calculate_R2_pearson_spearman(args.prediction,
+                               args.gold_standard,
+                               args.chromosomes[0],
+                               results_filename2,
+                               blacklist_mask,
+                               args.round_predictions
+                               )
 
