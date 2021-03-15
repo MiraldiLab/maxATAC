@@ -6,6 +6,10 @@ from maxatac.utilities.genome_tools import load_bigwig
 from sklearn import metrics
 from sklearn.metrics import precision_recall_curve
 
+from sklearn.metrics import r2_score
+from scipy.stats import pearsonr
+from scipy import stats
+
 
 def get_blacklist_mask(blacklist,
                        chromosome,
@@ -129,3 +133,70 @@ def calculate_predictions_AUPR(prediction,
 
         # Write the precision recall curve to a file
         PR_CURVE_DF.to_csv(results_location, sep="\t", header=True, index=False)
+
+
+def calculate_R2_pearson_spearman(prediction,
+                               gold_standard,
+                               chromosome,
+                               results_location,
+                               blacklist_mask,
+                               round_predictions
+                               ):
+    """
+    Calculate the R2, Pearson, and Spearman Correlation for Quantitative Preidcitions
+
+    :param prediction: The input prediction bigwig file
+    :param gold_standard: The input gold standard file
+    :param chromosome: The chromosome to limit the analysis to
+    :param results_location: The location to write the results to
+    :param blacklist_mask: The blacklist mask that is used to remove bins overlapping blacklist regions
+
+    :return: Writes a TSV for the P/R curve
+    """
+    with load_bigwig(prediction) as prediction_stream, load_bigwig(gold_standard) as goldstandard_stream:
+        # Get the end of the chromosome
+        chromosome_length = prediction_stream.chroms(chromosome)
+
+        logging.error("Import Predictions Array for Quantitative Predictions")
+
+        # Get the bin stats from the prediction array
+        prediction_chromosome_data = np.nan_to_num(
+            prediction_stream.values(
+            chromosome,
+            0,
+            chromosome_length)
+        )
+
+        logging.error("Import Gold Standard Array")
+        #prediction_chromosome_data = np.round(prediction_chromosome_data, round_predictions)
+
+        # Get the bin stats from the gold standard array
+        
+        gold_standard_chromosome_data = np.nan_to_num(
+            goldstandard_stream.values(
+                chromosome,
+                0,
+                chromosome_length)
+        )
+
+        logging.error("Calculate R2")
+        R2_score=r2_score(gold_standard_chromosome_data[blacklist_mask],
+                        prediction_chromosome_data[blacklist_mask])
+        
+        logging.error("Calculate Pearson Correlation")
+        
+        pearson_score, pearson_pval = pearsonr(gold_standard_chromosome_data[blacklist_mask],
+                        prediction_chromosome_data[blacklist_mask])
+        
+        logging.error("Calculate Spearman Correlation")
+        
+        spearman_score, spearman_pval = stats.spearmanr(gold_standard_chromosome_data[blacklist_mask],
+                        prediction_chromosome_data[blacklist_mask])
+                        
+        
+        R2_Sp_P_df=pd.DataFrame([[R2_score, pearson_score, pearson_pval, spearman_score, spearman_pval]], 
+                            columns=['R2', 'pearson', 'pearson_pval', 'spearman', 'spearman_pval'])
+
+        R2_Sp_P_df.to_csv(results_location, sep='\t', index=None)
+
+                                
