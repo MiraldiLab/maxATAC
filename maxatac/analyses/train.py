@@ -26,11 +26,9 @@ def run_training(args):
 
     1) Set up the directories and filenames
     2) Initialize the model based on the desired architectures
-    3) Read in the meta table
-    4) Read in training and validation pool
-    5) Initialize the training generator
-    6) Initialize the validation generator
-    7) Fit the models with the specific parameters
+    3) Read in training and validation pools
+    4) Initialize the training and validation generators
+    5) Fit the models with the specific parameters
 
     :params args: seed, output, prefix, output_activation, lrate, decay, weights, quant, target_scale_factor, dense,
     batch_size, val_batch_size, train roi, validate roi, meta_file, sequence, average, threads, epochs, batches

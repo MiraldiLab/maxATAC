@@ -809,7 +809,7 @@ def get_parser():
                                   type=str,
                                   default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
                                   help="Aggregation function to use for combining results into bins: \
-                                        max, sum, mean, median, min"
+                                        max, coverage, mean, std, min"
                                   )
 
     benchmark_parser.add_argument("--round_predictions",

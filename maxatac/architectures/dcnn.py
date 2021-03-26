@@ -18,9 +18,9 @@ with Mute():
     from keras.optimizers import Adam
 
     from maxatac.utilities.constants import KERNEL_INITIALIZER, INPUT_LENGTH, INPUT_CHANNELS, INPUT_FILTERS, \
-    INPUT_KERNEL_SIZE, INPUT_ACTIVATION, OUTPUT_FILTERS, OUTPUT_KERNEL_SIZE, FILTERS_SCALING_FACTOR, DILATION_RATE, \
-    OUTPUT_LENGTH, CONV_BLOCKS, PADDING, POOL_SIZE, ADAM_BETA_1, ADAM_BETA_2, DEFAULT_ADAM_LEARNING_RATE, \
-    DEFAULT_ADAM_DECAY
+        INPUT_KERNEL_SIZE, INPUT_ACTIVATION, OUTPUT_FILTERS, OUTPUT_KERNEL_SIZE, FILTERS_SCALING_FACTOR, DILATION_RATE, \
+        OUTPUT_LENGTH, CONV_BLOCKS, PADDING, POOL_SIZE, ADAM_BETA_1, ADAM_BETA_2, DEFAULT_ADAM_LEARNING_RATE, \
+        DEFAULT_ADAM_DECAY
 
 
 def loss_function(
@@ -307,29 +307,3 @@ def get_callbacks(
         )
     ]
     return callbacks
-
-# start =1
-# model = get_dilated_cnn(
-#     input_length=INPUT_LENGTH,
-#     input_channels=INPUT_CHANNELS,
-#     input_filters=INPUT_FILTERS,
-#     input_kernel_size=INPUT_KERNEL_SIZE,
-#     input_activation=INPUT_ACTIVATION,
-#     output_filters=OUTPUT_FILTERS,
-#     output_kernel_size=OUTPUT_KERNEL_SIZE,
-#     output_activation="sigmoid",
-#     filters_scaling_factor=FILTERS_SCALING_FACTOR,
-#     dilation_rate=DILATION_RATE,
-#     conv_blocks=CONV_BLOCKS,
-#     padding=PADDING,
-#     pool_size=POOL_SIZE,
-#     adam_learning_rate=DEFAULT_ADAM_LEARNING_RATE,
-#     adam_beta_1=ADAM_BETA_1,
-#     adam_beta_2=ADAM_BETA_2,
-#     adam_decay=DEFAULT_ADAM_DECAY,
-#     quant=True,
-#     target_scale_factor=10,
-#     dense_b = True,
-#     weights=None)
-#
-# debug = 1
