@@ -790,6 +790,7 @@ def get_parser():
     benchmark_parser.add_argument("--chromosomes",
                                   dest="chromosomes",
                                   type=str,
+                                  nargs="+",
                                   default=DEFAULT_TEST_CHRS,
                                   help="Chromosomes list for analysis. \
                                         Optionally with regions in a form of chrN:start-end. \

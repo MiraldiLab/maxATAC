@@ -8,6 +8,8 @@ from maxatac.utilities.genome_tools import load_bigwig
 from sklearn import metrics
 from sklearn.metrics import precision_recall_curve
 
+from maxatac.utilities.system_tools import remove_tags
+
 
 def get_blacklist_mask(blacklist,
                        chromosome,
@@ -169,7 +171,8 @@ class ChromosomeAUPRC(object):
         self.blacklist_stream = load_bigwig(blacklist_bw)
 
         self.chromosome = chromosome
-        self.chromosome_length = self.prediction_stream.chroms(self.chromosome)
+
+        self.chromosome_length = self.goldstandard_stream.chroms(self.chromosome)
         self.bin_count = int(int(self.chromosome_length) / int(bin_size))  # need to floor the number
         self.agg_function = agg_function
         self.round_predictions = round_predictions
@@ -179,6 +182,8 @@ class ChromosomeAUPRC(object):
         self.__import_goldstandard_array__()
 
         self.__AUPRC__()
+
+        self.__plot()
 
     def __import_blacklist_mask__(self):
         """
@@ -195,6 +200,8 @@ class ChromosomeAUPRC(object):
                                                                    ),
                                        dtype=float  # need it to have NaN instead of None
                                        ) != 1  # Convert to boolean array, select areas that are not 1
+
+        self.blacklist_index = np.argwhere(self.blacklist_mask == True)
 
     def __import_prediction_array__(self, round_prediction=4):
         """
@@ -337,3 +344,27 @@ class ChromosomeAUPRC(object):
 
         # Write the AUPRC stats to a dataframe
         self.PR_CURVE_DF.to_csv(self.results_location, sep="\t", header=True, index=False)
+
+    def __plot(self, cmap="viridis"):
+        points = np.array([self.recall, self.precision]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+
+        fig, axs = plt.subplots(1, figsize=(5, 4), dpi=150)
+
+        # plt.plot(PR_CURVE_DF.Recall, PR_CURVE_DF.Threshold)
+        # Create a continuous norm to map from data points to colors
+        norm = plt.Normalize(0, 1)
+
+        lc = LineCollection(segments, cmap=cmap, norm=norm)
+        # Set the values used for colormapping
+        lc.set_array(self.thresholds)
+        lc.set_linewidth(5)
+        line = axs.add_collection(lc)
+        fig.colorbar(line)
+        plt.grid()
+        plt.ylim(0, 1)
+        plt.xlim(0, 1)
+        plt.ylabel("Precision")
+        plt.xlabel("Recall")
+
+        plt.savefig(remove_tags(self.results_location, ".tsv") + ".png")
