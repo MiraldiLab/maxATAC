@@ -373,6 +373,7 @@ def create_roi_batch(sequence,
 
                 inputs_batch.append(input_matrix)
 
+                # TODO we might want to test what happens if we change the
                 if not quant:
                     target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
                     target_vector = np.nan_to_num(target_vector, 0.0)

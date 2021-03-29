@@ -796,6 +796,7 @@ def get_parser():
     benchmark_parser.add_argument("--chromosomes",
                                   dest="chromosomes",
                                   type=str,
+                                  nargs="+",
                                   default=DEFAULT_TEST_CHRS,
                                   help="Chromosomes list for analysis. \
                                         Optionally with regions in a form of chrN:start-end. \
@@ -815,7 +816,7 @@ def get_parser():
                                   type=str,
                                   default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
                                   help="Aggregation function to use for combining results into bins: \
-                                        max, sum, mean, median, min"
+                                        max, coverage, mean, std, min"
                                   )
 
     benchmark_parser.add_argument("--round_predictions",

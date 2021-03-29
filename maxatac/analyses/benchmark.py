@@ -4,7 +4,7 @@ import os
 from maxatac.utilities.system_tools import get_dir, Mute
 
 with Mute():
-    from maxatac.utilities.benchmarking_tools import calculate_predictions_AUPR, get_blacklist_mask, calculate_R2_pearson_spearman
+    from maxatac.utilities.benchmarking_tools import calculate_predictions_AUPR, get_blacklist_mask, calculate_R2_pearson_spearman, ChromosomeAUPRC
 
 
 def run_benchmarking(args):
@@ -22,7 +22,7 @@ def run_benchmarking(args):
 
     1) Set up directories and names for this project
     2) Get the blacklist mask using the input blacklist and bin it at the same resolution as the predictions and GS
-    3) Calculate the AUPR
+    3) Calculate the AUPR per chromosome
 
     :param args: output_directory, prefix, bin_size, prediction, gold_standard, chromosomes, agg_function,
     round_predictions
@@ -43,27 +43,23 @@ def run_benchmarking(args):
         "\n  Gold standard file: " + args.gold_standard +
         "\n  Bin size: " + str(args.bin_size) +
         "\n  Restricting to chromosomes: \n   - " + "\n   - ".join(args.chromosomes) +
-        "\n  Output directory: " + output_dir +
-        "\n  Output filename: " + results_filename + "\n"
+        "\n  Output directory: " + output_dir
     )
 
-    # Get the blacklist mask
-    logging.error("Import blacklist mask")
-    
-    blacklist_mask = get_blacklist_mask(args.blacklist,
-                                        bin_size=args.bin_size,
-                                        chromosome=args.chromosomes[0])
-
     # Calculate the AUPR using the prediction and gold standard
+    for chromosome in args.chromosomes:
+        # Build the results filename
+        results_filename = os.path.join(output_dir,
+                                        args.prefix + "_" + chromosome + "_" + str(args.bin_size) + "bp_PRC.tsv")
 
-    calculate_predictions_AUPR(args.prediction,
-                               args.gold_standard,
-                               args.bin_size,
-                               args.chromosomes[0],
-                               results_filename,
-                               blacklist_mask,
-                               args.agg_function,
-                               args.round_predictions)
+        ChromosomeAUPRC(args.prediction,
+                        args.gold_standard,
+                        args.blacklist,
+                        chromosome,
+                        args.bin_size,
+                        args.agg_function,
+                        results_filename,
+                        args.round_predictions)
 
     if args.quant:
         blacklist_mask = get_blacklist_mask(
@@ -78,4 +74,3 @@ def run_benchmarking(args):
                                blacklist_mask,
                                args.round_predictions
                                )
-
