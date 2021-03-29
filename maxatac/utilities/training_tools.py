@@ -135,7 +135,6 @@ class MaxATACModel(object):
 
 def DataGenerator(
         sequence,
-        average,
         meta_table,
         roi_pool,
         cell_type_list,
@@ -160,7 +159,6 @@ def DataGenerator(
     4) Combine the roi  and random regions batches according to the rand_ratio value
 
     :param sequence: The input 2bit DNA sequence
-    :param average: The average ATAC-seq signal
     :param meta_table: The run meta table with locations to ATAC and ChIP-seq data
     :param roi_pool: The pool of regions to use centered on peaks
     :param cell_type_list: The training cell lines to use
@@ -190,7 +188,6 @@ def DataGenerator(
 
     # Initialize the ROI generator
     roi_gen = create_roi_batch(sequence=sequence,
-                               average=average,
                                meta_table=meta_table,
                                roi_pool=roi_pool,
                                n_roi=n_roi,
@@ -203,7 +200,6 @@ def DataGenerator(
 
     # Initialize the random regions generator
     rand_gen = create_random_batch(sequence=sequence,
-                                   average=average,
                                    meta_table=meta_table,
                                    cell_type_list=cell_type_list,
                                    n_rand=n_rand,
@@ -264,10 +260,9 @@ def get_roi_pool(filepath, chroms, shuffle=False):
 def get_input_matrix(rows,
                      cols,
                      signal_stream,
-                     average_stream,
                      sequence_stream,
                      bp_order,
-                     chrom,
+                     chromosome,
                      start,  # end - start = cols
                      end
                      ):
@@ -277,7 +272,6 @@ def get_input_matrix(rows,
     :param rows: Number of rows == channels
     :param cols: Number of cols == region length
     :param signal_stream: Signal bigwig stream
-    :param average_stream: Average bigwig stream
     :param sequence_stream: 2bit DNA sequence stream
     :param bp_order: BP order
     :param chrom: chromosome
@@ -289,19 +283,16 @@ def get_input_matrix(rows,
     input_matrix = np.zeros((rows, cols))
 
     for n, bp in enumerate(bp_order):
-        input_matrix[n, :] = get_one_hot_encoded(sequence_stream.sequence(chrom, start, end), bp)
+        input_matrix[n, :] = get_one_hot_encoded(sequence_stream.sequence(chromosome, start, end), bp)
 
-    signal_array = np.array(signal_stream.values(chrom, start, end))
-    avg_array = np.array(average_stream.values(chrom, start, end))
+    signal_array = np.array(signal_stream.values(chromosome, start, end))
 
     input_matrix[4, :] = signal_array
-    input_matrix[5, :] = input_matrix[4, :] - avg_array
 
     return input_matrix.T
 
 
 def create_roi_batch(sequence,
-                     average,
                      meta_table,
                      roi_pool,
                      n_roi,
@@ -315,7 +306,6 @@ def create_roi_batch(sequence,
     Create a batch of examples from regions of interest
 
     :param sequence:
-    :param average:
     :param meta_table:
     :param roi_pool:
     :param n_roi:
@@ -355,7 +345,6 @@ def create_roi_batch(sequence,
             binding = meta_row.loc[0, 'Binding_File']
 
             with \
-                    load_bigwig(average) as average_stream, \
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
@@ -364,9 +353,8 @@ def create_roi_batch(sequence,
                                                 cols=INPUT_LENGTH,
                                                 bp_order=BP_ORDER,
                                                 signal_stream=signal_stream,
-                                                average_stream=average_stream,
                                                 sequence_stream=sequence_stream,
-                                                chrom=chrom_name,
+                                                chromosome=chrom_name,
                                                 start=start,
                                                 end=end
                                                 )
@@ -395,12 +383,11 @@ def create_roi_batch(sequence,
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
 
-        yield (np.array(inputs_batch), np.array(targets_batch))
+        yield np.array(inputs_batch), np.array(targets_batch)
 
 
 def create_random_batch(
         sequence,
-        average,
         meta_table,
         cell_type_list,
         n_rand,
@@ -424,52 +411,45 @@ def create_random_batch(
             binding = meta_row.loc[0, 'Binding_File']
 
             with \
-                    load_bigwig(average) as average_stream, \
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
-                try:
-                    input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
-                                                    cols=INPUT_LENGTH,
-                                                    bp_order=BP_ORDER,
-                                                    signal_stream=signal_stream,
-                                                    average_stream=average_stream,
-                                                    sequence_stream=sequence_stream,
-                                                    chrom=chrom_name,
-                                                    start=seq_start,
-                                                    end=seq_end
-                                                    )
 
-                    inputs_batch.append(input_matrix)
+                input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
+                                                cols=INPUT_LENGTH,
+                                                bp_order=BP_ORDER,
+                                                signal_stream=signal_stream,
+                                                sequence_stream=sequence_stream,
+                                                chromosome=chrom_name,
+                                                start=seq_start,
+                                                end=seq_end
+                                                )
 
-                    if not quant:
-                        target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
-                        target_vector = np.nan_to_num(target_vector, 0.0)
-                        n_bins = int(target_vector.shape[0] / bp_resolution)
-                        split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                        bin_sums = np.sum(split_targets, axis=1)
-                        bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-                        targets_batch.append(bin_vector)
+                inputs_batch.append(input_matrix)
 
-                    else:
-                        target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
-                        target_vector = np.nan_to_num(target_vector, 0.0)
-                        n_bins = int(target_vector.shape[0] / bp_resolution)
-                        split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                        bin_vector = np.mean(split_targets,
-                                             axis=1)  # Perhaps we can change np.mean to np.median. Something to think about.
-                        targets_batch.append(bin_vector)
+                if not quant:
+                    target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
+                    target_vector = np.nan_to_num(target_vector, 0.0)
+                    n_bins = int(target_vector.shape[0] / bp_resolution)
+                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+                    bin_sums = np.sum(split_targets, axis=1)
+                    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+                    targets_batch.append(bin_vector)
 
-
-                except:
-                    here = 2
-                    continue
+                else:
+                    target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
+                    target_vector = np.nan_to_num(target_vector, 0.0)
+                    n_bins = int(target_vector.shape[0] / bp_resolution)
+                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+                    bin_vector = np.mean(split_targets,
+                                         axis=1)  # Perhaps we can change np.mean to np.median. Something to think about.
+                    targets_batch.append(bin_vector)
 
         if quant:
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
 
-        yield (np.array(inputs_batch), np.array(targets_batch))
+        yield np.array(inputs_batch), np.array(targets_batch)
 
 
 class RandomRegionsPool:
@@ -503,45 +483,37 @@ class RandomRegionsPool:
 
         if self.__idx == self.chrom_pool_size:
             random.shuffle(self.chrom_pool)
+
             self.__idx = 0
+
         chrom_name, chrom_length = self.chrom_pool[self.__idx]
+
         self.__idx += 1
 
         if self.preference_pool:
             preference = random.sample(self.preference_pool[chrom_name], 1)[0]
-            start = round(
-                random.randint(
-                    preference[0],
-                    preference[1] - self.region_length
-                )
-            )
+
+            start = round(random.randint(preference[0], preference[1] - self.region_length))
+
         else:
-            start = round(
-                random.randint(
-                    0,
-                    chrom_length - self.region_length
-                )
-            )
+            start = round(random.randint(0, chrom_length - self.region_length))
 
         end = start + self.region_length
-        return (chrom_name, start, end)
+
+        return chrom_name, start, end
 
     def __get_preference_pool(self):
         preference_pool = {}
+
         if self.preferences is not None:
             with load_bigwig(self.preferences) as input_stream:
                 for chrom_name, chrom_data in self.chroms.items():
-                    for entry in input_stream.entries(
-                            chrom_name,
-                            0,
-                            chrom_data["length"],
-                            withString=False
-                    ):
+                    for entry in input_stream.entries(chrom_name, 0, chrom_data["length"], withString=False):
                         if entry[1] - entry[0] < self.region_length:
                             continue
-                        preference_pool.setdefault(
-                            chrom_name, []
-                        ).append(list(entry[0:2]))
+
+                        preference_pool.setdefault(chrom_name, []).append(list(entry[0:2]))
+
         return preference_pool
 
     def __get_chrom_pool(self):
@@ -551,22 +523,20 @@ class RandomRegionsPool:
         chrom_pool_size
         """
 
-        chroms = {
-            chrom_name: chrom_data
-            for chrom_name, chrom_data in self.chroms.items()
-            # if not self.preference_pool or (chrom_name in self.preference_pool)
-        }
+        chroms = {chrom_name: chrom_data for chrom_name, chrom_data in self.chroms.items()}
 
         sum_lengths = sum(map(lambda v: v["length"], chroms.values()))
+
         frequencies = {
-            chrom_name: round(
-                chrom_data["length"] / sum_lengths * self.chrom_pool_size
-            )
+            chrom_name: round(chrom_data["length"] / sum_lengths * self.chrom_pool_size)
+
             for chrom_name, chrom_data in chroms.items()
-        }
+                      }
         labels = []
+
         for k, v in frequencies.items():
             labels += [(k, chroms[k]["length"])] * v
+
         random.shuffle(labels)
 
         return labels
@@ -576,6 +546,7 @@ class ROIPool(object):
     """
     Import genomic regions of interest for training or validation
     """
+
     def __init__(self,
                  chroms,
                  roi_file_path,

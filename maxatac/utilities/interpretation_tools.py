@@ -59,7 +59,6 @@ def output_meme_pwm(pwm, pattern_name):
 
 
 def generating_interpret_data(sequence,
-                              average,
                               meta_table,
                               roi_pool,
                               train_cell_lines,
@@ -73,7 +72,6 @@ def generating_interpret_data(sequence,
     _mp = Pool(workers)
     _data = np.array(_mp.map(partial(process_map,
                                      sequence=sequence,
-                                     average=average,
                                      meta_table=meta_table,
                                      roi_pool=roi_pool,
                                      train_tf=train_tf,
@@ -83,12 +81,11 @@ def generating_interpret_data(sequence,
                      )
     _mp.close()
     _mp.join()
-    return (_data[:, 0], _data[:, 1])
+    return _data[:, 0], _data[:, 1]
 
 
 def process_map(row_idx,
                 sequence,
-                average,
                 meta_table,
                 roi_pool,
                 train_tf,
@@ -111,7 +108,6 @@ def process_map(row_idx,
         print("could not read meta_row. row_idx = {0}".format(row_idx))
     with \
             safe_load_bigwig(filters) as filters_stream, \
-            load_bigwig(average) as average_stream, \
             load_2bit(sequence) as sequence_stream, \
             load_bigwig(signal) as signal_stream, \
             load_bigwig(binding) as binding_stream:
@@ -123,7 +119,6 @@ def process_map(row_idx,
                 reshape=False,
                 bp_order=BP_ORDER,
                 signal_stream=signal_stream,
-                average_stream=average_stream,
                 sequence_stream=sequence_stream,
                 chrom=chrom_name,
                 start=start,

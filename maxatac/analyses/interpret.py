@@ -98,7 +98,6 @@ def run_interpretation(args):
 
             X, y = generating_interpret_data(
                 sequence=args.sequence,
-                average=args.average,
                 meta_table=maxatac_model.meta_dataframe,
                 roi_pool=_group,
                 train_cell_lines=maxatac_model.cell_types,

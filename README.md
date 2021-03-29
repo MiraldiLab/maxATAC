@@ -9,15 +9,28 @@ The maxATAC package is a collection of tools used for learning to predict TF bin
 
 ## ChangLog
 
-Version 0.1.0
+***Version 0.1.0***
 
-Stable Merge
+Stable merge of all forks
+
+***Version 0.1.1***
+
+Expanding documentation and  benchmarking features
+- Benchmarking outputs AUPRC plots and quantitative data
+- Removed the average signal track that was not used
+- Spearman, R2, precision, and recall for training
 
 ## Requirements
 
 This version requires python 3.6 and BEDTools. 
 
 ## Installation
+
+It is best to install maxATAC into a dedicated virtual environment. Clone the repository with `git clone` into your `repo` directory of choice. 
+
+Change into the maxATAC repository with `cd maxATAC` and use `pip3 install -e .` to install the package. 
+
+You will also need to have BEDtools installed or loaded on your PATH. 
 
 ## Predicting TF Binding Workflow Overview
 
@@ -71,6 +84,9 @@ This function can take a list of input bigwig files and average their scores usi
 4) Loop through each entry in the chromosome sizes dictionary and calculate the average across all inputs
 5) Write the bigwig file
 
+```python
+maxatac average --bigwigs ENCSR499ASS_1_correct.bw ENCSR499ASS_1_incorrect.bw --prefix IMR-90 --output ./test --chroms chr1
+```
 ### Normalize
 
 The `normalize` function will take an input bigwig file and minmax normalize the values genome wide.
@@ -84,6 +100,11 @@ This function will min-max a bigwig file based on the minimum and maximum values
 3) Find the genomic min and max values by looping through each chromosome
 4) Loop through each chromosome and minmax normalize the values based on the genomic values.
 
+Example command:
+
+```python
+maxatac normalize --signal ENCFF015CKI_chromFiltered_5prime_slop0bp_RP20M.bw --output /Users/caz3so/scratch --chroms chr1 --log_transform
+```
 ### Train
 
 The `train` function takes as input ATAC-seq signal, DNA sequence, Delta ATAC-seq signal, and ChIP-seq signal to train a neural network with the architecture of choice.
@@ -104,6 +125,14 @@ Example header for meta file. The meta file must be a tsv file, but the order of
 6) Initialize the validation generator
 7) Fit the models with the specific parameters
 
+
+Example command:
+
+```python
+maxatac train --sequence hg38.2bit --meta_file CTCF_META.tsv --prefix CTCF_test --arch DCNN_V2 --rand_ratio 0 --shuffle_cell_type
+```
+
+
 ### Predict
 
 The `predict` function takes as input BED formatted genomic regions to predict TF binding using a trained maxATAC model.
@@ -120,6 +149,11 @@ Example input BED file for prediction:
 2) Make predictions
 3) Convert predictions to bigwig format and write results
 
+Example command:
+
+```python
+predict --models CTCF_epoch10.h5 --sequence hg38.2bit --signal GM12878__CTCF_slop20bp_RP20M_logp1_minmax01.bw --roi chr1_w1024_PC.bed --prefix test_preds
+```
 ### Benchmark
 
 The `benchmark` function takes as input a prediction bigwig signal track and a ChIP-seq gold standard bigwig track to calculate precision and recall.
@@ -134,6 +168,11 @@ Currently, benchmarking is set up for one chromosome at a time. The most time-co
 2) Get the blacklist mask using the input blacklist and bin it at the same resolution as the predictions and GS
 3) Calculate the AUPR
 
+Example command:
+
+```python
+maxatac benchmark --prediction ELK1_slop20_RR30_epoch20_GM12878.bw --gold_standard GM12878__ELK1.bw --prefix ELK1_GM12878_chr1 --output /benchmark_result --bin_size 10000 --chromosomes chr1
+```
 ### ROI
 
 The `roi` function will generate regions of interest based on input ChIP-seq, ATAC-seq, or randomly generated regions. 

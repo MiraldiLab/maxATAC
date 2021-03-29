@@ -123,7 +123,6 @@ def assert_and_fix_args_for_training(args):
         args.tchroms,
         [
             args.sequence,
-            args.average
         ],
         True
     )
@@ -131,7 +130,6 @@ def assert_and_fix_args_for_training(args):
         args.vchroms,
         [
             args.sequence,
-            args.average
         ],
         True
     )
@@ -143,7 +141,6 @@ def assert_and_fix_args_for_training(args):
         args.chroms,
         [
             args.sequence,
-            args.average
         ],
         True
     )
@@ -155,7 +152,6 @@ def assert_and_fix_args_for_training(args):
         set(synced_chroms) - set(synced_tchroms) - set(synced_vchroms),
         [
             args.sequence,
-            args.average
         ],
         True
     )
@@ -387,13 +383,6 @@ def get_parser():
                                 help="This argument should be set to true to build models based on quantitative data"
                                 )
 
-    predict_parser.add_argument("--average",
-                                dest="average",
-                                type=str,
-                                required=True,
-                                help="Average signal bigWig file"
-                                )
-
     predict_parser.add_argument("--sequence",
                                 dest="sequence",
                                 type=str,
@@ -523,13 +512,6 @@ def get_parser():
                               action='store_true',
                               default=False,
                               help="This argument should be set to true to build models based on quantitative data"
-                              )
-
-    train_parser.add_argument("--average",
-                              dest="average",
-                              type=str,
-                              required=True,
-                              help="Average signal bigWig file"
                               )
 
     train_parser.add_argument("--meta_file",
@@ -867,13 +849,6 @@ def get_parser():
                                   type=str,
                                   required=True,
                                   help="Genome sequence 2bit file"
-                                  )
-
-    interpret_parser.add_argument("--average",
-                                  dest="average",
-                                  type=str,
-                                  required=True,
-                                  help="Average signal bigWig file"
                                   )
 
     interpret_parser.add_argument("--meta_file",
