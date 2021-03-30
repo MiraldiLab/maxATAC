@@ -426,12 +426,6 @@ def get_parser():
                                       Default: None, predictions are done on the whole chromosome length"
                                 )
 
-    predict_parser.add_argument("--cpu",
-                                dest="cpu",
-                                action='store_true',
-                                help="Whether to use CPU or not"
-                                )
-
     predict_parser.add_argument("--keep",
                                 dest="keep",
                                 action="store_true",

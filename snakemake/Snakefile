@@ -2,7 +2,7 @@ import os
 
 # TF Model Information
 TF="CTCF"
-META_FILE="/fs/project/PES0738/maxATAC_inputs/run_meta/20210202_11TF_Correct_ATAC_window_run_meta/20210202_Correct_ATAC_CTCF_slop20_RunMeta.tsv"
+META_FILE="/fs/project/PES0738/maxATAC_inputs/run_meta/20210306_ENCODE_binary_53TF/20210306_CTCF_FullModels_TrainRunMeta.tsv"
 
 # Overall Parameters
 RUN_DIR="/fs/project/PES0738/maxATAC_outputs/snakemake"
@@ -20,7 +20,7 @@ BATCH_SIZE=1000
 BATCHES=100
 
 # Prediction Parameters
-PREDICTION_CELLTYPE="GM12878"
+PREDICTION_CELLTYPE="GM23338"
 PREDICTION_CHROMS="chr1"
 PREDICTION_SIGNAL=os.path.join(ATAC_SIGNAL_DIR , PREDICTION_CELLTYPE + "__slop20bp_RP20M_minmax01.bw")
 PREDICTION_ROI="/fs/project/PES0738/maxATAC_inputs/genome_inf/chr1_w1024_PC.bed"
@@ -53,9 +53,6 @@ rule maxatac_train:
         output=TRAIN_OUTPUT,
         prefix=TF
 
-    resources:
-        runtime_min=240
-
     shell:
         "maxatac train "
         "--shuffle_cell_type "
@@ -69,7 +66,7 @@ rule maxatac_train:
         "--epochs {params.epochs} "
         "--output {params.output} "
         "--prefix {params.prefix} "
-        "--threads 60 "
+        "--threads 14 "
 
 rule maxatac_predict:
     input:
@@ -103,7 +100,6 @@ rule maxatac_predict:
         "--predict_chromosomes {params.chroms} "
         "--batch_size {params.batch_size} "
         "--threads {threads} "
-        "--cpu "
 
 rule maxatac_benchmark:
     input:
@@ -118,7 +114,8 @@ rule maxatac_benchmark:
         bin_size="{bin_size}",
         prefix=TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}",
         agg="{agg}",
-        output=BENCHMARK_OUTPUT
+        output=BENCHMARK_OUTPUT,
+        chromosomes=PREDICTION_CHROMS
 
     resources:
         runtime_min=60

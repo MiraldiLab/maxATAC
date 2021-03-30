@@ -71,7 +71,7 @@ def run_prediction(args):
 
     logging.error("Make predictions")
 
-    configure_session(args.threads, cpu=args.cpu)
+    configure_session(args.threads)
 
     # TODO Write the code so it can make prediction on multiple chromosomes and write them correctly to bigwig files.
     prediction_results = make_predictions(args.signal,

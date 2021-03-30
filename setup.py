@@ -2,7 +2,7 @@
 import os
 from setuptools import setup, find_packages
 
-VERSION = "0.1.0"
+VERSION = "0.1.1"
 HERE = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -18,7 +18,7 @@ setup(name="maxatac",
       long_description_content_type="text/markdown",
       version=VERSION,
       url="",
-      download_url="https://github.com/dlab-arp/maxatac_V2.git",
+      download_url="",
       author="",
       author_email="",
       license="Apache-2.0",
