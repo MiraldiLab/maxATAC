@@ -20,6 +20,7 @@ BATCH_SIZE=1000
 BATCHES=100
 
 # Prediction Parameters
+PREDICTION_EPOCHS=[1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75]
 PREDICTION_CELLTYPE="GM23338"
 PREDICTION_CHROMS="chr1"
 PREDICTION_SIGNAL=os.path.join(ATAC_SIGNAL_DIR , PREDICTION_CELLTYPE + "__slop20bp_RP20M_minmax01.bw")
@@ -33,7 +34,7 @@ GOLD_STANDARD_DIR="/fs/project/PES0738/maxatac_goldstandards/hg38/binary"
 
 rule all:
     input:
-        expand(os.path.join(BENCHMARK_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}_{bin_size}bp_PRC.tsv"), epoch=range(1, EPOCHS + 1), agg=BENCHMARK_AGG, bin_size=BENCHMARK_BIN_SIZE)
+        expand(os.path.join(BENCHMARK_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}_{bin_size}bp_PRC.tsv"), epoch=PREDICTION_EPOCHS, agg=BENCHMARK_AGG, bin_size=BENCHMARK_BIN_SIZE)
 
 rule maxatac_train:
     input:
@@ -116,9 +117,6 @@ rule maxatac_benchmark:
         agg="{agg}",
         output=BENCHMARK_OUTPUT,
         chromosomes=PREDICTION_CHROMS
-
-    resources:
-        runtime_min=60
 
     threads: 4
 
