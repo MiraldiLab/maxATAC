@@ -1,19 +1,20 @@
 import os
 
+# TF Model Information
+TF="CTCF"
+META_FILE="/fs/project/PES0738/maxATAC_inputs/run_meta/20210202_11TF_Correct_ATAC_window_run_meta/20210202_Correct_ATAC_CTCF_slop20_RunMeta.tsv"
+
 # Overall Parameters
 RUN_DIR="/fs/project/PES0738/maxATAC_outputs/snakemake"
 SEQUENCE="/fs/project/PES0738/maxATAC_inputs/genome_inf/hg38.2bit"
-AVERAGE="/fs/project/PES0738/maxATAC_inputs/genome_inf/hg38_zeroes_average_file.bw"
-
-TF="CTCF"
-META_FILE="/fs/project/PES0738/maxATAC_inputs/run_meta/20210202_11TF_Correct_ATAC_window_run_meta/20210202_Correct_ATAC_CTCF_slop20_RunMeta.tsv"
+ATAC_SIGNAL_DIR="/fs/project/PES0738/maxATAC_inputs/ATAC/hg38/cell_type_average_RP20M_minmax_bigwig/slop20bp"
 
 TRAIN_OUTPUT=os.path.join(RUN_DIR, "train")
 PREDICT_OUTPUT=os.path.join(RUN_DIR, "predict")
 BENCHMARK_OUTPUT=os.path.join(RUN_DIR, "benchmark")
 
 # Training Parameters
-EPOCHS=20
+EPOCHS=100
 VAL_BATCH_SIZE=1000
 BATCH_SIZE=1000
 BATCHES=100
@@ -21,14 +22,13 @@ BATCHES=100
 # Prediction Parameters
 PREDICTION_CELLTYPE="GM12878"
 PREDICTION_CHROMS="chr1"
-PREDICTION_SIGNAL="/fs/project/PES0738/maxATAC_inputs/ATAC/hg38/cell_type_average_RP20M_minmax_bigwig/slop20bp/GM12878__slop20bp_RP20M_minmax01.bw"
+PREDICTION_SIGNAL=os.path.join(ATAC_SIGNAL_DIR , PREDICTION_CELLTYPE + "__slop20bp_RP20M_minmax01.bw")
 PREDICTION_ROI="/fs/project/PES0738/maxATAC_inputs/genome_inf/chr1_w1024_PC.bed"
 PREDICTION_BATCH_SIZE=10000
 
 # Benchmark Parameters
-BENCHMARK_CELLTYPE="GM12878"
-BENCHMARK_BIN_SIZE=[32, 64, 128, 256]
-BENCHMARK_AGG=["max", "sum"]
+BENCHMARK_BIN_SIZE=[32, 128, 256]
+BENCHMARK_AGG=["max"]
 GOLD_STANDARD_DIR="/fs/project/PES0738/maxatac_goldstandards/hg38/binary"
 
 rule all:
@@ -38,7 +38,6 @@ rule all:
 rule maxatac_train:
     input:
         sequence=SEQUENCE,
-        average=AVERAGE,
         meta_file=META_FILE
 
     output:
@@ -57,13 +56,11 @@ rule maxatac_train:
     resources:
         runtime_min=240
 
-    #threads: 60
-
     shell:
         "maxatac train "
+        "--shuffle_cell_type "
         '--arch {params.arch} '
         "--sequence {input.sequence} "
-        "--average {input.average} "
         "--meta_file {input.meta_file} "
         "--rand_ratio {params.rand_ratio} "
         "--val_batch_size {params.val_batch_size} "
@@ -72,12 +69,11 @@ rule maxatac_train:
         "--epochs {params.epochs} "
         "--output {params.output} "
         "--prefix {params.prefix} "
-        "--threads 60"
+        "--threads 60 "
 
 rule maxatac_predict:
     input:
         models=os.path.join(TRAIN_OUTPUT, TF + "_{epoch}.h5"),
-        average=AVERAGE,
         sequence=SEQUENCE,
         signal=PREDICTION_SIGNAL,
         roi=PREDICTION_ROI
@@ -91,7 +87,7 @@ rule maxatac_predict:
         output=PREDICT_OUTPUT,
         batch_size=PREDICTION_BATCH_SIZE
 
-    threads: 4
+    threads: 6
 
     resources:
         runtime_min=60
@@ -99,7 +95,6 @@ rule maxatac_predict:
     shell:
         "maxatac predict "
         "--models {input.models} "
-        "--average {input.average} "
         "--sequence {input.sequence} "
         "--signal {input.signal} "
         "--roi {input.roi} "
@@ -107,12 +102,14 @@ rule maxatac_predict:
         "--output {params.output} "
         "--predict_chromosomes {params.chroms} "
         "--batch_size {params.batch_size} "
-        "--threads {threads}"
+        "--threads {threads} "
+        "--cpu "
 
 rule maxatac_benchmark:
     input:
         prediction=os.path.join(PREDICT_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}.bw"),
-        gold_standard=os.path.join(GOLD_STANDARD_DIR, PREDICTION_CELLTYPE + "__" + TF + ".bw")
+        gold_standard=os.path.join(GOLD_STANDARD_DIR, PREDICTION_CELLTYPE + "__" + TF + ".bw"),
+        chromosomes=PREDICTION_CHROMS
 
     output:
         os.path.join(BENCHMARK_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}_{bin_size}bp_PRC.tsv")
@@ -135,4 +132,5 @@ rule maxatac_benchmark:
         "--prefix {params.prefix} "
         "--output_directory {params.output} "
         "--bin_size {params.bin_size} "
+        "--chromosomes {input.chromosomes}"
         "--agg {params.agg} "

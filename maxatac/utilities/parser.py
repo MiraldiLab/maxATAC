@@ -426,6 +426,12 @@ def get_parser():
                                       Default: None, predictions are done on the whole chromosome length"
                                 )
 
+    predict_parser.add_argument("--cpu",
+                                dest="cpu",
+                                action='store_true',
+                                help="Whether to use CPU or not"
+                                )
+
     predict_parser.add_argument("--keep",
                                 dest="keep",
                                 action="store_true",
@@ -664,7 +670,7 @@ def get_parser():
                               dest="plot",
                               action="store_true",
                               default=True,
-                              help="Plot model structure and training history. Default: False"
+                              help="Plot model structure and training history. Default: True"
                               )
 
     train_parser.add_argument("--dense",

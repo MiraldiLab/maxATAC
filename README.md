@@ -84,7 +84,7 @@ This function can take a list of input bigwig files and average their scores usi
 4) Loop through each entry in the chromosome sizes dictionary and calculate the average across all inputs
 5) Write the bigwig file
 
-```python
+```bash
 maxatac average --bigwigs ENCSR499ASS_1_correct.bw ENCSR499ASS_1_incorrect.bw --prefix IMR-90 --output ./test --chroms chr1
 ```
 ### Normalize
@@ -98,18 +98,18 @@ This function will min-max a bigwig file based on the minimum and maximum values
 1) Create directories and set up filenames
 2) Build a dictionary of the chromosomes sizes.
 3) Find the genomic min and max values by looping through each chromosome
-4) Loop through each chromosome and minmax normalize the values based on the genomic values.
+4) Loop through each chromosome and min-max normalize the values based on the genomic values.
 
 Example command:
 
-```python
+```bash
 maxatac normalize --signal ENCFF015CKI_chromFiltered_5prime_slop0bp_RP20M.bw --output /Users/caz3so/scratch --chroms chr1 --log_transform
 ```
 ### Train
 
 The `train` function takes as input ATAC-seq signal, DNA sequence, Delta ATAC-seq signal, and ChIP-seq signal to train a neural network with the architecture of choice.
 
-The primary input to the training function is a meta file that contains all of the information for the locations of ATAC-seq signal, ChIP-seq signal, TF, and Cell type.
+The primary input to the training function is a meta file that contains all the information for the locations of ATAC-seq signal, ChIP-seq signal, TF, and Cell type.
 
 Example header for meta file. The meta file must be a tsv file, but the order of the columns does not matter. As long as the column names are the same:
 
@@ -128,7 +128,7 @@ Example header for meta file. The meta file must be a tsv file, but the order of
 
 Example command:
 
-```python
+```bash
 maxatac train --sequence hg38.2bit --meta_file CTCF_META.tsv --prefix CTCF_test --arch DCNN_V2 --rand_ratio 0 --shuffle_cell_type
 ```
 
@@ -151,8 +151,8 @@ Example input BED file for prediction:
 
 Example command:
 
-```python
-predict --models CTCF_epoch10.h5 --sequence hg38.2bit --signal GM12878__CTCF_slop20bp_RP20M_logp1_minmax01.bw --roi chr1_w1024_PC.bed --prefix test_preds
+```bash
+maxatac predict --models CTCF_epoch10.h5 --sequence hg38.2bit --signal GM12878__CTCF_slop20bp_RP20M_logp1_minmax01.bw --roi chr1_w1024_PC.bed --prefix test_preds
 ```
 ### Benchmark
 
@@ -170,7 +170,7 @@ Currently, benchmarking is set up for one chromosome at a time. The most time-co
 
 Example command:
 
-```python
+```bash
 maxatac benchmark --prediction ELK1_slop20_RR30_epoch20_GM12878.bw --gold_standard GM12878__ELK1.bw --prefix ELK1_GM12878_chr1 --output /benchmark_result --bin_size 10000 --chromosomes chr1
 ```
 ### ROI

@@ -100,12 +100,8 @@ def run_interpretation(args):
                 sequence=args.sequence,
                 meta_table=maxatac_model.meta_dataframe,
                 roi_pool=_group,
-                train_cell_lines=maxatac_model.cell_types,
-                rand_ratio=args.rand_ratio,
                 train_tf=args.train_tf,
-                tchroms=args.chroms,
                 bp_resolution=BP_RESOLUTION,
-                filters=None,
                 workers=args.threads,
             )
 
