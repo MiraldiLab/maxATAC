@@ -76,7 +76,6 @@ def run_prediction(args):
     # TODO Write the code so it can make prediction on multiple chromosomes and write them correctly to bigwig files.
     prediction_results = make_predictions(args.signal,
                                           args.sequence,
-                                          args.average,
                                           args.models[0],
                                           regions_pool,
                                           args.batch_size,

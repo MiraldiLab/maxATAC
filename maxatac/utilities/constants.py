@@ -118,5 +118,5 @@ DEFAULT_BENCHMARKING_BIN_SIZE = 32
 QUANT_TARGET_SCALE_FACTOR = 10
 # I wouldn't recommend to change without looking into code
 
-INPUT_CHANNELS = 6
+INPUT_CHANNELS = 5
 TRAIN_MONITOR = "val_loss"

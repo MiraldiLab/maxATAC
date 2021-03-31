@@ -69,7 +69,6 @@ def run_training(args):
 
     # Initialize the training generator
     train_gen = DataGenerator(sequence=args.sequence,
-                              average=args.average,
                               meta_table=maxatac_model.meta_dataframe,
                               roi_pool=train_examples.ROI_pool,
                               cell_type_list=maxatac_model.cell_types,
@@ -83,7 +82,6 @@ def run_training(args):
 
     # Initialize the validation generator
     val_gen = DataGenerator(sequence=args.sequence,
-                            average=args.average,
                             meta_table=maxatac_model.meta_dataframe,
                             roi_pool=validate_examples.ROI_pool,
                             cell_type_list=maxatac_model.cell_types,

@@ -7,13 +7,13 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():
     from keras.models import load_model
-    from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig, get_one_hot_encoded
+    from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig
+    from maxatac.utilities.training_tools import get_input_matrix
 
 
 def make_predictions(
         signal,
         sequence,
-        average,
         model,
         predict_roi_df,
         batch_size,
@@ -27,7 +27,6 @@ def make_predictions(
 
     :param signal: The ATAC-seq signal file
     :param sequence: The 2bit DNA sequence file
-    :param average: The average ATAC-seq signal file
     :param model: The trained maxATAC model(s)
     :param predict_roi_df: A dataframe containing a BED formatted dataframe
     :param batch_size: The number of examples to predict in each batch
@@ -60,7 +59,6 @@ def make_predictions(
 
         input_batch = get_region_values(signal=signal,
                                         sequence=sequence,
-                                        average=average,
                                         input_channels=input_channels,
                                         input_length=input_length,
                                         roi_pool=batch_roi_df
@@ -138,7 +136,6 @@ def write_predictions_to_bigwig(df,
 def get_region_values(
         signal,
         sequence,
-        average,
         roi_pool,
         input_channels,
         input_length
@@ -148,7 +145,6 @@ def get_region_values(
 
     :param signal: ATAC-seq signal file
     :param sequence: 2bit DNA file
-    :param average: Average ATAC-seq signal file
     :param roi_pool: Pool of regions to predict on
     :param input_channels: Number of input channels
     :param input_length: Length of the input regions
@@ -159,9 +155,7 @@ def get_region_values(
 
     roi_size = roi_pool.shape[0]
 
-    with load_bigwig(signal) as signal_stream, \
-            load_2bit(sequence) as sequence_stream, \
-            load_bigwig(average) as average_stream:
+    with load_bigwig(signal) as signal_stream, load_2bit(sequence) as sequence_stream:
         for row_idx in range(roi_size):
             row = roi_pool.loc[row_idx, :]
 
@@ -174,7 +168,6 @@ def get_region_values(
             input_matrix = get_input_matrix(rows=input_channels,
                                             cols=input_length,
                                             bp_order=["A", "C", "G", "T"],
-                                            average_stream=average_stream,
                                             signal_stream=signal_stream,
                                             sequence_stream=sequence_stream,
                                             chromosome=chromosome,
@@ -235,46 +228,3 @@ def import_prediction_regions(bed_file, region_length, chromosomes, chrom_sizes_
     df.columns = ["chr", "start", "stop"]
 
     return df
-
-
-def get_input_matrix(rows,
-                     cols,
-                     signal_stream,
-                     average_stream,
-                     sequence_stream,
-                     bp_order,
-                     chromosome,
-                     start,  # end - start = cols
-                     end
-                     ):
-    """
-    Generate the matrix of values from the signal, sequence, and average data tracks
-
-    :param rows: (int) The number of channels or rows
-    :param cols: (int) The number of columns or length
-    :param signal_stream: (str) ATAC-seq signal
-    :param average_stream: (str) Average ATAC-seq signal
-    :param sequence_stream: (str) One-hot encoded sequence
-    :param bp_order: (list) Order of the bases in matrix
-    :param chromosome: (str) Chromosome name
-    :param start: (str) Chromosome start
-    :param end: (str) Chromosome end
-
-    :return: A matrix that is rows x columns with the values from each file
-    """
-    input_matrix = np.zeros((rows, cols))
-
-    for n, bp in enumerate(bp_order):
-        input_matrix[n, :] = get_one_hot_encoded(
-            sequence_stream.sequence(chromosome, start, end),
-            bp
-        )
-
-    signal_array = np.array(signal_stream.values(chromosome, start, end))
-    avg_array = np.array(average_stream.values(chromosome, start, end))
-
-    input_matrix[4, :] = signal_array
-    input_matrix[5, :] = input_matrix[4, :] - avg_array
-
-    return input_matrix.T
-
