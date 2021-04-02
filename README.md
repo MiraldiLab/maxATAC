@@ -7,7 +7,7 @@ Cellular behavior is the result of complex genomic regulation partially controll
 
 The maxATAC package is a collection of tools used for learning to predict TF binding from ATAC-seq data. MaxATAC also provides functions for interpreting trained models and preparing the input data.
 
-## ChangLog
+## Change Log
 
 ***Version 0.1.0***
 
@@ -19,6 +19,7 @@ Expanding documentation and  benchmarking features
 - Benchmarking outputs AUPRC plots and quantitative data
 - Removed the average signal track that was not used
 - Spearman, R2, precision, and recall for training
+- Whole-genome, ROI, and chromosome prediction
 
 ## Requirements
 
