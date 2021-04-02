@@ -20,7 +20,7 @@ BATCH_SIZE=1000
 BATCHES=100
 
 # Prediction Parameters
-PREDICTION_EPOCHS=[1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75]
+PREDICTION_EPOCHS=range(1,100,1)
 PREDICTION_CELLTYPE="GM23338"
 PREDICTION_CHROMS="chr1"
 PREDICTION_SIGNAL=os.path.join(ATAC_SIGNAL_DIR , PREDICTION_CELLTYPE + "__slop20bp_RP20M_minmax01.bw")
@@ -85,22 +85,17 @@ rule maxatac_predict:
         output=PREDICT_OUTPUT,
         batch_size=PREDICTION_BATCH_SIZE
 
-    threads: 6
-
-    resources:
-        runtime_min=60
+    threads: 4
 
     shell:
         "maxatac predict "
         "--models {input.models} "
         "--sequence {input.sequence} "
         "--signal {input.signal} "
-        "--roi {input.roi} "
         "--prefix {params.prefix} "
         "--output {params.output} "
-        "--predict_chromosomes {params.chroms} "
+        "--chromosomes {params.chroms} "
         "--batch_size {params.batch_size} "
-        "--threads {threads} "
 
 rule maxatac_benchmark:
     input:

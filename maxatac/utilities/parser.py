@@ -421,7 +421,8 @@ def get_parser():
     predict_parser.add_argument("--roi",
                                 dest="roi",
                                 type=str,
-                                required=True,
+                                default=False,
+                                required=False,
                                 help="Bed file with ranges for input sequences to be predicted. \
                                       Default: None, predictions are done on the whole chromosome length"
                                 )
@@ -455,18 +456,18 @@ def get_parser():
                                       Default: None, predictions are done on the whole chromosome length"
                                 )
 
-    predict_parser.add_argument("--round",
-                                dest="round",
-                                type=int,
-                                default=DEFAULT_ROUND,
-                                help="Float precision that you want to round predictions to"
-                                )
-
     predict_parser.add_argument("--batch_size",
                                 dest="batch_size",
                                 type=int,
                                 default=10000,
                                 help="Number of regions to predict on at a time"
+                                )
+
+    predict_parser.add_argument("--step_size",
+                                dest="step_size",
+                                type=int,
+                                default=INPUT_LENGTH,
+                                help="Step size to use to build sliding window regions"
                                 )
 
     predict_parser.add_argument("--prefix",
@@ -483,8 +484,8 @@ def get_parser():
                                 help="The chromosome sizes file to reference"
                                 )
 
-    predict_parser.add_argument("--predict_chromosomes",
-                                dest="predict_chromosomes",
+    predict_parser.add_argument("--chromosomes",
+                                dest="chromosomes",
                                 type=str,
                                 nargs="+",
                                 default=DEFAULT_TEST_CHRS,
