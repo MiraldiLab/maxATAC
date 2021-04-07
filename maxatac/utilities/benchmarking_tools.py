@@ -215,6 +215,7 @@ class ChromosomeAUPRC(object):
                  prediction_bw,
                  goldstandard_bw,
                  blacklist_bw,
+                 mappability_stream,
                  chromosome,
                  bin_size,
                  agg_function,
@@ -234,20 +235,41 @@ class ChromosomeAUPRC(object):
         self.goldstandard_stream = load_bigwig(goldstandard_bw)
         self.blacklist_stream = load_bigwig(blacklist_bw)
 
+        if mappability_stream:
+            self.mappability_stream = load_bigwig(mappability_stream)
+
+        else:
+            self.mappability_stream = False
+
         self.chromosome = chromosome
 
         self.chromosome_length = self.goldstandard_stream.chroms(self.chromosome)
         self.bin_count = int(int(self.chromosome_length) / int(bin_size))  # need to floor the number
         self.agg_function = agg_function
-        self.round_predictions = round_predictions
 
-        self.__import_blacklist_mask__()
-        self.__import_prediction_array__()
+        self.__import_mask__()
+
+        self.__import_prediction_array__(round_prediction=round_predictions)
         self.__import_goldstandard_array__()
 
         self.__AUPRC__()
 
         self.__plot()
+
+    def __import_mask__(self):
+        """
+        Import the mask for the regions to exclude.
+        :return: a np.array of boolean values
+        """
+        self.__import_blacklist_mask__()
+
+        if self.mappability_stream:
+            self.__import_mappability_mask__()
+
+            self.mask = np.any([self.blacklist_mask, self.mappability_mask], axis=0)
+
+        else:
+            self.mask = self.blacklist_mask
 
     def __import_blacklist_mask__(self):
         """
@@ -267,7 +289,19 @@ class ChromosomeAUPRC(object):
 
         self.blacklist_index = np.argwhere(self.blacklist_mask == True)
 
-    def __import_prediction_array__(self, round_prediction=4):
+    def __import_mappability_mask__(self):
+        self.mappability_mask = np.array(self.mappability_stream.stats(self.chromosome,
+                                                                       0,
+                                                                       self.chromosome_length,
+                                                                       type="mean",
+                                                                       nBins=self.bin_count
+                                                                       ),
+                                         dtype=float  # need it to have NaN instead of None
+                                         ) > .8  # Convert to boolean array, select areas that are not 1
+
+        self.mappability_index = np.argwhere(self.mappability_mask == True)
+
+    def __import_prediction_array__(self, round_prediction=6):
         """
         Import the chromosome signal from the predictions bigwig file and convert to a numpy array.
 
@@ -306,8 +340,8 @@ class ChromosomeAUPRC(object):
                                                          )
                                                 ) > 0  # to convert to boolean array
 
-        self.random_precision = np.count_nonzero(self.goldstandard_array[self.blacklist_mask]) / \
-                                np.size(self.prediction_array[self.blacklist_mask])
+        self.random_precision = np.count_nonzero(self.goldstandard_array[self.mask]) / \
+                                np.size(self.prediction_array[self.mask])
 
     def __get_true_positives__(self, threshold):
         """
@@ -319,7 +353,7 @@ class ChromosomeAUPRC(object):
         # Find the idxs for the bins that are gt/et some threshold
         tmp_prediction_idx = np.argwhere(self.prediction_array >= threshold)
 
-        # Find the bins in the gold standard that match the thresholded prediction bins
+        # Find the bins in the gold standard that match the threshold prediction bins
         tmp_goldstandard_threshold_array = self.goldstandard_array[tmp_prediction_idx]
 
         # Count the number of bins in the intersection that are True
@@ -374,8 +408,8 @@ class ChromosomeAUPRC(object):
         :return: AUPRC stats as a pandas dataframe
         """
         self.precision, self.recall, self.thresholds = precision_recall_curve(
-            self.goldstandard_array[self.blacklist_mask],
-            self.prediction_array[self.blacklist_mask])
+            self.goldstandard_array[self.mask],
+            self.prediction_array[self.mask])
 
         # Create a dataframe from the results
         self.PR_CURVE_DF = pd.DataFrame(

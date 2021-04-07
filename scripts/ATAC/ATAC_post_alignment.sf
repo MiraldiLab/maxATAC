@@ -1,0 +1,40 @@
+import os
+import glob
+
+CORES=4
+input_directory = "./tmp"
+output_directory = "./output"
+
+sample_list = glob.glob(os.path.join(input_directory), "*.bam")
+
+rule all:
+    input:
+        expand("epoch{epoch}"), epoch=1)
+
+rule sort_BAM_for_deduplication:
+    input:
+        BAM={prefix}.bam
+
+    output:
+        expand(os.path.join(output_directory, "{samples}_filtered.bam"),
+               samples=[sample.strip(".bam") for sample in sample_list])
+
+    threads: CORES
+
+    shell:
+        "samtools sort -@ {threads} -n -o {output} {input.BAM}"
+
+rule fixmate_and_sort:
+    input:
+        NameSortedBAM=expand(os.path.join(output_directory, "{samples}_filtered.bam"),
+                                          samples=[sample.strip(".bam") for sample in sample_list])
+
+    output:
+        expand(os.path.join(output_directory, "{samples}_fixmate.bam"),
+            samples=[sample.strip(".bam") for sample in sample_list])
+
+    threads: 6
+
+    shell:
+        "samtools fixmate -@ {threads} -m {input.NameSortedBAM} - | samtools sort -@ {threads} -o {output} - "
+

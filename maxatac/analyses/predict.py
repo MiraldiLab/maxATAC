@@ -14,8 +14,7 @@ with Mute():
 
 def run_prediction(args):
     """
-    Run prediction on compatible regions using a maxATAC model. The input could be any bed file that has the correct
-    input parameters
+    Run prediction using a maxATAC model.
 
     BED file requirements for prediction. You must have at least a 3 column file with chromosome, start,
     and stop coordinates. The interval distance has to be the same as the distance used to train the model. If you
@@ -30,12 +29,12 @@ def run_prediction(args):
     Workflow overview
 
     1) Create directories and set up filenames
-    2) Make predictions
+    2) Prepare regions for prediction
     3) Convert predictions to bigwig format and write results
 
 
     :param args : output_directory, prefix, signal, sequence, models, predict_chromosomes, minimum, threads, batch_size
-    roi, chromosome_sizes, blacklist, average, round
+    roi, chromosome_sizes, blacklist, average
 
     :return : A bigwig file of TF binding predictions
     """
