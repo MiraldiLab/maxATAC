@@ -22,7 +22,7 @@ def run_max_combine(args):
                                                 args.chromosome,
                                                 chrom_length)
 
-    max_combined_array = average_signal_data + maxatac_prediction_data
+    mean_combined_array = (average_signal_data + maxatac_prediction_data)/2
 
     with pyBigWig.open(args.output, "w") as output_bw:
         # Add a header based on the chromosomes in the chromosome sizes dictionary
@@ -36,5 +36,5 @@ def run_max_combine(args):
                              ends=chrom_length,
                              span=1,
                              step=1,
-                             values=max_combined_array.tolist()
+                             values=mean_combined_array.tolist()
                              )

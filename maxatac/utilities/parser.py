@@ -20,7 +20,7 @@ with Mute():
     from maxatac.analyses.benchmark import run_benchmarking
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.interpret import run_interpretation
-    from maxatac.analyses.max_combine import run_max_combine
+    from maxatac.analyses.mean_combine import run_max_combine
 
 from maxatac.utilities.constants import (DEFAULT_CHRS,
                                          LOG_LEVELS,
