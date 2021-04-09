@@ -4,7 +4,8 @@ import os
 from maxatac.utilities.system_tools import get_dir, Mute
 
 with Mute():
-    from maxatac.utilities.benchmarking_tools import calculate_predictions_AUPR, get_blacklist_mask, calculate_R2_pearson_spearman, ChromosomeAUPRC
+    from maxatac.utilities.benchmarking_tools import calculate_predictions_AUPR, get_blacklist_mask, \
+        calculate_R2_pearson_spearman, ChromosomeAUPRC
 
 
 def run_benchmarking(args):
@@ -34,7 +35,6 @@ def run_benchmarking(args):
     output_dir = get_dir(args.output_directory)
 
     # Build the results filename
-    results_filename = os.path.join(output_dir, args.prefix + "_" + str(args.bin_size) + "bp_PRC.tsv")
     results_filename2 = os.path.join(output_dir, args.prefix + "_" + "r2_spearman_spearman.tsv")
 
     logging.error(
@@ -55,6 +55,7 @@ def run_benchmarking(args):
         ChromosomeAUPRC(args.prediction,
                         args.gold_standard,
                         args.blacklist,
+                        args.mappability,
                         chromosome,
                         args.bin_size,
                         args.agg_function,
@@ -68,9 +69,9 @@ def run_benchmarking(args):
             chromosome=args.chromosomes[0]
         )
         calculate_R2_pearson_spearman(args.prediction,
-                               args.gold_standard,
-                               args.chromosomes[0],
-                               results_filename2,
-                               blacklist_mask,
-                               args.round_predictions
-                               )
+                                      args.gold_standard,
+                                      args.chromosomes[0],
+                                      results_filename2,
+                                      blacklist_mask,
+                                      args.round_predictions
+                                      )

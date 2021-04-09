@@ -20,6 +20,7 @@ with Mute():
     from maxatac.analyses.benchmark import run_benchmarking
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.interpret import run_interpretation
+    from maxatac.analyses.mean_combine import run_max_combine
 
 from maxatac.utilities.constants import (DEFAULT_CHRS,
                                          LOG_LEVELS,
@@ -171,18 +172,8 @@ def assert_and_fix_args_for_training(args):
 
 
 def assert_and_fix_args(args):
-    if args.func == run_prediction:
-        pass
-    elif args.func == run_training:
+    if args.func == run_training:
         assert_and_fix_args_for_training(args)
-    elif args.func == run_normalization:
-        pass
-    elif args.func == run_roi:
-        pass
-    elif args.func == run_averaging:
-        pass
-    elif args.func == run_interpretation:
-        pass
     else:
         pass
 
@@ -199,6 +190,58 @@ def get_parser():
                                 version=get_version(),
                                 help="Print version information and exit"
                                 )
+
+    # Average parser
+    maxcombine_parser = subparsers.add_parser("max_combine",
+                                              parents=[parent_parser],
+                                              help="Run maxATAC max_combine"
+                                              )
+
+    # Set the default function to run averaging
+    maxcombine_parser.set_defaults(func=run_max_combine)
+
+    maxcombine_parser.add_argument("--average_signal",
+                                   dest="average_signal",
+                                   type=str,
+                                   required=True,
+                                   help="average_signal"
+                                   )
+
+    maxcombine_parser.add_argument("--maxatac_prediction",
+                                   dest="maxatac_prediction",
+                                   type=str,
+                                   required=True,
+                                   help="maxatac_prediction"
+                                   )
+
+    maxcombine_parser.add_argument("--chromosome",
+                                   dest="chromosome",
+                                   type=str,
+                                   required=True,
+                                   help="Chromosome name"
+                                   )
+
+    maxcombine_parser.add_argument("--output",
+                                   dest="output",
+                                   type=str,
+                                   required=True,
+                                   help="Output name"
+                                   )
+
+    maxcombine_parser.add_argument("--chrom_sizes",
+                                dest="chrom_sizes",
+                                type=str,
+                                default=DEFAULT_CHROM_SIZES,
+                                help="Input chromosome sizes file. Default is hg38."
+                                )
+
+    maxcombine_parser.add_argument("--loglevel",
+                                   dest="loglevel",
+                                   type=str,
+                                   default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                   choices=LOG_LEVELS.keys(),
+                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                                   )
 
     # Average parser
     roi_parser = subparsers.add_parser("roi",
@@ -763,12 +806,12 @@ def get_parser():
                                   help="Prediction bigWig file"
                                   )
     benchmark_parser.add_argument("--quant",
-                              dest="quant",
-                              action='store_true',
-                              default=False,
-                              help="This argument should be set to true for models based on quantitative data"
-                              )
-                              
+                                  dest="quant",
+                                  action='store_true',
+                                  default=False,
+                                  help="This argument should be set to true for models based on quantitative data"
+                                  )
+
     benchmark_parser.add_argument("--gold_standard",
                                   dest="gold_standard",
                                   type=str,
@@ -836,6 +879,13 @@ def get_parser():
                                   type=str,
                                   default=BLACKLISTED_REGIONS_BIGWIG,
                                   help="The blacklisted regions to exclude"
+                                  )
+
+    benchmark_parser.add_argument("--mappability",
+                                  dest="mappability",
+                                  type=str,
+                                  required=False,
+                                  help="The mappability track to use for finding unique regions"
                                   )
 
     # Interpret parser
