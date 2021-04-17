@@ -2,6 +2,7 @@ import random
 import sys
 from os import path
 
+import keras
 import numpy as np
 import pandas as pd
 
@@ -228,33 +229,6 @@ def DataGenerator(
             targets_batch = roi_target_batch
 
         yield inputs_batch, targets_batch
-
-
-def get_roi_pool(filepath, chroms, shuffle=False):
-    """
-    Import the ROI file containing the regions of interest. This file is similar to a bed file, but with a header
-
-    The roi DF is read in from a TSV file that is formatted similarly as a BED file with a header. The following columns
-    are required:
-
-    Chr | Start | Stop | ROI_Type | Cell_Line
-
-    The chroms list is used to filter the ROI df to make sure that only training chromosomes are included.
-
-    :param chroms: A list of chromosomes to filter the ROI pool by. This is a double check that it is prefiltered
-    :param filepath: The path to the roi file to be used
-    :param shuffle: Whether to shuffle the dataframe upon import
-
-    :return: A pool of regions to use for training or validation
-    """
-    roi_df = pd.read_csv(filepath, sep="\t", header=0, index_col=None)
-
-    roi_df = roi_df[roi_df['Chr'].isin(chroms)]
-
-    if shuffle:
-        roi_df = roi_df.sample(frac=1)
-
-    return roi_df
 
 
 def get_input_matrix(rows,
@@ -531,7 +505,7 @@ class RandomRegionsPool:
             chrom_name: round(chrom_data["length"] / sum_lengths * self.chrom_pool_size)
 
             for chrom_name, chrom_data in chroms.items()
-                      }
+        }
         labels = []
 
         for k, v in frequencies.items():
@@ -544,7 +518,7 @@ class RandomRegionsPool:
 
 class ROIPool(object):
     """
-    Import genomic regions of interest for training or validation
+    Import genomic regions of interest for training
     """
 
     def __init__(self,
@@ -572,14 +546,13 @@ class ROIPool(object):
         self.output_directory = output_directory
         self.tag = tag
 
-        # Import validation regions of interest
-
+        # If an ROI path is provided import it as the ROI pool
         if self.roi_file_path:
-            self.ROI_pool = get_roi_pool(filepath=self.roi_file_path,
-                                         chroms=self.chroms,
-                                         shuffle=shuffle
-                                         )
-
+            self.ROI_pool = self.__import_roi_pool__(filepath=self.roi_file_path,
+                                                     chroms=self.chroms,
+                                                     shuffle=shuffle
+                                                     )
+        # Import the data from the meta file.
         else:
             regions = GenomicRegions(meta_path=self.meta_file,
                                      region_length=1024,
@@ -593,3 +566,80 @@ class ROIPool(object):
                                set_tag=tag)
 
             self.ROI_pool = regions.combined_pool
+
+    def __import_roi_pool__(self, shuffle=False):
+        """
+        Import the ROI file containing the regions of interest. This file is similar to a bed file, but with a header
+
+        The roi DF is read in from a TSV file that is formatted similarly as a BED file with a header. The following columns
+        are required:
+
+        Chr | Start | Stop | ROI_Type | Cell_Line
+
+        The chroms list is used to filter the ROI df to make sure that only training chromosomes are included.
+
+        :param shuffle: Whether to shuffle the dataframe upon import
+
+        :return: A pool of regions to use for training or validation
+        """
+        roi_df = pd.read_csv(self.roi_file_path, sep="\t", header=0, index_col=None)
+
+        roi_df = roi_df[roi_df['Chr'].isin(self.chroms)]
+
+        if shuffle:
+            roi_df = roi_df.sample(frac=1)
+
+        return roi_df
+
+
+class TrainingDataGenerator(keras.utils.Sequence):
+    def __init__(self,
+                 signal,
+                 sequence,
+                 input_channels,
+                 input_length,
+                 predict_roi_df,
+                 batch_size=32
+                 ):
+        'Initialization'
+        self.batch_size = batch_size
+        self.predict_roi_df = predict_roi_df
+        self.indexes = np.arange(self.predict_roi_df.shape[0])
+        self.signal = signal
+        self.sequence = sequence
+        self.input_channels = input_channels
+        self.input_length = input_length
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(self.predict_roi_df.shape[0] / self.batch_size)
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        batch_indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+
+        # Generate data
+        X = self.__data_generation(batch_indexes)
+
+        return X
+
+    def __data_generation(self, batch_indexes):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+
+        # Generate data
+        # Store sample
+        batch_roi_df = self.predict_roi_df.loc[batch_indexes, :]
+
+        batch_roi_df.reset_index(drop=True, inplace=True)
+
+       # batch = get_region_values(signal=self.signal,
+        #                          sequence=self.sequence,
+        #                          input_channels=self.input_channels,
+        #                          input_length=self.input_length,
+        #                          roi_pool=batch_roi_df
+        #                          )
+
+        return batch
+

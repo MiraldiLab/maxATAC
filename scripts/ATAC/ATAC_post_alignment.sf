@@ -1,23 +1,32 @@
 import os
-import glob
 
 CORES=4
-input_directory = "./tmp"
-output_directory = "./output"
 
-sample_list = glob.glob(os.path.join(input_directory), "*.bam")
+input_sample="/scratch/caz3so/20210409_Barski_CD4_TCELL_ATAC/ABSB023_R1_ABSB023_R2_uniquely_mapped_sorted.bam"
+input_sample_base="".strip("_uniquely_mapped_sorted.bam")
+
+output_directory = "/data/miraldiLab/databank/maxatac/scratch"
+scripts_dir="/data/miraldiNB/Tareian/bin"
+
+blacklist_BED="/data/miraldiLab/databank/maxatac/genome_inf/hg38_composite_blacklist.bed"
+chrom_sizes_file="/data/miraldiLab/databank/maxatac/genome_inf/hg38.22XY.chrom.sizes"
+
+Filter_for_chromosomes="chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr1 chr20 chr21 chr22 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chrX chrY"
+
+meta_df = pd.read_csv("/data/miraldiNB/Tareian/scratch/20210304_BarskI_CD4_Tcell/20210331_Barski_CD4_ATAC_meta_stats.tsv", sep="\t")
+
+prefix = expand("{prefix}", prefix=meta_df[meta_df["Sample"] == input_sample_base]["prefix"])
 
 rule all:
     input:
-        expand("epoch{epoch}"), epoch=1)
+        os.path.join(output_directory, "{prefix}.bw")
 
-rule sort_BAM_for_deduplication:
+rule sort_BAM_by_name:
     input:
-        BAM={prefix}.bam
+        BAM=input_sample
 
     output:
-        expand(os.path.join(output_directory, "{samples}_filtered.bam"),
-               samples=[sample.strip(".bam") for sample in sample_list])
+        "{prefix}_namesort.bam"
 
     threads: CORES
 
@@ -26,15 +35,132 @@ rule sort_BAM_for_deduplication:
 
 rule fixmate_and_sort:
     input:
-        NameSortedBAM=expand(os.path.join(output_directory, "{samples}_filtered.bam"),
-                                          samples=[sample.strip(".bam") for sample in sample_list])
+        NameSortedBAM="{prefix}_namesort.bam"
 
     output:
-        expand(os.path.join(output_directory, "{samples}_fixmate.bam"),
-            samples=[sample.strip(".bam") for sample in sample_list])
+         "{prefix}_fixmate.bam"
 
-    threads: 6
+    threads: CORES
 
     shell:
         "samtools fixmate -@ {threads} -m {input.NameSortedBAM} - | samtools sort -@ {threads} -o {output} - "
 
+rule samtools_index_fixmate:
+    input:
+        BAM="{prefix}_fixmate.bam"
+
+    output:
+        "{prefix}_fixmate.bam.bai"
+
+    threads: CORES
+
+    shell:
+        "samtools index -@ {threads} {input.BAM}"
+
+rule samtools_markdup_and_sort:
+    input:
+        FixMateBAM="{prefix}_fixmate.bam",
+        FixMateBAMIndex="{prefix}_fixmate.bam.bai"
+
+    output:
+        "{prefix}_deduped.bam"
+
+    threads: CORES
+
+    shell:
+        "samtools markdup -@ {threads} -r -s {input.FixMateBAM} - | samtools sort -@ {threads} -o {output} - "
+
+rule samtools_index_deduped:
+    input:
+        BAM="{prefix}_deduped.bam"
+
+    output:
+        "{prefix}_deduped.bam.bai"
+
+    threads: CORES
+
+    shell:
+        "samtools index -@ {threads} {input.BAM}"
+
+rule samtools_filter_BAM_by_chroms_and_quality:
+    input:
+        DedupedBAM="{prefix}_deduped.bam",
+        DedupledBAMIndex="{prefix}_deduped.bam.bai"
+
+    params:
+        chromosomes=Filter_for_chromosomes,
+        mapping_score=255,
+        samflag=3
+
+    output:
+        "{prefix}_filtered.bam"
+
+    threads: CORES
+
+    shell:
+        "samtools view -@ {threads} -f {params.samflag} -b -q {params.mapping_score} {input.DedupedBAM} {params.chromosomes} | samtools sort -@ {threads} -o {output} - "
+
+rule samtools_index_filtered:
+    input:
+        BAM="{prefix}_filtered.bam"
+
+    output:
+        "{prefix}_filtered.bam.bai"
+
+    threads: CORES
+
+    shell:
+        "samtools index -@ {threads} {input.BAM}"
+
+rule infer_insertion_sites:
+    input:
+        BAM="{prefix}_filtered.bam",
+
+    params:
+        output_directory=output_directory,
+        blacklisted_regions=blacklist_BED
+
+    output:
+        os.path.join(output_directory, "{prefix}_IS.bed.gz")
+
+    threads: CORES
+
+    shell:
+        "scripts/infer_insertion_sites.sh {input.BAM} {params.output_directory} {params.blacklisted_regions}"
+
+rule infer_Tn5_sites:
+    input:
+        IS_BED=os.path.join(output_directory, "{prefix}_IS.bed.gz")
+
+    params:
+        flanking_size=20,
+        chromosome_sizes=chrom_sizes_file,
+        output_directory=output_directory,
+        blacklisted_regions=blacklist_BED
+
+    output:
+        os.path.join(output_directory, "{prefix}_Tn5_slop20bp.bed.gz")
+
+    threads: CORES
+
+    shell:
+        "scripts/infer_Tn5_sites.sh {input.IS_BED} {params.flanking_size} {params.chromosome_sizes} {params.blacklisted_regions} {params.output_directory}"
+
+rule RPM_normalize_Tn5_counts:
+    input:
+        BAM=input_sample,
+        Tn5_BED=os.path.join(output_directory, "{prefix}_Tn5_slop20bp.bed.gz")
+
+    params:
+        millions_factor=20000000,
+        name="{prefix}_IS_slop10.bed",
+        chromosome_sizes=chrom_sizes_file,
+        output_directory=output_directory,
+
+    output:
+        os.path.join(output_directory, "{prefix}.bw")
+
+    threads: CORES
+
+    shell:
+        "scripts/RPM_normalize_Tn5_counts.sh {input.BAM} {params.chromosome_sizes} {params.millions_factor} {params.name} {input.Tn5_BED}"

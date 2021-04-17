@@ -30,6 +30,8 @@ def run_max_combine(args):
 
         output_bw.addHeader(header)
 
+        chrom_vals = np.zeros(chrom_length)
+
         # Write the entries to the bigwig for this chromosome. Current resolution is at 1 bp.
         output_bw.addEntries(chroms=args.chromosome,
                              starts=0,

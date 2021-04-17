@@ -23,10 +23,9 @@ from maxatac.utilities.constants import (
     BP_RESOLUTION,
 )
 from maxatac.utilities.interpretation_tools import generating_interpret_data, dinuc_shuffle_DNA_only_several_times, \
-    combine_DNA_only_mult_and_diffref, output_meme_pwm
+    combine_DNA_only_mult_and_diffref, output_meme_pwm, get_roi_pool
 from maxatac.utilities.system_tools import get_dir
 from maxatac.utilities.training_tools import MaxATACModel
-from maxatac.utilities.training_tools import get_roi_pool
 
 keras_model_custom_objects_dict = {
     'loss_function': loss_function,

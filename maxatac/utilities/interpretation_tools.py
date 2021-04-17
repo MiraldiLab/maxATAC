@@ -131,3 +131,30 @@ def process_map(row_idx,
         bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
 
     return [input_matrix, bin_vector]
+
+
+def get_roi_pool(filepath, chroms, shuffle=False):
+    """
+    Import the ROI file containing the regions of interest. This file is similar to a bed file, but with a header
+
+    The roi DF is read in from a TSV file that is formatted similarly as a BED file with a header. The following columns
+    are required:
+
+    Chr | Start | Stop | ROI_Type | Cell_Line
+
+    The chroms list is used to filter the ROI df to make sure that only training chromosomes are included.
+
+    :param chroms: A list of chromosomes to filter the ROI pool by. This is a double check that it is prefiltered
+    :param filepath: The path to the roi file to be used
+    :param shuffle: Whether to shuffle the dataframe upon import
+
+    :return: A pool of regions to use for training or validation
+    """
+    roi_df = pd.read_csv(filepath, sep="\t", header=0, index_col=None)
+
+    roi_df = roi_df[roi_df['Chr'].isin(chroms)]
+
+    if shuffle:
+        roi_df = roi_df.sample(frac=1)
+
+    return roi_df

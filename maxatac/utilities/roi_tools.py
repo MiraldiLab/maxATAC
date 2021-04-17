@@ -83,17 +83,17 @@ class GenomicRegions(object):
         """
         output_directory = get_dir(output_dir)
 
-        atac_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ATAC_ROI.bed")
-        chip_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_CHIP_ROI.bed")
-        combined_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.bed")
+        atac_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ATAC_ROI.bed.gz")
+        chip_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_CHIP_ROI.bed.gz")
+        combined_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.bed.gz")
 
-        atac_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ATAC_ROI.tsv")
-        chip_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_CHIP_ROI.tsv")
-        combined_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.tsv")
+        atac_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ATAC_ROI.tsv.gz")
+        chip_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_CHIP_ROI.tsv.gz")
+        combined_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.tsv.gz")
 
-        stats_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI_stats.tsv")
+        stats_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI_stats.tsv.gz")
         total_regions_stats_filename = os.path.join(output_directory,
-                                                    prefix + "_" + set_tag + "_ROI_totalregions_stats.tsv")
+                                                    prefix + "_" + set_tag + "_ROI_totalregions_stats.tsv.gz")
 
         self.atac_roi_pool.to_csv(atac_BED_filename, sep="\t", index=False, header=False)
         self.chip_roi_pool.to_csv(chip_BED_filename, sep="\t", index=False, header=False)

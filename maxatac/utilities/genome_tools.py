@@ -91,6 +91,29 @@ def get_bigwig_values(bigwig_path, chrom_name, chrom_end, chrom_start=0):
         return np.nan_to_num(input_bw.values(chrom_name, chrom_start, chrom_end, numpy=True))
 
 
+def get_bigwig_stats(bigwig_path, chrom_name, chrom_end, bin_count, agg_function="max"):
+    """
+    Get the values for a genomic region of interest from a bigwig file.
+
+    :param bin_count:
+    :param agg_function:
+    :param bigwig_path: Path to the bigwig file
+    :param chrom_name: Chromosome name
+    :param chrom_end: chromosome end
+
+    :return: Bigwig values from the region given
+    """
+    with pyBigWig.open(bigwig_path) as input_bw:
+        return np.nan_to_num(np.array(input_bw.stats(chrom_name,
+                                                     0,
+                                                     chrom_end,
+                                                     type=agg_function,
+                                                     nBins=bin_count,
+                                                     exact=True),
+                                      dtype=float  # need it to have NaN instead of None
+                                      ))
+
+
 def get_input_matrix(rows,
                      cols,
                      signal_stream,

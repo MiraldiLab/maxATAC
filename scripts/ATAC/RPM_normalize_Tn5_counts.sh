@@ -30,7 +30,7 @@ bigwig=${4}.bw
 ### Process ###
 
 # http://www.metagenomics.wiki/tools/samtools/number-of-reads-in-bam-file
-mapped_reads=$(samtools view -@ 4 -c -F 260 ${1})
+mapped_reads=$(samtools view -@ 8 -c -F 260 ${1})
 reads_factor=$(bc -l <<< "1/${mapped_reads}")
 rpm_factor=$(bc -l <<< "${reads_factor} * ${3}")
 
