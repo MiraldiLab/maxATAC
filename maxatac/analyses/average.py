@@ -45,7 +45,6 @@ def run_averaging(args):
                   "Restricting to chromosomes: \n   - " + "\n   - ".join(args.chromosomes) + "\n"
                   )
 
-    # TODO add a flag for different reference genomes
     # Build a dictionary of chromosomes sizes using the chromosomes and chromosome sizes files provided
     # The function will filter the dictionary based on the input list
     chromosome_sizes_dictionary = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)

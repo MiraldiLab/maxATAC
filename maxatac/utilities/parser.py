@@ -4,6 +4,7 @@ from os import getcwd
 
 from yaml import dump
 
+from maxatac.analyses.peaks import call_peaks
 from maxatac.analyses.threshold import run_thresholding
 from maxatac.utilities.system_tools import (
     get_version,
@@ -1062,15 +1063,6 @@ def get_parser():
                                   help="Input chromosome sizes file. Default is hg38."
                                   )
 
-    threshold_parser.add_argument("--chromosomes",
-                                  dest="chromosomes",
-                                  type=str,
-                                  nargs="+",
-                                  default=DEFAULT_VALIDATE_CHRS,
-                                  help="Chromosomes for thresholding predictions. \
-                                      Default: 1-22,X,Y"
-                                  )
-
     threshold_parser.add_argument("--bin_size",
                                   dest="bin_size",
                                   type=int,
@@ -1105,6 +1097,61 @@ def get_parser():
                                   required=True,
                                   help="Meta file containing Prediction signal and GS path for all cell lines (.tsv format)"
                                   )
+    threshold_parser.add_argument("--chromosomes",
+                                  dest="chromosomes",
+                                  type=str,
+                                  nargs="+",
+                                  default=DEFAULT_VALIDATE_CHRS,
+                                  help="Chromosomes for thresholding predictions. \
+                                      Default: 1-22,X,Y"
+                                  )
+
+    # threshold_parser
+    peaks_parser = subparsers.add_parser("peaks",
+                                         parents=[parent_parser],
+                                         help="Run maxATAC peaks"
+                                         )
+
+    # Set the default function to run averaging
+    peaks_parser.set_defaults(func=call_peaks)
+
+    peaks_parser.add_argument("--prefix",
+                              dest="prefix",
+                              type=str,
+                              required=True,
+                              help="Output prefix."
+                              )
+
+    peaks_parser.add_argument("--bin_size",
+                              dest="bin_size",
+                              type=int,
+                              default=DEFAULT_BENCHMARKING_BIN_SIZE,
+                              help="Chromosomes for averaging")
+
+    peaks_parser.add_argument("--output",
+                              dest="output_dir",
+                              type=str,
+                              default="./peaks",
+                              help="Output directory."
+                              )
+
+    peaks_parser.add_argument("--input_bigwig",
+                              dest="input_bigwig",
+                              type=str,
+                              help="Input bigwig")
+
+    peaks_parser.add_argument("--threshold",
+                              dest="threshold",
+                              type=float,
+                              help="Input bigwig")
+
+    peaks_parser.add_argument("--loglevel",
+                              dest="loglevel",
+                              type=str,
+                              default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                              choices=LOG_LEVELS.keys(),
+                              help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                              )
 
     return general_parser
 
