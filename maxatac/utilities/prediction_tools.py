@@ -124,7 +124,7 @@ def write_predictions_to_bigwig(df,
 
     with dump_bigwig(output_filename) as data_stream:
         # Make the bigwig header using the chrom sizes dictionary
-        header = [(x, chrom_sizes_dictionary[x]) for x in sorted(chromosomes)]
+        header = [(x, chrom_sizes_dictionary[x]) for x in chromosomes]
 
         # Add header to bigwig
         data_stream.addHeader(header)
