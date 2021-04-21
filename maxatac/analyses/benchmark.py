@@ -30,7 +30,6 @@ def run_benchmarking(args):
 
     :return: A tsv file of precision and recall with AUPR
     """
-    # TODO set up benchmarking to include multiple chromosomes or only on specific regions.
     # Create the output directory
     output_dir = get_dir(args.output_directory)
 
@@ -72,6 +71,5 @@ def run_benchmarking(args):
                                       args.gold_standard,
                                       args.chromosomes[0],
                                       results_filename2,
-                                      blacklist_mask,
-                                      args.round_predictions
+                                      blacklist_mask
                                       )

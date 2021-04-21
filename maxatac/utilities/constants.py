@@ -106,7 +106,7 @@ TRAIN_SCALE_SIGNAL = (0.9, 1.15)  # min max scaling ranges
 
 # Prediction Constants
 DEFAULT_MIN_PREDICTION = 0.001  # min prediction value to be reported in the output
-DEFAULT_ROUND = 6
+DEFAULT_ROUND = 9
 DEFAULT_PREDICTION_BATCH_SIZE = 10000
 OUTPUT_ACTIVATION = "sigmoid"
 
