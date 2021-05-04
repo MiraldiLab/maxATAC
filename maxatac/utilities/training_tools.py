@@ -259,7 +259,7 @@ def get_input_matrix(rows,
     for n, bp in enumerate(bp_order):
         input_matrix[n, :] = get_one_hot_encoded(sequence_stream.sequence(chromosome, start, end), bp)
 
-    signal_array = np.array(signal_stream.values(chromosome, start, end))
+    signal_array = np.nan_to_num(np.array(signal_stream.values(chromosome, start, end)))
 
     input_matrix[4, :] = signal_array
 
