@@ -49,8 +49,23 @@ def run_normalization(args):
     # Build a dictionary of chrom sizes to use to write the bigwig
     chromosome_length_dictionary = build_chrom_sizes_dict(args.chroms, args.chrom_sizes)
 
-    # Find the genomic min and maximum values
-    genome_min, genome_max = find_genomic_min_max(args.signal, chrom_sizes_dict=chromosome_length_dictionary)
+    if args.max:
+        logging.error("Using provided minimum and maximum values for normalization")
+
+        genome_max = args.max
+        genome_min = args.min
+
+        logging.error("Minimum value: " + str(args.min) + "\n"
+                      "Maximum value: " + str(args.max))
+
+    else:
+        logging.error("Find genomic minimum and maximum values")
+
+        # Find the genomic min and maximum values
+        genome_min, genome_max = find_genomic_min_max(args.signal, chrom_sizes_dict=chromosome_length_dictionary)
+
+        logging.error("Minimum value to use: " + str(args.min))
+        logging.error("Maximum value to use: " + str(args.max))
 
     logging.error("Normalize and Write BigWig file")
 

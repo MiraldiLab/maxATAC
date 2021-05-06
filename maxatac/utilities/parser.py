@@ -778,6 +778,19 @@ def get_parser():
                                   default="./normalization_results",
                                   help="Folder for normalization results. Default: ./normalization_results")
 
+    normalize_parser.add_argument("--min",
+                                  dest="min",
+                                  required=False,
+                                  type=int,
+                                  default=0,
+                                  help="The minimum value to use for normalization")
+
+    normalize_parser.add_argument("--max",
+                                  dest="max",
+                                  required=False,
+                                  default=False,
+                                  help="The maximum value to use for normalization")
+
     normalize_parser.add_argument("--loglevel",
                                   dest="loglevel",
                                   type=str,
