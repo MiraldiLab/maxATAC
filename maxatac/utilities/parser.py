@@ -787,6 +787,7 @@ def get_parser():
 
     normalize_parser.add_argument("--max",
                                   dest="max",
+                                  type=int,
                                   required=False,
                                   default=False,
                                   help="The maximum value to use for normalization")
