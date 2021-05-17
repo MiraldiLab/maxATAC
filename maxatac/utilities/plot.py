@@ -1,5 +1,7 @@
 from maxatac.utilities.system_tools import replace_extension, remove_tags, Mute
 import matplotlib.pyplot as plt
+import numpy as np
+import pyBigWig
 
 with Mute():
     from keras.utils import plot_model
@@ -377,3 +379,10 @@ def export_prc(precision, recall, file_location,  title="Precision Recall Curve"
     )
 
     plt.close("all")
+
+def plot_chromosome_scores_dist(input_bigwig, chrom_name, region_start, region_stop):
+    with pyBigWig.open(input_bigwig) as input_bw:
+        chr_vals = input_bw.values(chrom_name, region_start, region_stop, numpy=True)
+        
+    plt.hist(chr_vals[chr_vals > 0])
+    

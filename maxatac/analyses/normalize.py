@@ -1,19 +1,28 @@
 import logging
+
+import numpy as np
 import pyBigWig
-import os
+
 from maxatac.utilities.system_tools import get_dir, Mute
-import sys
+import os
 
 with Mute():
-    from maxatac.utilities.genome_tools import build_chrom_sizes_dict
-    from maxatac.utilities.normalization_tools import find_genomic_min_max, minmax_normalize_array
-    import numpy as np
+    from maxatac.utilities.genome_tools import build_chrom_sizes_dict, chromosome_blacklist_mask
+    from maxatac.utilities.normalization_tools import minmax_normalize_array, \
+        median_mad_normalize_array, zscore_normalize_array, get_genomic_stats
 
 
 def run_normalization(args):
     """
-    Run minmax normalization on a bigwig file
+    Normalize a bigwig file
+    
+    This function will normalize a bigwig array based on the desired method.
 
+    median-mad normalization: 
+    
+    min-max normalization:
+    
+    log transform:
     This function will min-max a bigwig file based on the minimum and maximum values in the chromosomes of interest.
     The code will loop through each chromosome and find the min and max values. It will then create a dataframe of
     the values per chromosome. It will then scale all other values between 0,1.
@@ -29,59 +38,77 @@ def run_normalization(args):
 
     :return: A minmax normalized bigwig file
     """
-    # Set up the names and directories
-    basename = os.path.basename(args.signal).split(".bw")[0]
+    # if log transforming the file, change filename
+    OUTPUT_FILENAME = os.path.join(args.output, args.prefix + ".bw")
 
-    if args.log_transform:
-        OUTPUT_FILENAME = os.path.join(args.output, basename + "_logp1_minmax01.bw")
-
-    else:
-        OUTPUT_FILENAME = os.path.join(args.output, basename + "_minmax01.bw")
-
+    # Set up the output directoryz
     output_dir = get_dir(args.output)
 
     logging.error("Normalization" +
                   "\n  Input bigwig file: " + args.signal +
                   "\n  Output filename: " + OUTPUT_FILENAME +
-                  "\n  Output directory: " + output_dir
+                  "\n  Output directory: " + output_dir +
+                  "\n  Using " + args.method + " normalization"
                   )
 
     # Build a dictionary of chrom sizes to use to write the bigwig
     chromosome_length_dictionary = build_chrom_sizes_dict(args.chroms, args.chrom_sizes)
 
+    # If the user provides a max to normalize to, use that value
     if args.max:
         logging.error("Using provided minimum and maximum values for normalization")
-
-        genome_max = args.max
-        genome_min = args.min
-
-        logging.error("Minimum value: " + str(args.min) + "\n"
-                      "Maximum value: " + str(args.max))
+        logging.error("Minimum value: " + str(args.min) + "\n" + "Maximum value: " + str(args.max))
 
     else:
-        logging.error("Find genomic minimum and maximum values")
+        logging.error("Calculating stats per chromosome")
 
-        # Find the genomic min and maximum values
-        genome_min, genome_max = find_genomic_min_max(args.signal, chrom_sizes_dict=chromosome_length_dictionary)
+        min_value, max_value, median, mad, mean_value, std_value = get_genomic_stats(bigwig_path=args.signal,
+                                                                                     chrom_sizes_dict=chromosome_length_dictionary,
+                                                                                     blacklist_path=args.blacklist,
+                                                                                     max_percentile=args.max_percentile,
+                                                                                     prefix=os.path.join(args.output,
+                                                                                                         args.prefix))
 
-        logging.error("Minimum value to use: " + str(args.min))
-        logging.error("Maximum value to use: " + str(args.max))
+        logging.error("Sample Statistics" +
+                      "\n  Genomic minimum value: " + str(args.min) +
+                      "\n  Genomic max value: " + str(max_value) +
+                      "\n  Genomic median (non-zero): " + str(median) +
+                      "\n  Genomic median absolute deviation (non-zero): " + str(mad) +
+                      "\n  Genomic mean: " + str(mean_value) +
+                      "\n  Genomic standard deviation: " + str(std_value))
 
     logging.error("Normalize and Write BigWig file")
 
-    # TODO Parallelize this code for each chromosome
+    # With the file for input and output open write the header to the output file
     with pyBigWig.open(args.signal) as input_bw, pyBigWig.open(OUTPUT_FILENAME, "w") as output_bw:
         header = [(x, chromosome_length_dictionary[x]) for x in sorted(args.chroms)]
 
         output_bw.addHeader(header)
 
+        # For every chromosome in header, perform normalization
         for chrom_name, chrom_length in header:
             chr_vals = np.nan_to_num(input_bw.values(chrom_name, 0, chrom_length, numpy=True))
 
-            if args.log_transform:
-                chr_vals = np.log(chr_vals + 1)
+            if args.method == "min-max":
+                normalized_signal = minmax_normalize_array(chr_vals, min_value, max_value, clip=args.clip)
 
-            normalized_signal = minmax_normalize_array(chr_vals, genome_min, genome_max)
+            elif args.method == "median-mad":
+                normalized_signal = median_mad_normalize_array(chr_vals, median, mad)
+
+            elif args.method == "zscore":
+                normalized_signal = zscore_normalize_array(chr_vals, median, mad)
+
+            else:
+                raise NameError('Wrong normalization')
+
+            # Import the blacklist mask for chromosome
+            blacklist_mask = chromosome_blacklist_mask(args.blacklist,
+                                                       chrom_name,
+                                                       chromosome_length_dictionary[chrom_name]
+                                                       )
+
+            # Convert all blacklisted regions to 0
+            normalized_signal[~blacklist_mask] = 0
 
             output_bw.addEntries(chroms=chrom_name,
                                  starts=0,
@@ -91,9 +118,4 @@ def run_normalization(args):
                                  values=normalized_signal.tolist()
                                  )
 
-        output_bw.close()
-        input_bw.close()
-
     logging.error("Results saved to: " + output_dir)
-
-    sys.exit()
