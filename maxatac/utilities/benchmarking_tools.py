@@ -108,7 +108,6 @@ class ChromosomeAUPRC(object):
 
         self.prediction_stream = load_bigwig(prediction_bw)
         self.goldstandard_stream = load_bigwig(goldstandard_bw)
-        self.blacklist_stream = load_bigwig(blacklist_bw)
 
         self.chromosome = chromosome
 
@@ -116,7 +115,7 @@ class ChromosomeAUPRC(object):
         self.bin_count = int(int(self.chromosome_length) / int(bin_size))  # need to floor the number
         self.agg_function = agg_function
 
-        self.blacklist_mask = chromosome_blacklist_mask(self.blacklist_stream, self.chromosome, self.chromosome_length,
+        self.blacklist_mask = chromosome_blacklist_mask(blacklist_bw, self.chromosome, self.chromosome_length,
                                                         self.bin_count)
 
         self.__import_prediction_array__(round_prediction=round_predictions)

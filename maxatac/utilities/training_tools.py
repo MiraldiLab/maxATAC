@@ -641,5 +641,5 @@ class TrainingDataGenerator(keras.utils.Sequence):
         #                          roi_pool=batch_roi_df
         #                          )
 
-        return batch
+        return batch_roi_df
 

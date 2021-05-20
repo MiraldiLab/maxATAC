@@ -23,7 +23,7 @@ def get_genomic_stats(bigwig_path, chrom_sizes_dict, blacklist_path, max_percent
         minmax_results = []
 
         # Create an empty array to store the genomic values
-        genome_values_array = np.zeros(0)
+        genome_values_array = np.zeros(0, dtype=np.float32)
 
         for chromosome in chrom_sizes_dict:
             # Get the chromosome values. Convert nan to 0.

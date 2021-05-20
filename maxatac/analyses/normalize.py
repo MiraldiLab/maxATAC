@@ -21,9 +21,11 @@ def run_normalization(args):
     median-mad normalization: 
     
     min-max normalization:
-    
+
+    zscore normalization: 
+
     log transform:
-    This function will min-max a bigwig file based on the minimum and maximum values in the chromosomes of interest.
+
     The code will loop through each chromosome and find the min and max values. It will then create a dataframe of
     the values per chromosome. It will then scale all other values between 0,1.
     _________________
