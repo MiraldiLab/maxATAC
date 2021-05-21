@@ -47,6 +47,7 @@ def run_benchmarking(args):
 
     # Calculate the AUPR using the prediction and gold standard
     for chromosome in args.chromosomes:
+        logging.error("Benchmarking " + chromosome)
         # Build the results filename
         results_filename = os.path.join(output_dir,
                                         args.prefix + "_" + chromosome + "_" + str(args.bin_size) + "bp_PRC.tsv")

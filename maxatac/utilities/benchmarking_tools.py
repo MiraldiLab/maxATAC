@@ -132,6 +132,8 @@ class ChromosomeAUPRC(object):
         :param round_prediction: The number of floating places to round the signal to
         :return: prediction_array: A np.array that has values binned according to bin_count and aggregated according to agg_function
         """
+        logging.error("Import Predictions Array")
+
         # Get the bin stats from the prediction array
         self.prediction_array = np.nan_to_num(np.array(self.prediction_stream.stats(self.chromosome,
                                                                                     0,
@@ -152,6 +154,8 @@ class ChromosomeAUPRC(object):
         :return: goldstandard_array: A np.array has values binned according to bin_count and aggregated according to
         agg_function. random_precision: The random precision of the model based on # of True bins/ # of genomic bins
         """
+        logging.error("Import Gold Standard Array")
+
         # Get the bin stats from the gold standard array
         self.goldstandard_array = np.nan_to_num(np.array(self.goldstandard_stream.stats(self.chromosome,
                                                                                         0,
@@ -231,38 +235,47 @@ class ChromosomeAUPRC(object):
 
         :return: AUPRC stats as a pandas dataframe
         """
+        logging.error("Calculate precision-recall curve for " + self.chromosome)
+
         self.precision, self.recall, self.thresholds = precision_recall_curve(
             self.goldstandard_array[self.blacklist_mask],
             self.prediction_array[self.blacklist_mask])
 
+        logging.error("Making DataFrame from results")
         # Create a dataframe from the results
         self.PR_CURVE_DF = pd.DataFrame(
             {'Precision': self.precision, 'Recall': self.recall, "Threshold": np.insert(self.thresholds, 0, 0)})
 
+        logging.error("Calculate AUPRc for " + self.chromosome)
         # Calculate AUPRc
         self.AUPRC = metrics.auc(y=self.precision[:-1], x=self.recall[:-1])
 
+        self.PR_CURVE_DF["AUPRC"] = self.AUPRC
+
+        #logging.error("Calculate AUC for each threshold")
         # Calculate AUC for each threshold
-        self.PR_CURVE_DF["AUC"] = self.PR_CURVE_DF["Threshold"].apply(lambda x: self.__calculate_AUC_per_rank__(x))
+        #self.PR_CURVE_DF["AUC"] = self.PR_CURVE_DF["Threshold"].apply(lambda x: self.__calculate_AUC_per_rank__(x))
 
         # Calculate the total number of predictions for each threshold
-        self.PR_CURVE_DF["Number_of_Predictions"] = self.PR_CURVE_DF["Threshold"].apply(
-            lambda x: self.__get_bin_count__(x))
+        #self.PR_CURVE_DF["Number_of_Predictions"] = self.PR_CURVE_DF["Threshold"].apply(
+        #    lambda x: self.__get_bin_count__(x))
 
         # Calculate the total gold standard bins
-        self.PR_CURVE_DF["Total_GoldStandard_Bins"] = len(np.argwhere(self.goldstandard_array == True))
+        #self.PR_CURVE_DF["Total_GoldStandard_Bins"] = len(np.argwhere(self.goldstandard_array == True))
 
         # Calculate the true positives at each cutoff
-        self.PR_CURVE_DF["True_positive"] = self.PR_CURVE_DF["Threshold"].apply(
-            lambda x: self.__get_true_positives__(x))
+        #self.PR_CURVE_DF["True_positive"] = self.PR_CURVE_DF["Threshold"].apply(
+        #    lambda x: self.__get_true_positives__(x))
 
         # Calculate the false positive at each cutoff
-        self.PR_CURVE_DF["False_positive"] = self.PR_CURVE_DF["Threshold"].apply(
-            lambda x: self.__get_false_positives__(x))
+        #self.PR_CURVE_DF["False_positive"] = self.PR_CURVE_DF["Threshold"].apply(
+        #    lambda x: self.__get_false_positives__(x))
 
         # Calculate the false negative at each cutoff
-        self.PR_CURVE_DF["False_negative"] = self.PR_CURVE_DF["Total_GoldStandard_Bins"] - self.PR_CURVE_DF[
-            "True_positive"]
+        #self.PR_CURVE_DF["False_negative"] = self.PR_CURVE_DF["Total_GoldStandard_Bins"] - self.PR_CURVE_DF[
+        #    "True_positive"]
+
+        logging.error("Write results for " + self.chromosome)
 
         # Write the AUPRC stats to a dataframe
         self.PR_CURVE_DF.to_csv(self.results_location, sep="\t", header=True, index=False)
