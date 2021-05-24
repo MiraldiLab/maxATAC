@@ -18,3 +18,5 @@ docs/notebooks/examples/.ipynb_checkpoints/RandomRegionsGenerator-checkpoint.ipy
 *.log
 *.h5
 snakemake/dag.svg
+.idea/misc.xml
+.idea/maxATAC.iml

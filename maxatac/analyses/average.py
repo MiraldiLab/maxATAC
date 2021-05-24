@@ -13,7 +13,7 @@ def run_averaging(args):
     """
     Average multiple bigwig files into one file.
 
-    This function can take a list of input bigwig files and average their scores using pyBigWig. The only requirement
+    This function can take a list of input bigwig files and averages their scores using pyBigWig. The only requirement
     for the bigwig files is that they contain the same chromosomes or there might be an error about retrieving scores.
     ________________________
     Workflow Overview

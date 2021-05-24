@@ -37,11 +37,12 @@ from maxatac.utilities.constants import (DEFAULT_CHRS,
                                          DEFAULT_VALIDATE_CHRS,
                                          DEFAULT_CHROM_SIZES,
                                          BLACKLISTED_REGIONS,
-                                         COMPLEMENT_REGIONS,
                                          DEFAULT_VALIDATE_RAND_RATIO,
                                          DEFAULT_ROUND,
-                                         DEFAULT_TEST_CHRS, BLACKLISTED_REGIONS_BIGWIG,
-                                         DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION, DEFAULT_BENCHMARKING_BIN_SIZE,
+                                         DEFAULT_TEST_CHRS,
+                                         BLACKLISTED_REGIONS_BIGWIG,
+                                         DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
+                                         DEFAULT_BENCHMARKING_BIN_SIZE,
                                          ALL_CHRS, AUTOSOMAL_CHRS
                                          )
 
@@ -298,13 +299,6 @@ def get_parser():
                             type=str,
                             default=BLACKLISTED_REGIONS,
                             help="The blacklisted regions to exclude"
-                            )
-
-    roi_parser.add_argument("--blacklist_complement",
-                            dest="preferences",
-                            type=str,
-                            default=COMPLEMENT_REGIONS,
-                            help="The complement to blacklisted regions or regions for random region selection"
                             )
 
     roi_parser.add_argument("--output",
@@ -778,6 +772,46 @@ def get_parser():
                                   default="./normalization_results",
                                   help="Folder for normalization results. Default: ./normalization_results")
 
+    normalize_parser.add_argument("--prefix",
+                                  dest="prefix",
+                                  type=str,
+                                  default="normalized",
+                                  help="Name to use for filename")
+
+    normalize_parser.add_argument("--min",
+                                  dest="min",
+                                  required=False,
+                                  type=int,
+                                  default=0,
+                                  help="The minimum value to use for normalization")
+
+    normalize_parser.add_argument("--max",
+                                  dest="max",
+                                  type=int,
+                                  required=False,
+                                  default=False,
+                                  help="The maximum value to use for normalization")
+
+    normalize_parser.add_argument("--clip",
+                                  dest="clip",
+                                  type=bool,
+                                  required=False,
+                                  default=False,
+                                  help="Whether to clip minmax values to the range 0,1")
+
+    normalize_parser.add_argument("--method",
+                                  dest="method",
+                                  type=str,
+                                  default="min-max",
+                                  help="The method to use for normalization")
+
+    normalize_parser.add_argument("--max_percentile",
+                                  dest="max_percentile",
+                                  required=False,
+                                  type=int,
+                                  default=100,
+                                  help="The maximum percentile to use for normalization")
+
     normalize_parser.add_argument("--loglevel",
                                   dest="loglevel",
                                   type=str,
@@ -791,6 +825,13 @@ def get_parser():
                                   default=False,
                                   help="This argument should be set to true to log(counts +1) transform data before "
                                        "minmax normalization"
+                                  )
+
+    normalize_parser.add_argument("--blacklist",
+                                  dest="blacklist",
+                                  type=str,
+                                  default=BLACKLISTED_REGIONS_BIGWIG,
+                                  help="The blacklisted regions to exclude"
                                   )
 
     # Benchmark parser
@@ -881,13 +922,6 @@ def get_parser():
                                   type=str,
                                   default=BLACKLISTED_REGIONS_BIGWIG,
                                   help="The blacklisted regions to exclude"
-                                  )
-
-    benchmark_parser.add_argument("--mappability",
-                                  dest="mappability",
-                                  type=str,
-                                  required=False,
-                                  help="The mappability track to use for finding unique regions"
                                   )
 
     # Interpret parser
