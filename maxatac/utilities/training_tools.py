@@ -1,7 +1,7 @@
 import random
 import sys
 from os import path
-
+import os
 import keras
 import numpy as np
 import pandas as pd
@@ -175,11 +175,31 @@ def DataGenerator(
     :return A generator that will yield a batch with number of examples equal to batch size
 
     """
+
+    #Here we need to specify how many samples are coming from each Set
+    
+    #Region1    (50%)   = Set1: True Positives -- Cell Type Regions that have a ChIP-seq Peak
+    #Region2    (15%)   = Set2: True Negatives -- For the TP regions, if that region is not a ChIP peak in a different CT included in this bin
+    #Region3    (25%)   = Set3: ATAC Only: -- Removing the first two Sets, all regions with an ATAC peak and no ChIP peak
+    #Region4    (10%)   = Set4: Random: -- Regions that are not a TP
+    
+    
+    # Calculate the number of ROIs to use based on the total batch size and proportion of Regions to use
+    reg1_ratio= 0.50
+    reg2_ratio= 0.50#0.15
+    reg3_ratio= 0#0.25
+    reg4_ratio= 0#0.10
+    
+    n_reg1 = round(batch_size * reg1_ratio)
+    n_reg2 = round(batch_size * reg2_ratio)
+    n_reg3 = round(batch_size * reg3_ratio)
+    n_reg4 = round(batch_size * reg4_ratio)
+    n_roi = [n_reg1, n_reg2, n_reg3, n_reg4]
     # Calculate the number of ROIs to use based on the total batch size and proportion of random regions to use
-    n_roi = round(batch_size * (1. - rand_ratio))
+    N_roi = round(batch_size * (1. - rand_ratio))
 
     # Calculate number of random regions to use each batch
-    n_rand = round(batch_size - n_roi)
+    n_rand = round(batch_size - N_roi)
 
     # Generate the training random regions pool
     train_random_regions_pool = RandomRegionsPool(chroms=chroms,
@@ -191,7 +211,7 @@ def DataGenerator(
     # Initialize the ROI generator
     roi_gen = create_roi_batch(sequence=sequence,
                                meta_table=meta_table,
-                               roi_pool=roi_pool,
+                               roi_pool=roi_pool, # should contain regions ## roi_pool.regions1 etc
                                n_roi=n_roi,
                                cell_type_list=cell_type_list,
                                bp_resolution=bp_resolution,
@@ -201,7 +221,7 @@ def DataGenerator(
                                )
 
     # Initialize the random regions generator
-    rand_gen = create_random_batch(sequence=sequence,
+    '''rand_gen = create_random_batch(sequence=sequence,
                                    meta_table=meta_table,
                                    cell_type_list=cell_type_list,
                                    n_rand=n_rand,
@@ -209,7 +229,7 @@ def DataGenerator(
                                    bp_resolution=bp_resolution,
                                    quant=quant,
                                    target_scale_factor=target_scale_factor
-                                   )
+                                   )'''
 
     while True:
         # roi_batch.shape = (n_samples, 1024, 6)
@@ -229,7 +249,7 @@ def DataGenerator(
             inputs_batch = roi_input_batch
             targets_batch = roi_target_batch
 
-        yield inputs_batch, targets_batch
+        yield inputs_batch, targets_batch #change back to yield
 
 
 def get_input_matrix(rows,
@@ -293,72 +313,88 @@ def create_roi_batch(sequence,
     :return: np.array(inputs_batch), np.array(targets_batch
     """
     while True:
-        inputs_batch, targets_batch = [], []
-        roi_size = roi_pool.shape[0]
-
-        curr_batch_idxs = random.sample(range(roi_size), n_roi)
-
-        # Here I will process by row, if performance is bad then process by cell line
-        for row_idx in curr_batch_idxs:
-            roi_row = roi_pool.iloc[row_idx, :]
-
-            if shuffle_cell_type:
-                cell_line = random.choice(cell_type_list)
-
-            else:
-                cell_line = roi_row['Cell_Line']
-
-            chrom_name = roi_row['Chr']
-
-            start = int(roi_row['Start'])
-            end = int(roi_row['Stop'])
-
-            meta_row = meta_table[(meta_table['Cell_Line'] == cell_line)]
-            meta_row = meta_row.reset_index(drop=True)
-
-            signal = meta_row.loc[0, 'ATAC_Signal_File']
-            binding = meta_row.loc[0, 'Binding_File']
-
-            with \
-                    load_2bit(sequence) as sequence_stream, \
-                    load_bigwig(signal) as signal_stream, \
-                    load_bigwig(binding) as binding_stream:
-
-                input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
-                                                cols=INPUT_LENGTH,
-                                                bp_order=BP_ORDER,
-                                                signal_stream=signal_stream,
-                                                sequence_stream=sequence_stream,
-                                                chromosome=chrom_name,
-                                                start=start,
-                                                end=end
-                                                )
-
-                inputs_batch.append(input_matrix)
-
-                # TODO we might want to test what happens if we change the
-                if not quant:
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-                    target_vector = np.nan_to_num(target_vector, 0.0)
-                    n_bins = int(target_vector.shape[0] / bp_resolution)
-                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                    bin_sums = np.sum(split_targets, axis=1)
-                    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-                    targets_batch.append(bin_vector)
-
+        return_all_regions_inputs_batch, return_all_regions_targets_batch, inputs_batch, targets_batch = [], [], [], []
+        
+        all_regions = [roi_pool.regions1, roi_pool.regions2, roi_pool.regions3, roi_pool.regions4]
+        k=0
+        for reg in all_regions:
+            roi_size = reg.shape[0]
+            tot_n_roi=n_roi[k]
+            print(tot_n_roi)
+            k=k+1
+            #roi_size = roi_pool.shape[0] #this needs to be the size of each region
+    
+            curr_batch_idxs = random.sample(range(roi_size), tot_n_roi)
+    
+            # Here I will process by row, if performance is bad then process by cell line
+            for row_idx in curr_batch_idxs:
+                roi_row = reg.iloc[row_idx, :]
+    
+                if shuffle_cell_type:
+                    cell_line = random.choice(cell_type_list)
+    
                 else:
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-                    target_vector = np.nan_to_num(target_vector, 0.0)
-                    n_bins = int(target_vector.shape[0] / bp_resolution)
-                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                    bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
-                    targets_batch.append(bin_vector)
+                    cell_line = roi_row['Cell_Line']
+    
+                chrom_name = roi_row['Chr']
+    
+                start = int(roi_row['Start'])
+                end = int(roi_row['Stop'])
+    
+                meta_row = meta_table[(meta_table['Cell_Line'] == cell_line)]
+                meta_row = meta_row.reset_index(drop=True)
+    
+                signal = meta_row.loc[0, 'ATAC_Signal_File']
+                binding = meta_row.loc[0, 'Binding_File']
 
-        if quant:
-            targets_batch = np.array(targets_batch)
-            targets_batch = targets_batch * target_scale_factor
-
-        yield np.array(inputs_batch), np.array(targets_batch)
+                with \
+                        load_2bit(sequence) as sequence_stream, \
+                        load_bigwig(signal) as signal_stream, \
+                        load_bigwig(binding) as binding_stream:
+    
+                    input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
+                                                    cols=INPUT_LENGTH,
+                                                    bp_order=BP_ORDER,
+                                                    signal_stream=signal_stream,
+                                                    sequence_stream=sequence_stream,
+                                                    chromosome=chrom_name,
+                                                    start=start,
+                                                    end=end
+                                                    )
+    
+                    inputs_batch.append(input_matrix)
+    
+                    # TODO we might want to test what happens if we change the
+                    if not quant:
+                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+                        target_vector = np.nan_to_num(target_vector, 0.0)
+                        n_bins = int(target_vector.shape[0] / bp_resolution)
+                        split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+                        bin_sums = np.sum(split_targets, axis=1)
+                        bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+                        targets_batch.append(bin_vector)
+    
+                    else:
+                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+                        target_vector = np.nan_to_num(target_vector, 0.0)
+                        n_bins = int(target_vector.shape[0] / bp_resolution)
+                        split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+                        bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
+                        targets_batch.append(bin_vector)
+    
+            if quant:
+                targets_batch = np.array(targets_batch)
+                targets_batch = targets_batch * target_scale_factor
+    
+            return_all_regions_inputs_batch.append(np.array(inputs_batch))
+            return_all_regions_targets_batch.append(np.array(targets_batch))
+            
+        #temporary fix
+        return_all_regions_inputs_batch= return_all_regions_inputs_batch[-1]
+        return_all_regions_targets_batch= return_all_regions_targets_batch[-1]
+            
+        yield np.array(return_all_regions_inputs_batch), np.array(return_all_regions_targets_batch)
+        #return np.array(inputs_batch), np.array(targets_batch)  #change back to yield
 
 
 def create_random_batch(
@@ -529,7 +565,8 @@ class ROIPool(object):
                  prefix,
                  output_directory,
                  shuffle,
-                 tag
+                 tag,
+                 window_sequence,
                  ):
         """
         :param chroms: Chromosomes to limit the analysis to
@@ -539,6 +576,12 @@ class ROIPool(object):
         :param output_directory: Output directory to save files to
         :param shuffle: Whether to shuffle the input ROI file
         :param tag: Tag to use for writing the file.
+        :param window_sequence: Windowed hg38 sequence w1024 sliding 256 bp
+        :param chromosomes: List of chromosomes to use
+        :param chromosome_sizes_dictionary: A dictionary of chromosome sizes
+        :param blacklist: The blacklist file of BED regions to exclude
+        :param region_length: Length of the input regions
+        :param window_sequence: Windowed hg38 sequence w1024 sliding 256 bp
         """
         self.chroms = chroms
         self.roi_file_path = roi_file_path
@@ -546,6 +589,10 @@ class ROIPool(object):
         self.prefix = prefix
         self.output_directory = output_directory
         self.tag = tag
+        self.window_sequence = window_sequence
+     
+
+        #self.ROI_pool 
 
         # If an ROI path is provided import it as the ROI pool
         if self.roi_file_path:
@@ -555,19 +602,97 @@ class ROIPool(object):
                                                      )
         # Import the data from the meta file.
         else:
-            regions = GenomicRegions(meta_path=self.meta_file,
+            
+            
+            self.ROI_pool = GenomicRegions(meta_path=self.meta_file,
                                      region_length=1024,
                                      chromosomes=self.chroms,
                                      chromosome_sizes_dictionary=build_chrom_sizes_dict(self.chroms,
                                                                                         DEFAULT_CHROM_SIZES),
-                                     blacklist=BLACKLISTED_REGIONS)
+                                     blacklist=BLACKLISTED_REGIONS,
+                                     window_sequence=self.window_sequence)
 
-            regions.write_data(self.prefix,
-                               output_dir=self.output_directory,
-                               set_tag=tag)
+            
 
-            self.ROI_pool = regions.combined_pool
+            ROIPool.regions1 = self.ROI_pool.regions1
+            ROIPool.regions2 = self.ROI_pool.regions2
+            ROIPool.regions3 = self.ROI_pool.regions3
+            ROIPool.regions4 = self.ROI_pool.regions4
+            
+            ROIPool.regions1_counts = self.ROI_pool.regions1_counts
+            ROIPool.regions2_counts = self.ROI_pool.regions2_counts
+            ROIPool.regions3_counts = self.ROI_pool.regions3_counts
+            ROIPool.regions4_counts = self.ROI_pool.regions4_counts
+            
+            ROIPool.write_data(self.prefix, output_dir=self.output_directory, set_tag=tag)
+            #self.ROI_pool.regions1.write_data(self.prefix, output_dir=self.output_directory, set_tag=tag)
 
+
+    def write_data(self, prefix="BalancedROI_pool", output_dir="./ROI", set_tag="training"):
+        """
+        Write the ROI dataframe to a tsv and a bed for for ATAC, CHIP, and combined ROIs
+
+        :param set_tag: Tag for training or validation
+        :param prefix: Prefix for filenames to use
+        :param output_dir: Directory to output the bed and tsv files
+
+        :return: Write BED and TSV versions of the ROI data
+        """
+        output_directory = get_dir(output_dir)
+
+        region1_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region1_ROI.bed.gz")
+        region2_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region2_ROI.bed.gz")
+        region3_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region3_ROI.bed.gz")
+        region4_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region4_ROI.bed.gz")
+        
+        #chip_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_CHIP_ROI.bed.gz")
+        #combined_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.bed.gz")
+        
+        region1_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region1_ROI.tsv.gz")
+        region2_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region2_ROI.tsv.gz")
+        region3_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region3_ROI.tsv.gz")
+        region4_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region4_ROI.tsv.gz")
+        
+        
+
+        #atac_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ATAC_ROI.tsv.gz")
+        #chip_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_CHIP_ROI.tsv.gz")
+        #combined_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.tsv.gz")
+
+        #stats_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI_stats.tsv.gz")
+        total_regions_stats_filename = os.path.join(output_directory,
+                                                    prefix + "_" + set_tag + "_ROI_totalregions_stats.tsv.gz")
+
+        
+        ROIPool.regions1.to_csv(region1_BED_filename, sep="\t", index=False, header=False)
+        ROIPool.regions2.to_csv(region2_BED_filename, sep="\t", index=False, header=False)
+        ROIPool.regions3.to_csv(region3_BED_filename, sep="\t", index=False, header=False)
+        ROIPool.regions4.to_csv(region4_BED_filename, sep="\t", index=False, header=False)
+        
+        ROIPool.regions1.to_csv(region1_TSV_filename, sep="\t", index=False, header=False)
+        ROIPool.regions2.to_csv(region2_TSV_filename, sep="\t", index=False, header=False)
+        ROIPool.regions3.to_csv(region3_TSV_filename, sep="\t", index=False, header=False)
+        ROIPool.regions4.to_csv(region4_TSV_filename, sep="\t", index=False, header=False)
+        
+
+        region1_stats_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region1_stats.tsv.gz")
+        region2_stats_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region2_stats.tsv.gz")
+        region3_stats_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region3_stats.tsv.gz")
+        region4_stats_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_Region4_stats.tsv.gz")
+        
+        ROIPool.regions1_counts.to_csv(region1_stats_TSV_filename, sep="\t", index=False, header=False)
+        ROIPool.regions2_counts.to_csv(region2_stats_TSV_filename, sep="\t", index=False, header=False)
+        ROIPool.regions3_counts.to_csv(region3_stats_TSV_filename, sep="\t", index=False, header=False)
+        ROIPool.regions4_counts.to_csv(region4_stats_TSV_filename, sep="\t", index=False, header=False)
+        
+        '''group_ms = self.combined_pool.groupby(["Chr", "Cell_Line", "ROI_Type"], as_index=False).size()
+        len_ms = self.combined_pool.shape[0]
+        group_ms.to_csv(stats_filename, sep="\t", index=False)
+
+        file = open(total_regions_stats_filename, "a")
+        file.write('Total number of regions found for ' + set_tag + ' are: {0}\n'.format(len_ms))
+        file.close()'''
+    '''
     def __import_roi_pool__(self, shuffle=False):
         """
         Import the ROI file containing the regions of interest. This file is similar to a bed file, but with a header
@@ -584,13 +709,14 @@ class ROIPool(object):
         :return: A pool of regions to use for training or validation
         """
         roi_df = pd.read_csv(self.roi_file_path, sep="\t", header=0, index_col=None)
-
+        
         roi_df = roi_df[roi_df['Chr'].isin(self.chroms)]
 
         if shuffle:
             roi_df = roi_df.sample(frac=1)
 
         return roi_df
+    '''
 
 
 class TrainingDataGenerator(keras.utils.Sequence):

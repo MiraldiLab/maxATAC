@@ -50,13 +50,15 @@ def run_training(args):
                                  )
 
     # Import training regions
+    import pdb; pdb.set_trace()
     train_examples = ROIPool(chroms=args.tchroms,
                              roi_file_path=args.train_roi,
                              meta_file=args.meta_file,
                              prefix=args.prefix,
                              output_directory=maxatac_model.output_directory,
                              shuffle=True,
-                             tag="training")
+                             tag="training",
+                             window_sequence=args.window_sequence)
 
     # Import validation regions
     validate_examples = ROIPool(chroms=args.vchroms,
@@ -65,12 +67,14 @@ def run_training(args):
                                 prefix=args.prefix,
                                 output_directory=maxatac_model.output_directory,
                                 shuffle=True,
-                                tag="validation")
+                                tag="validation",
+                                window_sequence=args.window_sequence)
 
     # Initialize the training generator
+    import pdb; pdb.set_trace()
     train_gen = DataGenerator(sequence=args.sequence,
                               meta_table=maxatac_model.meta_dataframe,
-                              roi_pool=train_examples.ROI_pool,
+                              roi_pool=train_examples.ROI_pool,#train_examples.regions1 or train_examples.ROI_pool.regions1 ALL 4 needed as input
                               cell_type_list=maxatac_model.cell_types,
                               rand_ratio=args.rand_ratio,
                               chroms=args.tchroms,
@@ -81,6 +85,7 @@ def run_training(args):
                               )
 
     # Initialize the validation generator
+    import pdb; pdb.set_trace()
     val_gen = DataGenerator(sequence=args.sequence,
                             meta_table=maxatac_model.meta_dataframe,
                             roi_pool=validate_examples.ROI_pool,
@@ -94,6 +99,7 @@ def run_training(args):
                             )
 
     # Fit the model
+    import pdb; pdb.set_trace()
     training_history = maxatac_model.nn_model.fit_generator(generator=train_gen,
                                                             validation_data=val_gen,
                                                             steps_per_epoch=args.batches,

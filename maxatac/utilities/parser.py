@@ -546,6 +546,13 @@ def get_parser():
 
     train_parser.set_defaults(func=run_training)
 
+    train_parser.add_argument("--window_sequence",
+                                dest="window_sequence",
+                                type=str,
+                                required=True,
+                                help="Windowed Genome at 1024 bp sliding at 256"
+                                )
+    
     train_parser.add_argument("--sequence",
                               dest="sequence",
                               type=str,
