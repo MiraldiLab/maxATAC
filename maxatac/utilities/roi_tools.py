@@ -3,6 +3,8 @@ import pandas as pd
 import pybedtools
 import numpy as np
 import pybedtools
+import random
+
 
 from maxatac.utilities.system_tools import get_dir
 
@@ -41,96 +43,8 @@ class GenomicRegions(object):
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
 
-        # Get a dictionary of {Cell Types: Peak Paths}
-
-        #just import the one file
-        
         self.combined_pool = self.__import_bed(self.meta_dataframe.All_ChIP_ATAC_Peaks.values[0])
         
-        # You must generate the ROI pool before you can get the final shape
-        # self.atac_chip_roi_pool = self.__get_roi_pool(self.atac_chip_dictionary, "ATAC_CHIP", )
-        '''
-        self.atac_roi_pool = self.__get_roi_pool(self.atac_dictionary, "ATAC", )
-        self.chip_roi_pool = self.__get_roi_pool(self.chip_dictionary, "CHIP")
-        '''
-        
-            
-        #self.combined_pool = pd.concat([self.atac_roi_pool, self.chip_roi_pool])
-
-        #self.atac_roi_size = self.atac_roi_pool.shape[0]
-        #self.chip_roi_size = self.chip_roi_pool.shape[0]
-
-    '''def __get_roi_pool(self, dictionary, roi_type_tag): 
-        """
-        Build a pool of regions of interest from BED files.
-
-        :param dictionary: A dictionary of Cell Types and their associated BED files
-        :param roi_type_tag: Tag used to name the type of ROI being generated. IE Chip or ATAC
-
-        :return: A dataframe of BED regions that are formatted for maxATAC training.
-        """
-        bed_list = []
-        
-        self.__import_bed(bed_file, ROI_type_tag=roi_type_tag, ROI_cell_tag=roi_cell_tag)
-        
-        for roi_cell_tag, bed_file in dictionary.items():
-            bed_list.append(self.__import_bed(bed_file,
-                                              ROI_type_tag=roi_type_tag,
-                                              ROI_cell_tag=roi_cell_tag))
-
-        return pd.concat(bed_list)'''
-
-    def write_data(self, prefix="ROI_pool", output_dir="./ROI", set_tag="training"):
-        """
-        Write the ROI dataframe to a tsv and a bed for for ATAC, CHIP, and combined ROIs
-
-        :param set_tag: Tag for training or validation
-        :param prefix: Prefix for filenames to use
-        :param output_dir: Directory to output the bed and tsv files
-
-        :return: Write BED and TSV versions of the ROI data
-        """
-        output_directory = get_dir(output_dir)
-
-        atac_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ATAC_ROI.bed.gz")
-        chip_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_CHIP_ROI.bed.gz")
-        combined_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.bed.gz")
-
-        atac_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ATAC_ROI.tsv.gz")
-        chip_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_CHIP_ROI.tsv.gz")
-        combined_TSV_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.tsv.gz")
-
-        stats_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI_stats.tsv.gz")
-        total_regions_stats_filename = os.path.join(output_directory,
-                                                    prefix + "_" + set_tag + "_ROI_totalregions_stats.tsv.gz")
-
-        self.atac_roi_pool.to_csv(atac_BED_filename, sep="\t", index=False, header=False)
-        self.chip_roi_pool.to_csv(chip_BED_filename, sep="\t", index=False, header=False)
-        self.combined_pool.to_csv(combined_BED_filename, sep="\t", index=False, header=False)
-        self.atac_roi_pool.to_csv(atac_TSV_filename, sep="\t", index=False)
-        self.chip_roi_pool.to_csv(chip_TSV_filename, sep="\t", index=False)
-        self.combined_pool.to_csv(combined_TSV_filename, sep="\t", index=False)
-
-        group_ms = self.combined_pool.groupby(["Chr", "Cell_Line", "ROI_Type"], as_index=False).size()
-        len_ms = self.combined_pool.shape[0]
-        group_ms.to_csv(stats_filename, sep="\t", index=False)
-
-        file = open(total_regions_stats_filename, "a")
-        file.write('Total number of regions found for ' + set_tag + ' are: {0}\n'.format(len_ms))
-        file.close()
-
-    '''def get_regions_list(self,
-                         n_roi):
-        """
-        Generate a batch of regions of interest from the input ChIP-seq and ATAC-seq peaks
-
-        :param n_roi: Number of regions to generate per batch
-
-        :return: A batch of training examples centered on regions of interest
-        """
-        random_roi_pool = self.combined_pool.sample(n=n_roi, replace=True, random_state=1)
-
-        return random_roi_pool.to_numpy().tolist()'''
 
     def __import_bed(self,
                      bed_file
@@ -191,26 +105,24 @@ class GenomicRegions(object):
         # Convert the pybedtools object to a pandas dataframe.
         df = blacklisted_df.to_dataframe()
         
-
         # Rename the columns
         df.columns = ["Chr", "Start", "Stop", "ROI_Type", "Cell_Line"]
         
-        '''
-        df["ROI_Type"] = ROI_type_tag
-
-        df["Cell_Line"] = ROI_cell_tag
-        '''
         
-        ###Here we separte out the types of ROIs by Sets
-        #Set1: True Positives -- Cell Type Regions that have a ChIP-seq Peak
-        #Set2: True Negatives -- For the TP regions, if that region is not a ChIP peak in a different CT included in this bin
-        #Set3: ATAC Only: -- Removing the first two Sets, all regions with an ATAC peak and no ChIP peak
-        #Set4: Random: -- Regions that are not a TP
+        '''
+        Here we separte out the types of ROIs by Sets
+        
+        Set1: True Positives -- Cell Type Regions that have a ChIP-seq Peak
+        Set2: True Negatives -- For the TP regions, if that region is not a ChIP peak in a different CT included in this bin
+        Set3: ATAC Only: -- Removing the first two Sets, all regions with an ATAC peak and no ChIP peak
+        Set4: Random: -- Regions that are not a TP
+        '''
         
         #Find the total Cell Lines that are available for Training (excluding the test CL)
         list_CL= df['Cell_Line'].unique().tolist()
         
         #Set1
+        
         Set1_df=[]
         Set1_df_peakcounts=[]
         for CT in list_CL:
@@ -234,6 +146,7 @@ class GenomicRegions(object):
 
         
         #Set2
+        
         Set2_df=[]
         Set2_df_peakcounts=[]
         for CT in list_CL:
@@ -254,9 +167,14 @@ class GenomicRegions(object):
         Set2_df_peakcounts = pd.concat(Set2_df_peakcounts)
         Set2_df_peakcounts = Set2_df_peakcounts.reset_index(drop=True)
 
+
         #Set3
+        
         #Read in Entire genome w1024 s256 and convert to a bedtool object
         windowed_gen = pd.read_csv(self.window_sequence, sep = '\t', header = None, names=["Chr", "Start", "Stop"])
+        
+        #Get the correct Chrs
+        windowed_gen = windowed_gen[windowed_gen["Chr"].isin(self.chromosomes)]
         windowed_gen_bedtool = pybedtools.BedTool.from_dataframe(windowed_gen)
         
         #Take all regions in Set1 and convert into a bedtool object
@@ -279,28 +197,45 @@ class GenomicRegions(object):
         df_atac_bedtool = pybedtools.BedTool.from_dataframe(df_atac)
         
         #Intersect and return overlapping bins 'wa' option. Return to a df
-        Set3_bedtool = windowed_gen_bedtool_rmSet1_rmSet2.intersect(df_atac_bedtool, wa = True)
+        Set3_bedtool = windowed_gen_bedtool_rmSet1_rmSet2.intersect(df_atac_bedtool, wa = True, wb = True)
         Set3_df = Set3_bedtool.to_dataframe()
-        cols = ['Chr', 'Start', 'Stop']
+        
+        cols = ['Chr','Start','Stop', 'Chr_ov','Start_ov','Stop_ov', 'ROI_Type', 'Cell_Line' ]
         Set3_df.columns = cols
         
+        #Subset columns of interest
+        Set3_df = Set3_df[['Chr', 'Start','Stop', 'ROI_Type','Cell_Line']]
+        #Remove duplicate rows
+        Set3_df = Set3_df.drop_duplicates(subset = ["Chr", "Start", "Stop", "Cell_Line"])
+        
+
         #Gather Stats on this Set
         Set3_peakcounts = len(Set3_df)
         Set3_df_peakcounts= pd.DataFrame({'ATAC_only': 'All regions with an ATAC peak and no ChIP peak', 'peakcount': Set3_peakcounts}, index=[0])
-        #Set4
         
-        #Set1_df_format = Set1_df[['Chr', 'Start', 'Stop']]
-        #Set1_df_bedtool = pybedtools.BedTool.from_dataframe(Set1_df_format)
+        
+        #Set4
         
         #Call on windowed_gen_bedtool all hg38 without regions from Set1 as Set4 random regions
         Set4_bedtool = windowed_gen_bedtool_rmSet1
         Set4_df = Set4_bedtool.to_dataframe()
+        cols = ['Chr', 'Start', 'Stop']
         Set4_df.columns = cols
         
+        
+        list_CL #Total Cell Lines that are available for Training 
+        
+        #Randomly Assign Cell_Lines to the Chr Start Stop df based on the Training Cell Lines available
+        Set4_df['Cell_Line'] = np.random.choice(list_CL , size=len(Set4_df))
+        Set4_df = Set4_df.drop_duplicates(subset = ["Chr", "Start", "Stop"])
+
+
         #Gather Stats on this Set
         Set4_peakcounts = len(Set4_df)
         Set4_df_peakcounts=pd.DataFrame({'Random': 'Regions that are not a TP', 'peakcount': Set4_peakcounts}, index=[0])
-
+        
+        
+        #Assign these dfs to the class object
         self.regions1 = Set1_df
         self.regions2 = Set2_df
         self.regions3 = Set3_df
