@@ -1,5 +1,7 @@
 import logging
 import sys
+import timeit
+
 from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
 
@@ -35,6 +37,7 @@ def run_training(args):
 
     :returns: Trained models saved after each epoch
     """
+    startTime = timeit.default_timer()
     # Initialize the model with the architecture of choice
     maxatac_model = MaxATACModel(arch=args.arch,
                                  seed=args.seed,
@@ -56,7 +59,8 @@ def run_training(args):
                              prefix=args.prefix,
                              output_directory=maxatac_model.output_directory,
                              shuffle=True,
-                             tag="training")
+                             tag="training",
+                             window_sequence=args.window_sequence)
 
     # Import validation regions
     validate_examples = ROIPool(chroms=args.vchroms,
@@ -65,7 +69,8 @@ def run_training(args):
                                 prefix=args.prefix,
                                 output_directory=maxatac_model.output_directory,
                                 shuffle=True,
-                                tag="validation")
+                                tag="validation",
+                                window_sequence=args.window_sequence)
 
     # Initialize the training generator
     train_gen = DataGenerator(sequence=args.sequence,
@@ -125,7 +130,15 @@ def run_training(args):
             export_loss_mse_coeff(training_history, tf, TCL, RR, ARC, maxatac_model.results_location)
 
     logging.error("Results are saved to: " + maxatac_model.results_location)
+    
+    stopTime = timeit.default_timer()
+    totalTime = stopTime - startTime
+    
+    # output running time in a nice format.
+    mins, secs = divmod(totalTime, 60)
+    hours, mins = divmod(mins, 60)
+
+    logging.error("Total training time: %d:%d:%d.\n" % (hours, mins, secs))
 
     sys.exit()
 
-# TODO write code to output model training statistics. Time to run and resources would be nice
