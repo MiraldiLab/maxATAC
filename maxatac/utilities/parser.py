@@ -298,6 +298,12 @@ def get_parser():
                             help="The blacklisted regions to exclude"
                             )
 
+    roi_parser.add_argument("--bins",
+                            dest="bins",
+                            default=False,
+                            help="A bed file of bins to use instead of generating them"
+                            )
+
     roi_parser.add_argument("--output",
                             dest="output",
                             type=str,

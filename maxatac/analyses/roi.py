@@ -1,5 +1,6 @@
 import logging
 import os
+import pandas as pd
 
 import pybedtools
 from maxatac.utilities.system_tools import Mute, get_dir
@@ -40,7 +41,8 @@ def run_roi(args):
 
     # Output filename for the bigwig predictions file based on the output directory and the prefix. Add the bw extension
     outfilename_ROI_bed = os.path.join(output_directory, args.prefix + ".bed")
-    outfilename_bins_bed = os.path.join(output_directory, args.prefix + "_w" + str(args.window_size) + "_s" + str(args.step_size) + "_bins.bed")
+    outfilename_bins_bed = os.path.join(output_directory, args.prefix + "_w" + str(args.window_size) + "_s" + str(
+        args.step_size) + "_bins.bed")
 
     logging.error("Binning the genome with parameters: \n" +
                   "Bin chromosomes: \n   - " + "\n   - ".join(args.chromosomes) + "\n" +
@@ -48,14 +50,20 @@ def run_roi(args):
                   "Step Size: " + str(args.step_size)
                   )
 
-    # Bin the genome with bins equal to window size and shifted by step stize. Only use chromosomes of interest
-    genomic_bins = GenomicBins(chromosome_sizes_file=args.chromosome_sizes,
-                               chromosomes=args.chromosomes,
-                               blacklist_path=args.blacklist,
-                               window_size=args.window_size,
-                               step_size=args.step_size)
+    if args.bins:
+        genomic_bins = pd.read_table(args.bins, header=None)
 
-    genomic_bins.bins_DF.to_csv(outfilename_bins_bed, header=False, index=False, sep="\t")
+        genomic_bins.bins_bedtool = pybedtools.BedTool().from_dataframe(genomic_bins)
+
+    else:
+        # Bin the genome with bins equal to window size and shifted by step stize. Only use chromosomes of interest
+        genomic_bins = GenomicBins(chromosome_sizes_file=args.chromosome_sizes,
+                                   chromosomes=args.chromosomes,
+                                   blacklist_path=args.blacklist,
+                                   window_size=args.window_size,
+                                   step_size=args.step_size)
+
+        genomic_bins.bins_DF.to_csv(outfilename_bins_bed, header=False, index=False, sep="\t")
 
     logging.error("Importing ATAC-seq and ChIP-seq peaks")
 
