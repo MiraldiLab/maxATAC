@@ -1,6 +1,7 @@
 import logging
 import sys
 import timeit
+import pandas as pd
 
 from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
@@ -38,6 +39,7 @@ def run_training(args):
     :returns: Trained models saved after each epoch
     """
     startTime = timeit.default_timer()
+    
     # Initialize the model with the architecture of choice
     maxatac_model = MaxATACModel(arch=args.arch,
                                  seed=args.seed,
@@ -52,32 +54,40 @@ def run_training(args):
                                  weights=args.weights
                                  )
 
+    logging.error("Window the genome to desired bin width and step size")
+
+    # Import windowed genome
+    windowed_gen = pd.read_csv(args.window_sequence, sep='\t', header=None, names=["Chr", "Start", "Stop"])
+
+    logging.error("Import training regions")
+
     # Import training regions
     train_examples = ROIPool(chroms=args.tchroms,
-                             roi_file_path=args.train_roi,
-                             meta_file=args.meta_file,
+                             roi_file_path=args.roi,
                              prefix=args.prefix,
                              output_directory=maxatac_model.output_directory,
-                             shuffle=True,
                              tag="training",
-                             window_sequence=args.window_sequence)
+                             test_cell_type=maxatac_model.test_cell_type,
+                             genomic_bins=windowed_gen)
+
+    logging.error("Import validation regions")
 
     # Import validation regions
     validate_examples = ROIPool(chroms=args.vchroms,
-                                roi_file_path=args.validate_roi,
-                                meta_file=args.meta_file,
+                                roi_file_path=args.roi,
                                 prefix=args.prefix,
                                 output_directory=maxatac_model.output_directory,
-                                shuffle=True,
                                 tag="validation",
-                                window_sequence=args.window_sequence)
+                                test_cell_type=maxatac_model.test_cell_type,
+                                genomic_bins=windowed_gen)
+
+    logging.error("Initialize the training generator")
 
     # Initialize the training generator
     train_gen = DataGenerator(sequence=args.sequence,
                               meta_table=maxatac_model.meta_dataframe,
-                              roi_pool=train_examples.ROI_pool,
+                              roi_pool=train_examples,
                               cell_type_list=maxatac_model.cell_types,
-                              rand_ratio=args.rand_ratio,
                               chroms=args.tchroms,
                               quant=args.quant,
                               batch_size=args.batch_size,
@@ -85,18 +95,21 @@ def run_training(args):
                               shuffle_cell_type=args.shuffle_cell_type
                               )
 
+    logging.error("Initialize the validation generator")
+
     # Initialize the validation generator
     val_gen = DataGenerator(sequence=args.sequence,
                             meta_table=maxatac_model.meta_dataframe,
-                            roi_pool=validate_examples.ROI_pool,
+                            roi_pool=validate_examples,
                             cell_type_list=maxatac_model.cell_types,
-                            rand_ratio=args.rand_ratio,
                             chroms=args.vchroms,
                             quant=args.quant,
                             batch_size=args.batch_size,
                             target_scale_factor=args.target_scale_factor,
                             shuffle_cell_type=args.shuffle_cell_type
                             )
+
+    logging.error("Fit the model")
 
     # Fit the model
     training_history = maxatac_model.nn_model.fit_generator(generator=train_gen,
@@ -121,7 +134,7 @@ def run_training(args):
         tf = maxatac_model.train_tf
         TCL = '_'.join(maxatac_model.cell_types)
         ARC = args.arch
-        RR = args.rand_ratio
+        RR = "NaN"
         export_model_structure(maxatac_model.nn_model, maxatac_model.results_location)
 
         if not quant:

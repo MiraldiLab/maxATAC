@@ -25,6 +25,11 @@ Expanding documentation and  benchmarking features
 
 - Scripts for thresholding, "peak calling", and mean-combine signal generation.
 - Code for balancing training data sets by experimental type.  
+- Code for rough peak calling.
+- Code for ROI BED file maker per TF updated
+- Minmax normalization can do percentile value instead of max. Median-mad and zscore normalization available
+- Predictions can be made with a sliding window approach
+- Updated blacklist file to contain mitochondrial genome segmentation duplications
 
 ## Requirements
 

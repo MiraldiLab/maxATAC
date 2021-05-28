@@ -43,7 +43,7 @@ from maxatac.utilities.constants import (DEFAULT_CHRS,
                                          BLACKLISTED_REGIONS_BIGWIG,
                                          DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
                                          DEFAULT_BENCHMARKING_BIN_SIZE,
-                                         ALL_CHRS, AUTOSOMAL_CHRS
+                                         ALL_CHRS, AUTOSOMAL_CHRS, DEFAULT_STEP_SIZE
                                          )
 
 
@@ -262,29 +262,26 @@ def get_parser():
                             help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
                             )
 
-    roi_parser.add_argument("--region_length",
-                            dest="region_length",
+    roi_parser.add_argument("--window_size",
+                            dest="window_size",
                             type=int,
                             default=INPUT_LENGTH,
-                            help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
+                            help="Bin size in base pairs"
                             )
 
-    roi_parser.add_argument("--train_chroms",
-                            dest="train_chroms",
-                            type=str,
-                            nargs="+",
-                            default=DEFAULT_TRAIN_CHRS,
-                            help="Chromosomes from --chromosomes fixed for training. \
-                                  Default: 3-7,9-18,20-22"
+    roi_parser.add_argument("--step_size",
+                            dest="step_size",
+                            type=int,
+                            default=DEFAULT_STEP_SIZE,
+                            help="Step size to use for windowing genome"
                             )
 
-    roi_parser.add_argument("--validate_chroms",
-                            dest="validate_chroms",
+    roi_parser.add_argument("--chromosomes",
+                            dest="chromosomes",
                             type=str,
                             nargs="+",
-                            default=DEFAULT_VALIDATE_CHRS,
-                            help="Chromosomes from fixed for validation. \
-                                  Default: chr2, chr19"
+                            default=ALL_CHRS,
+                            help="Chromosomes to limit bins to"
                             )
 
     roi_parser.add_argument("--chromosome_sizes",
@@ -302,9 +299,9 @@ def get_parser():
                             )
 
     roi_parser.add_argument("--output",
-                            dest="output_dir",
+                            dest="output",
                             type=str,
-                            default="./average",
+                            default="./roi",
                             help="Output directory."
                             )
 
@@ -316,29 +313,12 @@ def get_parser():
                             help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                             )
 
-    roi_parser.add_argument("--validate_random_ratio",
-                            dest="validate_random_ratio",
-                            type=float,
-                            required=False,
-                            default=DEFAULT_VALIDATE_RAND_RATIO,
-                            help="Ratio for controlling fraction of random seqeuences in each validation batch. float "
-                                 "[0, 1]"
-                            )
-
-    roi_parser.add_argument("--training_prefix",
-                            dest="training_prefix",
+    roi_parser.add_argument("--prefix",
+                            dest="prefix",
                             type=str,
-                            default="training_test",
+                            default="ROI_ATAC_CHIP",
                             required=False,
-                            help="Prefix to use for naming the training ROI file"
-                            )
-
-    roi_parser.add_argument("--validation_prefix",
-                            dest="validation_prefix",
-                            type=str,
-                            default="validation_test",
-                            required=False,
-                            help="Prefix to use for naming the validation ROI file"
+                            help="Prefix to use for naming the ROI file"
                             )
 
     roi_parser.add_argument("--threads",
@@ -568,19 +548,12 @@ def get_parser():
                               help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
                               )
 
-    train_parser.add_argument("--train_roi",
-                              dest="train_roi",
+    train_parser.add_argument("--roi",
+                              dest="roi",
                               type=str,
                               required=False,
                               help="Bed file with ranges for input sequences. Required for peak-centric training of "
                                    "the model. "
-                              )
-
-    train_parser.add_argument("--validate_roi",
-                              dest="validate_roi",
-                              type=str,
-                              required=False,
-                              help="Bed file  with ranges for input sequences to validate the model"
                               )
 
     train_parser.add_argument("--target_scale_factor",
@@ -642,14 +615,6 @@ def get_parser():
                               required=True,
                               help="Specify the model architecture. Currently support DCNN_V2, RES_DCNN_V2, "
                                    "MM_DCNN_V2 and MM_Res_DCNN_V2 "
-                              )
-
-    train_parser.add_argument("--rand_ratio",
-                              dest="rand_ratio",
-                              type=float,
-                              required=True,
-                              help="Ratio for controlling fraction of random sequences in each training batch. float "
-                                   "[0, 1] "
                               )
 
     train_parser.add_argument("--seed",

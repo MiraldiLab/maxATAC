@@ -1,9 +1,11 @@
 import logging
-from maxatac.utilities.system_tools import Mute
+import os
+
+import pybedtools
+from maxatac.utilities.system_tools import Mute, get_dir
 
 with Mute():
-    from maxatac.utilities.genome_tools import build_chrom_sizes_dict
-    from maxatac.utilities.roi_tools import GenomicRegions
+    from maxatac.utilities.genome_tools import GenomicBins, RegionsOfInterest
 
 
 def run_roi(args):
@@ -21,8 +23,6 @@ def run_roi(args):
 
     1) TrainingData: Import the ATAC-seq and ChIP-seq and filter for training chromosomes
     2) TrainingData.write_data: writes the ChIP, ATAC, and combined ROI pools with stats
-    3) ValidationData: Import the ATAC-seq and ChIP-seq and filter for validation chromosomes
-    4) ValidationData.write_data: writes the ChIP, ATAC, and combined ROI pools with stats
 
     :param args: meta_file, output_dir, train_chroms, blacklist, training_prefix, validate_random_ratio,
     validate_chroms, chromosome_sizes, preferences, threads, validation_prefix
@@ -31,42 +31,50 @@ def run_roi(args):
     """
     logging.error("Generating training regions of interest file: \n" +
                   "Meta Path: " + args.meta_file + "\n" +
-                  "Output Directory: " + args.output_dir + "\n" +
-                  "Training chromosomes: \n   - " + "\n   - ".join(args.train_chroms) + "\n")
+                  "Output Directory: " + args.output + "\n" +
+                  "Filename Prefix: " + args.prefix
+                  )
 
-    # The ROI pool is used to import the training data based on the meta file and window size
-    training_data = GenomicRegions(meta_path=args.meta_file,
-                                   region_length=1024,
-                                   chromosomes=args.train_chroms,
-                                   chromosome_sizes_dictionary=build_chrom_sizes_dict(args.train_chroms,
-                                                                                    args.chromosome_sizes),
-                                   blacklist=args.blacklist)
+    # Create the output directory set by the parser
+    output_directory = get_dir(args.output)
 
-    logging.error("Writing training ROI files to BED")
+    # Output filename for the bigwig predictions file based on the output directory and the prefix. Add the bw extension
+    outfilename_ROI_bed = os.path.join(output_directory, args.prefix + ".bed")
+    outfilename_bins_bed = os.path.join(output_directory, args.prefix + "_w" + str(args.window_size) + "_s" + str(args.step_size) + "_bins.bed")
 
-    # Write the ROI pool stats and BED files
-    training_data.write_data(prefix=args.training_prefix,
-                             output_dir=args.output_dir,
-                             set_tag="training")
+    logging.error("Binning the genome with parameters: \n" +
+                  "Bin chromosomes: \n   - " + "\n   - ".join(args.chromosomes) + "\n" +
+                  "Window Size: " + str(args.window_size) + "\n" +
+                  "Step Size: " + str(args.step_size)
+                  )
 
-    logging.error("Generating validation regions of interest file: \n" +
-                  "Meta Path: " + args.meta_file + "\n" +
-                  "Validation chromosomes: \n   - " + "\n   - ".join(args.validate_chroms) + "\n" +
-                  "Blacklist Regions BED: " + args.blacklist + "\n")
+    # Bin the genome with bins equal to window size and shifted by step stize. Only use chromosomes of interest
+    genomic_bins = GenomicBins(chromosome_sizes_file=args.chromosome_sizes,
+                               chromosomes=args.chromosomes,
+                               blacklist_path=args.blacklist,
+                               window_size=args.window_size,
+                               step_size=args.step_size)
 
-    # Import the validation data using the meta file
-    validation_data = GenomicRegions(meta_path=args.meta_file,
-                                     region_length=1024,
-                                     chromosomes=args.validate_chroms,
-                                     chromosome_sizes_dictionary=build_chrom_sizes_dict(args.validate_chroms,
-                                                                                      args.chromosome_sizes),
-                                     blacklist=args.blacklist)
+    genomic_bins.bins_DF.to_csv(outfilename_bins_bed, header=False, index=False, sep="\t")
 
-    logging.error("Writing validation ROI files to BED")
+    logging.error("Importing ATAC-seq and ChIP-seq peaks")
 
-    # Write the validation pool BED, TSV, and stats files
-    validation_data.write_data(prefix=args.validation_prefix,
-                               output_dir=args.output_dir,
-                               set_tag="validation")
+    # Import the ATAC-seq and ChIP-seq peaks based on the meta file. Exclude blacklisted regions
+    ROIPool = RegionsOfInterest(meta_path=args.meta_file,
+                                blacklist=args.blacklist,
+                                chromosomes=args.chromosomes)
+
+    logging.error("Intersecting ATAC-seq and ChIP-seq peaks with genomic bins")
+
+    # Intersect the genomic bins with the ATAC-seq and ChIP-seq peaks. This file will be parsed and written to a bed.
+    binned_peaks = genomic_bins.bins_bedtool.intersect(ROIPool.combined_pool_bedtool, wa=True, wb=True)
+
+    binned_peaks_df = pybedtools.BedTool.to_dataframe(binned_peaks)
+
+    logging.error("Writing training ROI files")
+    binned_peaks_df.columns = ["Chr", "Start", "Stop", "Chr_overlap", "Start_overlap",
+                               "Stop_overlap", "ROI_Type", "Cell_Line"]
+
+    binned_peaks_df.to_csv(outfilename_ROI_bed, sep="\t", header=False, index=False)
 
     logging.error("Done")
