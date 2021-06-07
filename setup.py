@@ -2,7 +2,7 @@
 import os
 from setuptools import setup, find_packages
 
-VERSION = "0.1.0"
+VERSION = "0.1.2"
 HERE = os.path.abspath(os.path.dirname(__file__))
 
 
@@ -18,14 +18,14 @@ setup(name="maxatac",
       long_description_content_type="text/markdown",
       version=VERSION,
       url="",
-      download_url="https://github.com/dlab-arp/maxatac_V2.git",
+      download_url="",
       author="",
       author_email="",
       license="Apache-2.0",
       include_package_data=True,
       packages=find_packages(),
       install_requires=["tensorflow-gpu==1.15.2",
-                        "tensorboard<1.16.0,>=1.15.0",
+                        "tensorboard",
                         "keras==2.3.1",
                         "py2bit==0.3.0",
                         "numpy==1.19.5",
@@ -37,9 +37,8 @@ setup(name="maxatac",
                         "pybedtools==0.8.1",
                         "pandas==1.1.5",
                         "pyfiglet",
-                        "tqdm",
                         "h5py<3.0.0",
-                        "grpcio==1.35.0",
+                        "grpcio==1.36.1",
                         "deeplift",
                         "seaborn",
                         "graphviz",

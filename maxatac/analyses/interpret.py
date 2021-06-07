@@ -23,10 +23,9 @@ from maxatac.utilities.constants import (
     BP_RESOLUTION,
 )
 from maxatac.utilities.interpretation_tools import generating_interpret_data, dinuc_shuffle_DNA_only_several_times, \
-    combine_DNA_only_mult_and_diffref, output_meme_pwm
+    combine_DNA_only_mult_and_diffref, output_meme_pwm, get_roi_pool
 from maxatac.utilities.system_tools import get_dir
 from maxatac.utilities.training_tools import MaxATACModel
-from maxatac.utilities.training_tools import get_roi_pool
 
 keras_model_custom_objects_dict = {
     'loss_function': loss_function,
@@ -98,15 +97,10 @@ def run_interpretation(args):
 
             X, y = generating_interpret_data(
                 sequence=args.sequence,
-                average=args.average,
                 meta_table=maxatac_model.meta_dataframe,
                 roi_pool=_group,
-                train_cell_lines=maxatac_model.cell_types,
-                rand_ratio=args.rand_ratio,
                 train_tf=args.train_tf,
-                tchroms=args.chroms,
                 bp_resolution=BP_RESOLUTION,
-                filters=None,
                 workers=args.threads,
             )
 

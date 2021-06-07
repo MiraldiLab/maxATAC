@@ -1,0 +1,125 @@
+import os
+
+# TF Model Information
+TF="CTCF"
+META_FILE="/fs/project/PES0738/maxATAC_inputs/run_meta/20210306_ENCODE_binary_53TF/20210306_CTCF_FullModels_TrainRunMeta.tsv"
+
+# Overall Parameters
+RUN_DIR="/fs/project/PES0738/maxATAC_outputs/snakemake"
+SEQUENCE="/fs/project/PES0738/maxATAC_inputs/genome_inf/hg38.2bit"
+ATAC_SIGNAL_DIR="/fs/project/PES0738/maxATAC_inputs/ATAC/hg38/cell_type_average_RP20M_minmax_bigwig/slop20bp"
+
+TRAIN_OUTPUT=os.path.join(RUN_DIR, "train")
+PREDICT_OUTPUT=os.path.join(RUN_DIR, "predict")
+BENCHMARK_OUTPUT=os.path.join(RUN_DIR, "benchmark")
+
+# Training Parameters
+EPOCHS=100
+VAL_BATCH_SIZE=1000
+BATCH_SIZE=1000
+BATCHES=100
+
+# Prediction Parameters
+PREDICTION_CELLTYPE="GM23338"
+PREDICTION_CHROMS="chr1"
+PREDICTION_SIGNAL=os.path.join(ATAC_SIGNAL_DIR , PREDICTION_CELLTYPE + "__slop20bp_RP20M_minmax01.bw")
+PREDICTION_ROI="/fs/project/PES0738/maxATAC_inputs/genome_inf/chr1_w1024_PC.bed"
+PREDICTION_BATCH_SIZE=10000
+
+# Benchmark Parameters
+BENCHMARK_BIN_SIZE=[32, 128, 256]
+BENCHMARK_AGG=["max"]
+GOLD_STANDARD_DIR="/fs/project/PES0738/maxatac_goldstandards/hg38/binary"
+
+rule all:
+    input:
+        expand(os.path.join(BENCHMARK_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}_" + PREDICTION_CHROMS + "_{bin_size}bp_PRC.tsv"), epoch=range(1, EPOCHS + 1), agg=BENCHMARK_AGG, bin_size=BENCHMARK_BIN_SIZE)
+
+rule maxatac_train:
+    input:
+        sequence=SEQUENCE,
+        meta_file=META_FILE
+
+    output:
+        expand(os.path.join(TRAIN_OUTPUT, TF + "_{epoch}.h5"), epoch=range(1, EPOCHS + 1))
+
+    params:
+        arch="DCNN_V2",
+        rand_ratio="0",
+        val_batch_size=VAL_BATCH_SIZE,
+        batch_size=BATCH_SIZE,
+        batches=BATCHES,
+        epochs=EPOCHS,
+        output=TRAIN_OUTPUT,
+        prefix=TF
+
+    shell:
+        "maxatac train "
+        "--shuffle_cell_type "
+        '--arch {params.arch} '
+        "--sequence {input.sequence} "
+        "--meta_file {input.meta_file} "
+        "--rand_ratio {params.rand_ratio} "
+        "--val_batch_size {params.val_batch_size} "
+        "--batch_size {params.batch_size} "
+        "--batches {params.batches} "
+        "--epochs {params.epochs} "
+        "--output {params.output} "
+        "--prefix {params.prefix} "
+        "--threads 14 "
+
+rule maxatac_predict:
+    input:
+        models=os.path.join(TRAIN_OUTPUT, TF + "_{epoch}.h5"),
+        sequence=SEQUENCE,
+        signal=PREDICTION_SIGNAL,
+        roi=PREDICTION_ROI
+
+    output:
+        os.path.join(PREDICT_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}.bw")
+
+    params:
+        prefix=TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}",
+        chroms=PREDICTION_CHROMS,
+        output=PREDICT_OUTPUT,
+        batch_size=PREDICTION_BATCH_SIZE
+
+    threads: 4
+
+    shell:
+        "maxatac predict "
+        "--models {input.models} "
+        "--sequence {input.sequence} "
+        "--signal {input.signal} "
+        "--prefix {params.prefix} "
+        "--output {params.output} "
+        "--chromosomes {params.chroms} "
+        "--batch_size {params.batch_size} "
+
+rule maxatac_benchmark:
+    input:
+        prediction=os.path.join(PREDICT_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}.bw"),
+        gold_standard=os.path.join(GOLD_STANDARD_DIR, PREDICTION_CELLTYPE + "__" + TF + ".bw"),
+        chromosomes=PREDICTION_CHROMS
+
+    output:
+        os.path.join(BENCHMARK_OUTPUT, TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}_" + PREDICTION_CHROMS + "_{bin_size}bp_PRC.tsv")
+
+    params:
+        bin_size="{bin_size}",
+        prefix=TF + "_" + PREDICTION_CHROMS + "_" + PREDICTION_CELLTYPE + "_epoch{epoch}_{agg}",
+        agg="{agg}",
+        output=BENCHMARK_OUTPUT,
+        chromosomes=PREDICTION_CHROMS
+
+    threads: 4
+
+    shell:
+        "maxatac benchmark "
+        "--prediction {input.prediction} "
+        "--gold_standard {input.gold_standard} "
+        "--prefix {params.prefix} "
+        "--output_directory {params.output} "
+        "--bin_size {params.bin_size} "
+        "--chromosomes {input.chromosomes}"
+        "--agg {params.agg} "

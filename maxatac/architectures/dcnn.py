@@ -1,5 +1,7 @@
 import logging
+from scipy import stats
 from maxatac.utilities.system_tools import Mute
+
 
 with Mute():
     import tensorflow as tf
@@ -18,9 +20,9 @@ with Mute():
     from keras.optimizers import Adam
 
     from maxatac.utilities.constants import KERNEL_INITIALIZER, INPUT_LENGTH, INPUT_CHANNELS, INPUT_FILTERS, \
-    INPUT_KERNEL_SIZE, INPUT_ACTIVATION, OUTPUT_FILTERS, OUTPUT_KERNEL_SIZE, FILTERS_SCALING_FACTOR, DILATION_RATE, \
-    OUTPUT_LENGTH, CONV_BLOCKS, PADDING, POOL_SIZE, ADAM_BETA_1, ADAM_BETA_2, DEFAULT_ADAM_LEARNING_RATE, \
-    DEFAULT_ADAM_DECAY
+        INPUT_KERNEL_SIZE, INPUT_ACTIVATION, OUTPUT_FILTERS, OUTPUT_KERNEL_SIZE, FILTERS_SCALING_FACTOR, DILATION_RATE, \
+        OUTPUT_LENGTH, CONV_BLOCKS, PADDING, POOL_SIZE, ADAM_BETA_1, ADAM_BETA_2, DEFAULT_ADAM_LEARNING_RATE, \
+        DEFAULT_ADAM_DECAY
 
 
 def loss_function(
@@ -42,6 +44,31 @@ def loss_function(
     )
     return tf.reduce_mean(losses)
 
+def pearson(y_true, y_pred):
+    import scipy.stats as measures
+    import numpy as np
+    x = y_true
+    y = y_pred
+    
+    mx= K.cast(K.mean(x), dtype=np.float32)
+    my= K.cast(K.mean(y), dtype=np.float32)
+    
+    xm, ym = x-mx, y-my
+    
+    r_num = K.cast(K.sum(tf.multiply(xm,ym)), dtype=np.float32)
+    r_den = K.cast(K.sqrt(tf.multiply(K.sum(K.square(xm)), K.sum(K.square(ym)))), dtype=np.float32)
+    
+    score = r_num / r_den
+    return score
+'''
+def pearson(y_true, y_pred):
+    return (tf.contrib.metrics.streaming_pearson_correlation(y_pred, y_true))
+'''
+
+def spearman(y_true, y_pred):
+    from scipy.stats import spearmanr
+    
+    return ( tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32), tf.cast(y_true, tf.float32)], Tout = tf.float32) )
 
 def dice_coef(
         y_true,
@@ -256,6 +283,7 @@ def get_dilated_cnn(
 
     # Model
     model = Model(inputs=[input_layer], outputs=[output_layer])
+
     if not quant:
         model.compile(
             optimizer=Adam(
@@ -265,8 +293,9 @@ def get_dilated_cnn(
                 decay=adam_decay
             ),
             loss=loss_function,
-            metrics=[dice_coef, 'accuracy']
+            metrics=[dice_coef, 'accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall(), pearson, spearman]
         )
+
     else:
         mse = tf.keras.losses.MeanSquaredError(reduction="auto",
                                                name="mean_squared_error")  # May wnat to change Reduction methods possibly
@@ -278,7 +307,7 @@ def get_dilated_cnn(
                 decay=adam_decay
             ),
             loss=mse,
-            metrics=[mse, coeff_determination]  # tf.keras.metrics.RootMeanSquaredError()
+            metrics=[mse, coeff_determination, tf.keras.metrics.Precision(), tf.keras.metrics.Recall(), pearson, spearman]  # tf.keras.metrics.RootMeanSquaredError()
         )
 
     logging.debug("Model compiled")
@@ -305,29 +334,3 @@ def get_callbacks(
         )
     ]
     return callbacks
-
-# start =1
-# model = get_dilated_cnn(
-#     input_length=INPUT_LENGTH,
-#     input_channels=INPUT_CHANNELS,
-#     input_filters=INPUT_FILTERS,
-#     input_kernel_size=INPUT_KERNEL_SIZE,
-#     input_activation=INPUT_ACTIVATION,
-#     output_filters=OUTPUT_FILTERS,
-#     output_kernel_size=OUTPUT_KERNEL_SIZE,
-#     output_activation="sigmoid",
-#     filters_scaling_factor=FILTERS_SCALING_FACTOR,
-#     dilation_rate=DILATION_RATE,
-#     conv_blocks=CONV_BLOCKS,
-#     padding=PADDING,
-#     pool_size=POOL_SIZE,
-#     adam_learning_rate=DEFAULT_ADAM_LEARNING_RATE,
-#     adam_beta_1=ADAM_BETA_1,
-#     adam_beta_2=ADAM_BETA_2,
-#     adam_decay=DEFAULT_ADAM_DECAY,
-#     quant=True,
-#     target_scale_factor=10,
-#     dense_b = True,
-#     weights=None)
-#
-# debug = 1

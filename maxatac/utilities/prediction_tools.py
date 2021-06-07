@@ -1,4 +1,6 @@
 import logging
+
+import keras
 import numpy as np
 import pandas as pd
 import pybedtools
@@ -7,17 +9,16 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():
     from keras.models import load_model
-    from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig, get_one_hot_encoded
+    from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig
+    from maxatac.utilities.training_tools import get_input_matrix
 
 
 def make_predictions(
         signal,
         sequence,
-        average,
         model,
         predict_roi_df,
         batch_size,
-        round_predictions,
         input_channels,
         input_length,
         predictions=""
@@ -27,11 +28,9 @@ def make_predictions(
 
     :param signal: The ATAC-seq signal file
     :param sequence: The 2bit DNA sequence file
-    :param average: The average ATAC-seq signal file
     :param model: The trained maxATAC model(s)
     :param predict_roi_df: A dataframe containing a BED formatted dataframe
     :param batch_size: The number of examples to predict in each batch
-    :param round_predictions: Number of decimal places to round prediction scores to
     :param input_channels: Number of input channels
     :param input_length: Length of the input regions of interest
     :param predictions: empty and used to hold predictions.
@@ -52,15 +51,14 @@ def make_predictions(
     logging.error("Making predictions")
 
     # Loop through all of the batches and make predictions.
-    # TODO Make this loop into a parallel loop
     for idx, batch_idxs in enumerate(all_batch_idxs):
+        # Subset the main df into batch specific df
         batch_roi_df = predict_roi_df.loc[batch_idxs, :]
 
         batch_roi_df.reset_index(drop=True, inplace=True)
 
         input_batch = get_region_values(signal=signal,
                                         sequence=sequence,
-                                        average=average,
                                         input_channels=input_channels,
                                         input_length=input_length,
                                         roi_pool=batch_roi_df
@@ -73,8 +71,6 @@ def make_predictions(
 
         else:
             predictions = np.vstack((predictions, pred_output_batch))
-
-    predictions = np.round(predictions, round_predictions)
 
     logging.error("Parsing results into pandas dataframe")
 
@@ -122,72 +118,83 @@ def write_predictions_to_bigwig(df,
     # Rename the columns of the dataframe
     windowed_coordinates_dataframe.columns = ['chr', 'start', 'stop', 'score']
 
-    # TODO parallel write many chromosomes. Hardcoded now to first chromosome in list
+    # Sort dataframe to make sure that all intervals are in order
+    windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"],
+                                                                            as_index=False).mean()
+
     with dump_bigwig(output_filename) as data_stream:
-        header = [(chromosomes[0], int(chrom_sizes_dictionary[chromosomes[0]]))]
+        # Make the bigwig header using the chrom sizes dictionary
+        header = [(x, chrom_sizes_dictionary[x]) for x in chromosomes]
+
+        # Add header to bigwig
         data_stream.addHeader(header)
 
-        data_stream.addEntries(
-            chroms=windowed_coordinates_dataframe["chr"].tolist(),
-            starts=windowed_coordinates_dataframe["start"].tolist(),
-            ends=windowed_coordinates_dataframe["stop"].tolist(),
-            values=windowed_coordinates_dataframe["score"].tolist()
-        )
+        for chromosome in chromosomes:
+            # Create a tmp df from the predictions dataframe for each chrom
+            tmp_chrom_df = windowed_coordinates_dataframe[windowed_coordinates_dataframe["chr"] == chromosome].copy()
+
+            # Bigwig files need sorted intervals as input
+            tmp_chrom_df.sort_values(by=["chr", "start", "stop"], inplace=True)
+
+            # Write all entries for the chromosome
+            data_stream.addEntries(chroms=tmp_chrom_df["chr"].tolist(),
+                                   starts=tmp_chrom_df["start"].tolist(),
+                                   ends=tmp_chrom_df["stop"].tolist(),
+                                   values=tmp_chrom_df["score"].tolist()
+                                   )
 
 
-def get_region_values(
-        signal,
-        sequence,
-        average,
-        roi_pool,
-        input_channels,
-        input_length
-):
+def get_region_values(signal,
+                      sequence,
+                      roi_pool,
+                      input_channels,
+                      input_length
+                      ):
     """
     Get the bigwig values for each ROI in the ROI pool
 
     :param signal: ATAC-seq signal file
     :param sequence: 2bit DNA file
-    :param average: Average ATAC-seq signal file
     :param roi_pool: Pool of regions to predict on
     :param input_channels: Number of input channels
     :param input_length: Length of the input regions
 
     :return: Array of examples
     """
-    inputs_batch, targets_batch = [], []
+    # Create the lists to hold the batch data
+    inputs_batch = []
 
+    # Calculate the size of the predictions pool
     roi_size = roi_pool.shape[0]
 
-    with load_bigwig(signal) as signal_stream, \
-            load_2bit(sequence) as sequence_stream, \
-            load_bigwig(average) as average_stream:
+    # With the files loaded get the data
+    with load_bigwig(signal) as signal_stream, load_2bit(sequence) as sequence_stream:
         for row_idx in range(roi_size):
+            # Get the single row
             row = roi_pool.loc[row_idx, :]
 
-            chromosome = row[0]
-
-            start = int(row[1])
-
-            end = int(row[2])
-
+            # Get the matric of values for the entry
             input_matrix = get_input_matrix(rows=input_channels,
                                             cols=input_length,
                                             bp_order=["A", "C", "G", "T"],
-                                            average_stream=average_stream,
                                             signal_stream=signal_stream,
                                             sequence_stream=sequence_stream,
-                                            chromosome=chromosome,
-                                            start=start,
-                                            end=end
+                                            chromosome=row[0],
+                                            start=int(row[1]),
+                                            end=int(row[2])
                                             )
 
+            # Append the matrix of values to the batch list
             inputs_batch.append(input_matrix)
 
     return np.array(inputs_batch)
 
 
-def import_prediction_regions(bed_file, region_length, chromosomes, chrom_sizes_dictionary, blacklist):
+def import_prediction_regions(bed_file,
+                              region_length,
+                              chromosomes,
+                              chrom_sizes_dictionary,
+                              blacklist):
     """
     Import a BED file and format the regions to be compatible with our maxATAC models
 
@@ -206,75 +213,139 @@ def import_prediction_regions(bed_file, region_length, chromosomes, chrom_sizes_
                      names=["chr", "start", "stop"],
                      low_memory=False)
 
+    # Filter for chroms in the desired set
     df = df[df["chr"].isin(chromosomes)]
 
+    # Find the length of the regions
     df["length"] = df["stop"] - df["start"]
 
+    # Find the center of the regions
     df["center"] = np.floor(df["start"] + (df["length"] / 2)).apply(int)
 
+    # Find the start coordinates based on center
     df["start"] = np.floor(df["center"] - (region_length / 2)).apply(int)
 
+    # Find the stop coordinates based on center
     df["stop"] = np.floor(df["center"] + (region_length / 2)).apply(int)
 
+    # Map chrom end
     df["END"] = df["chr"].map(chrom_sizes_dictionary)
 
+    # Make sure none of the stops are out of bounds
     df = df[df["stop"].apply(int) < df["END"].apply(int)]
 
+    # Make sure none of the starts are out of bounds
     df = df[df["start"].apply(int) > 0]
 
+    # Subset to 3-col BED format
     df = df[["chr", "start", "stop"]]
 
+    # Create a bedtool object from dataframe
     BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
 
+    # Create a blacklist object form the blacklist bed file
     blacklist_bedtool = pybedtools.BedTool(blacklist)
 
+    # Create an object that has the blacklisted regions removed
     blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
 
+    # Create a dataframe from the bedtools object
     df = blacklisted_df.to_dataframe()
 
+    # Rename columns
     df.columns = ["chr", "start", "stop"]
 
     return df
 
 
-def get_input_matrix(rows,
-                     cols,
-                     signal_stream,
-                     average_stream,
-                     sequence_stream,
-                     bp_order,
-                     chromosome,
-                     start,  # end - start = cols
-                     end
-                     ):
+def create_prediction_regions(region_length,
+                              chromosomes,
+                              chrom_sizes,
+                              blacklist,
+                              step_size):
     """
-    Generate the matrix of values from the signal, sequence, and average data tracks
+    Window the genome into regions compatible with the model input sizes
 
-    :param rows: (int) The number of channels or rows
-    :param cols: (int) The number of columns or length
-    :param signal_stream: (str) ATAC-seq signal
-    :param average_stream: (str) Average ATAC-seq signal
-    :param sequence_stream: (str) One-hot encoded sequence
-    :param bp_order: (list) Order of the bases in matrix
-    :param chromosome: (str) Chromosome name
-    :param start: (str) Chromosome start
-    :param end: (str) Chromosome end
+    :param region_length: Length of the region in basepairs
+    :param chromosomes: The chromosomes to limit prediction to
+    :param chrom_sizes: The chomosomes sizes file for use with pybedtools
+    :param blacklist: The blacklist regions to remove from the analysis
+    :param step_size: The step size of the window to use.
 
-    :return: A matrix that is rows x columns with the values from each file
+    :return: A dataframe of regions that are compatible with the model for making predictions
     """
-    input_matrix = np.zeros((rows, cols))
+    # Create a bedtools object that is a windowed genome
+    BED_df_bedtool = pybedtools.BedTool().window_maker(g=chrom_sizes, w=region_length, s=step_size)
 
-    for n, bp in enumerate(bp_order):
-        input_matrix[n, :] = get_one_hot_encoded(
-            sequence_stream.sequence(chromosome, start, end),
-            bp
-        )
+    # Create a blacklist object form the blacklist bed
+    blacklist_bedtool = pybedtools.BedTool(blacklist)
 
-    signal_array = np.array(signal_stream.values(chromosome, start, end))
-    avg_array = np.array(average_stream.values(chromosome, start, end))
+    # Remove the blacklisted regions from the windowed genome object
+    blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
 
-    input_matrix[4, :] = signal_array
-    input_matrix[5, :] = input_matrix[4, :] - avg_array
+    # Create a dataframe from the BedTools object
+    df = blacklisted_df.to_dataframe()
 
-    return input_matrix.T
+    # Rename the columns
+    df.columns = ["chr", "start", "stop"]
+
+    # Filter for specific chroms
+    df = df[df["chr"].isin(chromosomes)]
+
+    # Reset index so that it goes from 0-end in order
+    df = df.reset_index(drop=True)
+
+    return df
+
+
+class PredictionDataGenerator(keras.utils.Sequence):
+    def __init__(self,
+                 signal,
+                 sequence,
+                 input_channels,
+                 input_length,
+                 predict_roi_df,
+                 batch_size=32
+                 ):
+        'Initialization'
+        self.batch_size = batch_size
+        self.predict_roi_df = predict_roi_df
+        self.indexes = np.arange(self.predict_roi_df.shape[0])
+        self.signal = signal
+        self.sequence = sequence
+        self.input_channels = input_channels
+        self.input_length = input_length
+
+    def __len__(self):
+        'Denotes the number of batches per epoch'
+        return int(self.predict_roi_df.shape[0] / self.batch_size)
+
+    def __getitem__(self, index):
+        'Generate one batch of data'
+        # Generate indexes of the batch
+        batch_indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
+
+        # Generate data
+        X = self.__data_generation(batch_indexes)
+
+        return X
+
+    def __data_generation(self, batch_indexes):
+        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
+        # Initialization
+
+        # Generate data
+        # Store sample
+        batch_roi_df = self.predict_roi_df.loc[batch_indexes, :]
+
+        batch_roi_df.reset_index(drop=True, inplace=True)
+
+        batch = get_region_values(signal=self.signal,
+                                  sequence=self.sequence,
+                                  input_channels=self.input_channels,
+                                  input_length=self.input_length,
+                                  roi_pool=batch_roi_df
+                                  )
+
+        return batch
 

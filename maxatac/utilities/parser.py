@@ -4,6 +4,8 @@ from os import getcwd
 
 from yaml import dump
 
+from maxatac.analyses.peaks import call_peaks
+from maxatac.analyses.threshold import run_thresholding
 from maxatac.utilities.system_tools import (
     get_version,
     get_absolute_path,
@@ -20,6 +22,7 @@ with Mute():
     from maxatac.analyses.benchmark import run_benchmarking
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.interpret import run_interpretation
+    from maxatac.analyses.mean_combine import run_max_combine
 
 from maxatac.utilities.constants import (DEFAULT_CHRS,
                                          LOG_LEVELS,
@@ -34,12 +37,13 @@ from maxatac.utilities.constants import (DEFAULT_CHRS,
                                          DEFAULT_VALIDATE_CHRS,
                                          DEFAULT_CHROM_SIZES,
                                          BLACKLISTED_REGIONS,
-                                         COMPLEMENT_REGIONS,
                                          DEFAULT_VALIDATE_RAND_RATIO,
                                          DEFAULT_ROUND,
-                                         DEFAULT_TEST_CHRS, BLACKLISTED_REGIONS_BIGWIG,
-                                         DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION, DEFAULT_BENCHMARKING_BIN_SIZE,
-                                         ALL_CHRS
+                                         DEFAULT_TEST_CHRS,
+                                         BLACKLISTED_REGIONS_BIGWIG,
+                                         DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
+                                         DEFAULT_BENCHMARKING_BIN_SIZE,
+                                         ALL_CHRS, AUTOSOMAL_CHRS
                                          )
 
 
@@ -123,7 +127,6 @@ def assert_and_fix_args_for_training(args):
         args.tchroms,
         [
             args.sequence,
-            args.average
         ],
         True
     )
@@ -131,7 +134,6 @@ def assert_and_fix_args_for_training(args):
         args.vchroms,
         [
             args.sequence,
-            args.average
         ],
         True
     )
@@ -143,7 +145,6 @@ def assert_and_fix_args_for_training(args):
         args.chroms,
         [
             args.sequence,
-            args.average
         ],
         True
     )
@@ -155,7 +156,6 @@ def assert_and_fix_args_for_training(args):
         set(synced_chroms) - set(synced_tchroms) - set(synced_vchroms),
         [
             args.sequence,
-            args.average
         ],
         True
     )
@@ -175,18 +175,8 @@ def assert_and_fix_args_for_training(args):
 
 
 def assert_and_fix_args(args):
-    if args.func == run_prediction:
-        pass
-    elif args.func == run_training:
+    if args.func == run_training:
         assert_and_fix_args_for_training(args)
-    elif args.func == run_normalization:
-        pass
-    elif args.func == run_roi:
-        pass
-    elif args.func == run_averaging:
-        pass
-    elif args.func == run_interpretation:
-        pass
     else:
         pass
 
@@ -203,6 +193,58 @@ def get_parser():
                                 version=get_version(),
                                 help="Print version information and exit"
                                 )
+
+    # Average parser
+    maxcombine_parser = subparsers.add_parser("max_combine",
+                                              parents=[parent_parser],
+                                              help="Run maxATAC max_combine"
+                                              )
+
+    # Set the default function to run averaging
+    maxcombine_parser.set_defaults(func=run_max_combine)
+
+    maxcombine_parser.add_argument("--average_signal",
+                                   dest="average_signal",
+                                   type=str,
+                                   required=True,
+                                   help="average_signal"
+                                   )
+
+    maxcombine_parser.add_argument("--maxatac_prediction",
+                                   dest="maxatac_prediction",
+                                   type=str,
+                                   required=True,
+                                   help="maxatac_prediction"
+                                   )
+
+    maxcombine_parser.add_argument("--chromosome",
+                                   dest="chromosome",
+                                   type=str,
+                                   required=True,
+                                   help="Chromosome name"
+                                   )
+
+    maxcombine_parser.add_argument("--output",
+                                   dest="output",
+                                   type=str,
+                                   required=True,
+                                   help="Output name"
+                                   )
+
+    maxcombine_parser.add_argument("--chrom_sizes",
+                                   dest="chrom_sizes",
+                                   type=str,
+                                   default=DEFAULT_CHROM_SIZES,
+                                   help="Input chromosome sizes file. Default is hg38."
+                                   )
+
+    maxcombine_parser.add_argument("--loglevel",
+                                   dest="loglevel",
+                                   type=str,
+                                   default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                   choices=LOG_LEVELS.keys(),
+                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                                   )
 
     # Average parser
     roi_parser = subparsers.add_parser("roi",
@@ -257,13 +299,6 @@ def get_parser():
                             type=str,
                             default=BLACKLISTED_REGIONS,
                             help="The blacklisted regions to exclude"
-                            )
-
-    roi_parser.add_argument("--blacklist_complement",
-                            dest="preferences",
-                            type=str,
-                            default=COMPLEMENT_REGIONS,
-                            help="The complement to blacklisted regions or regions for random region selection"
                             )
 
     roi_parser.add_argument("--output",
@@ -367,50 +402,6 @@ def get_parser():
                                 help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                 )
 
-    # Normalize parser
-    normalize_parser = subparsers.add_parser("normalize",
-                                             parents=[parent_parser],
-                                             help="Run minmax normalization"
-                                             )
-
-    normalize_parser.set_defaults(func=run_normalization)
-
-    normalize_parser.add_argument("--signal",
-                                  dest="signal",
-                                  type=str,
-                                  required=True,
-                                  help="Input signal bigWig file(s) to be normalized by reference"
-                                  )
-
-    normalize_parser.add_argument("--chroms",
-                                  dest="chromosomes",
-                                  type=str,
-                                  default=ALL_CHRS,
-                                  help="CHromosomes to limit normalization to"
-                                  )
-
-    normalize_parser.add_argument("--chrom_sizes",
-                                  dest="chrom_sizes",
-                                  type=str,
-                                  default=DEFAULT_CHROM_SIZES,
-                                  help="Chrom sizes file"
-                                  )
-
-    normalize_parser.add_argument("--output",
-                                  dest="output",
-                                  type=str,
-                                  default="./normalization_results",
-                                  help="Folder for normalization results. Default: ./normalization_results"
-                                  )
-
-    normalize_parser.add_argument("--loglevel",
-                                  dest="loglevel",
-                                  type=str,
-                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
-                                  choices=LOG_LEVELS.keys(),
-                                  help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                                  )
-
     # Predict parser
     predict_parser = subparsers.add_parser("predict",
                                            parents=[parent_parser],
@@ -429,13 +420,6 @@ def get_parser():
                                 action='store_true',
                                 default=False,
                                 help="This argument should be set to true to build models based on quantitative data"
-                                )
-
-    predict_parser.add_argument("--average",
-                                dest="average",
-                                type=str,
-                                required=True,
-                                help="Average signal bigWig file"
                                 )
 
     predict_parser.add_argument("--sequence",
@@ -459,13 +443,6 @@ def get_parser():
                                 help="Minimum prediction value to be reported. Default: " + str(DEFAULT_MIN_PREDICTION)
                                 )
 
-    predict_parser.add_argument("--output_directory",
-                                dest="output_directory",
-                                type=str,
-                                default="./prediction_results",
-                                help="Folder for prediction results. Default: ./prediction_results"
-                                )
-
     predict_parser.add_argument("--output",
                                 dest="output",
                                 type=str,
@@ -483,7 +460,8 @@ def get_parser():
     predict_parser.add_argument("--roi",
                                 dest="roi",
                                 type=str,
-                                required=True,
+                                default=False,
+                                required=False,
                                 help="Bed file with ranges for input sequences to be predicted. \
                                       Default: None, predictions are done on the whole chromosome length"
                                 )
@@ -517,18 +495,18 @@ def get_parser():
                                       Default: None, predictions are done on the whole chromosome length"
                                 )
 
-    predict_parser.add_argument("--round",
-                                dest="round",
-                                type=int,
-                                default=DEFAULT_ROUND,
-                                help="Float precision that you want to round predictions to"
-                                )
-
     predict_parser.add_argument("--batch_size",
                                 dest="batch_size",
                                 type=int,
                                 default=10000,
                                 help="Number of regions to predict on at a time"
+                                )
+
+    predict_parser.add_argument("--step_size",
+                                dest="step_size",
+                                type=int,
+                                default=INPUT_LENGTH,
+                                help="Step size to use to build sliding window regions"
                                 )
 
     predict_parser.add_argument("--prefix",
@@ -545,8 +523,8 @@ def get_parser():
                                 help="The chromosome sizes file to reference"
                                 )
 
-    predict_parser.add_argument("--predict_chromosomes",
-                                dest="predict_chromosomes",
+    predict_parser.add_argument("--chromosomes",
+                                dest="chromosomes",
                                 type=str,
                                 nargs="+",
                                 default=DEFAULT_TEST_CHRS,
@@ -576,13 +554,6 @@ def get_parser():
                               help="This argument should be set to true to build models based on quantitative data"
                               )
 
-    train_parser.add_argument("--average",
-                              dest="average",
-                              type=str,
-                              required=True,
-                              help="Average signal bigWig file"
-                              )
-
     train_parser.add_argument("--meta_file",
                               dest="meta_file",
                               type=str,
@@ -593,7 +564,7 @@ def get_parser():
     train_parser.add_argument("--train_roi",
                               dest="train_roi",
                               type=str,
-                              required=True,
+                              required=False,
                               help="Bed file with ranges for input sequences. Required for peak-centric training of "
                                    "the model. "
                               )
@@ -601,7 +572,7 @@ def get_parser():
     train_parser.add_argument("--validate_roi",
                               dest="validate_roi",
                               type=str,
-                              required=True,
+                              required=False,
                               help="Bed file  with ranges for input sequences to validate the model"
                               )
 
@@ -609,6 +580,7 @@ def get_parser():
                               dest="target_scale_factor",
                               type=float,
                               required=False,
+                              default=1,
                               help="Scaling factor for scaling model targets. Use only for Quant models"
                               )
 
@@ -732,7 +704,7 @@ def get_parser():
                               dest="plot",
                               action="store_true",
                               default=True,
-                              help="Plot model structure and training history. Default: False"
+                              help="Plot model structure and training history. Default: True"
                               )
 
     train_parser.add_argument("--dense",
@@ -782,11 +754,63 @@ def get_parser():
                                   default=DEFAULT_CHROM_SIZES,
                                   help="Chrom sizes file")
 
+    normalize_parser.add_argument("--chroms",
+                                  dest="chroms",
+                                  type=str,
+                                  nargs="+",
+                                  required=False,
+                                  default=AUTOSOMAL_CHRS,
+                                  help="Chromosome list for analysis. \
+                                    Regions in a form of chrN:start-end are ignored. \
+                                    Use --filters instead \
+                                    Default: main human chromosomes, whole length"
+                                  )
+
     normalize_parser.add_argument("--output",
                                   dest="output",
                                   type=str,
                                   default="./normalization_results",
                                   help="Folder for normalization results. Default: ./normalization_results")
+
+    normalize_parser.add_argument("--prefix",
+                                  dest="prefix",
+                                  type=str,
+                                  default="normalized",
+                                  help="Name to use for filename")
+
+    normalize_parser.add_argument("--min",
+                                  dest="min",
+                                  required=False,
+                                  type=int,
+                                  default=0,
+                                  help="The minimum value to use for normalization")
+
+    normalize_parser.add_argument("--max",
+                                  dest="max",
+                                  type=int,
+                                  required=False,
+                                  default=False,
+                                  help="The maximum value to use for normalization")
+
+    normalize_parser.add_argument("--clip",
+                                  dest="clip",
+                                  type=bool,
+                                  required=False,
+                                  default=False,
+                                  help="Whether to clip minmax values to the range 0,1")
+
+    normalize_parser.add_argument("--method",
+                                  dest="method",
+                                  type=str,
+                                  default="min-max",
+                                  help="The method to use for normalization")
+
+    normalize_parser.add_argument("--max_percentile",
+                                  dest="max_percentile",
+                                  required=False,
+                                  type=int,
+                                  default=100,
+                                  help="The maximum percentile to use for normalization")
 
     normalize_parser.add_argument("--loglevel",
                                   dest="loglevel",
@@ -794,6 +818,21 @@ def get_parser():
                                   default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
+
+    normalize_parser.add_argument("--log_transform",
+                                  dest="log_transform",
+                                  action='store_true',
+                                  default=False,
+                                  help="This argument should be set to true to log(counts +1) transform data before "
+                                       "minmax normalization"
+                                  )
+
+    normalize_parser.add_argument("--blacklist",
+                                  dest="blacklist",
+                                  type=str,
+                                  default=BLACKLISTED_REGIONS_BIGWIG,
+                                  help="The blacklisted regions to exclude"
+                                  )
 
     # Benchmark parser
     benchmark_parser = subparsers.add_parser("benchmark",
@@ -809,6 +848,12 @@ def get_parser():
                                   required=True,
                                   help="Prediction bigWig file"
                                   )
+    benchmark_parser.add_argument("--quant",
+                                  dest="quant",
+                                  action='store_true',
+                                  default=False,
+                                  help="This argument should be set to true for models based on quantitative data"
+                                  )
 
     benchmark_parser.add_argument("--gold_standard",
                                   dest="gold_standard",
@@ -820,6 +865,7 @@ def get_parser():
     benchmark_parser.add_argument("--chromosomes",
                                   dest="chromosomes",
                                   type=str,
+                                  nargs="+",
                                   default=DEFAULT_TEST_CHRS,
                                   help="Chromosomes list for analysis. \
                                         Optionally with regions in a form of chrN:start-end. \
@@ -839,7 +885,7 @@ def get_parser():
                                   type=str,
                                   default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
                                   help="Aggregation function to use for combining results into bins: \
-                                        max, sum, mean, median, min"
+                                        max, coverage, mean, std, min"
                                   )
 
     benchmark_parser.add_argument("--round_predictions",
@@ -890,13 +936,6 @@ def get_parser():
                                   type=str,
                                   required=True,
                                   help="Genome sequence 2bit file"
-                                  )
-
-    interpret_parser.add_argument("--average",
-                                  dest="average",
-                                  type=str,
-                                  required=True,
-                                  help="Average signal bigWig file"
                                   )
 
     interpret_parser.add_argument("--meta_file",
@@ -1034,6 +1073,119 @@ def get_parser():
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                   )
+
+    # threshold_parser
+    threshold_parser = subparsers.add_parser("threshold",
+                                             parents=[parent_parser],
+                                             help="Run maxATAC threshold"
+                                             )
+
+    # Set the default function to run averaging
+    threshold_parser.set_defaults(func=run_thresholding)
+
+    threshold_parser.add_argument("--prefix",
+                                  dest="prefix",
+                                  type=str,
+                                  required=True,
+                                  help="Output prefix."
+                                  )
+
+    threshold_parser.add_argument("--chrom_sizes",
+                                  dest="chrom_sizes",
+                                  type=str,
+                                  default=DEFAULT_CHROM_SIZES,
+                                  help="Input chromosome sizes file. Default is hg38."
+                                  )
+
+    threshold_parser.add_argument("--bin_size",
+                                  dest="bin_size",
+                                  type=int,
+                                  default=DEFAULT_BENCHMARKING_BIN_SIZE,
+                                  help="Chromosomes for averaging")
+
+    threshold_parser.add_argument("--output",
+                                  dest="output_dir",
+                                  type=str,
+                                  default="./threshold",
+                                  help="Output directory."
+                                  )
+
+    threshold_parser.add_argument("--loglevel",
+                                  dest="loglevel",
+                                  type=str,
+                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                  choices=LOG_LEVELS.keys(),
+                                  help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                                  )
+
+    threshold_parser.add_argument("--blacklist",
+                                  dest="blacklist",
+                                  type=str,
+                                  default=BLACKLISTED_REGIONS_BIGWIG,
+                                  help="The blacklisted regions to exclude"
+                                  )
+
+    threshold_parser.add_argument("--meta_file",
+                                  dest="meta_file",
+                                  type=str,
+                                  required=True,
+                                  help="Meta file containing Prediction signal and GS path for all cell lines (.tsv format)"
+                                  )
+    threshold_parser.add_argument("--chromosomes",
+                                  dest="chromosomes",
+                                  type=str,
+                                  nargs="+",
+                                  default=DEFAULT_VALIDATE_CHRS,
+                                  help="Chromosomes for thresholding predictions. \
+                                      Default: 1-22,X,Y"
+                                  )
+
+    # threshold_parser
+    peaks_parser = subparsers.add_parser("peaks",
+                                         parents=[parent_parser],
+                                         help="Run maxATAC peaks"
+                                         )
+
+    # Set the default function to run averaging
+    peaks_parser.set_defaults(func=call_peaks)
+
+    peaks_parser.add_argument("--prefix",
+                              dest="prefix",
+                              type=str,
+                              required=True,
+                              help="Output prefix."
+                              )
+
+    peaks_parser.add_argument("--bin_size",
+                              dest="bin_size",
+                              type=int,
+                              default=DEFAULT_BENCHMARKING_BIN_SIZE,
+                              help="Chromosomes for averaging")
+
+    peaks_parser.add_argument("--output",
+                              dest="output_dir",
+                              type=str,
+                              default="./peaks",
+                              help="Output directory."
+                              )
+
+    peaks_parser.add_argument("--input_bigwig",
+                              dest="input_bigwig",
+                              type=str,
+                              help="Input bigwig")
+
+    peaks_parser.add_argument("--threshold",
+                              dest="threshold",
+                              type=float,
+                              help="Input bigwig")
+
+    peaks_parser.add_argument("--loglevel",
+                              dest="loglevel",
+                              type=str,
+                              default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                              choices=LOG_LEVELS.keys(),
+                              help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                              )
 
     return general_parser
 

@@ -1,11 +1,11 @@
 import logging
-
+import sys
 from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
 
 with Mute():  # hide stdout from loading the modules
     from maxatac.utilities.model_tools import get_callbacks
-    from maxatac.utilities.training_tools import get_roi_pool, DataGenerator, MaxATACModel
+    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool
     from maxatac.utilities.plot import export_loss_dice_accuracy, export_loss_mse_coeff, export_model_structure
 
 
@@ -26,17 +26,16 @@ def run_training(args):
 
     1) Set up the directories and filenames
     2) Initialize the model based on the desired architectures
-    3) Read in the meta table
-    4) Read in training and validation pool
-    5) Initialize the training generator
-    6) Initialize the validation generator
-    7) Fit the models with the specific parameters
+    3) Read in training and validation pools
+    4) Initialize the training and validation generators
+    5) Fit the models with the specific parameters
 
     :params args: seed, output, prefix, output_activation, lrate, decay, weights, quant, target_scale_factor, dense,
     batch_size, val_batch_size, train roi, validate roi, meta_file, sequence, average, threads, epochs, batches
 
     :returns: Trained models saved after each epoch
     """
+    # Initialize the model with the architecture of choice
     maxatac_model = MaxATACModel(arch=args.arch,
                                  seed=args.seed,
                                  output_directory=args.output,
@@ -50,14 +49,28 @@ def run_training(args):
                                  weights=args.weights
                                  )
 
+    # Import training regions
+    train_examples = ROIPool(chroms=args.tchroms,
+                             roi_file_path=args.train_roi,
+                             meta_file=args.meta_file,
+                             prefix=args.prefix,
+                             output_directory=maxatac_model.output_directory,
+                             shuffle=True,
+                             tag="training")
+
+    # Import validation regions
+    validate_examples = ROIPool(chroms=args.vchroms,
+                                roi_file_path=args.validate_roi,
+                                meta_file=args.meta_file,
+                                prefix=args.prefix,
+                                output_directory=maxatac_model.output_directory,
+                                shuffle=True,
+                                tag="validation")
+
     # Initialize the training generator
     train_gen = DataGenerator(sequence=args.sequence,
-                              average=args.average,
                               meta_table=maxatac_model.meta_dataframe,
-                              roi_pool=get_roi_pool(filepath=args.train_roi,
-                                                    chroms=args.tchroms,
-                                                    shuffle=True
-                                                    ),
+                              roi_pool=train_examples.ROI_pool,
                               cell_type_list=maxatac_model.cell_types,
                               rand_ratio=args.rand_ratio,
                               chroms=args.tchroms,
@@ -69,12 +82,8 @@ def run_training(args):
 
     # Initialize the validation generator
     val_gen = DataGenerator(sequence=args.sequence,
-                            average=args.average,
                             meta_table=maxatac_model.meta_dataframe,
-                            roi_pool=get_roi_pool(filepath=args.validate_roi,
-                                                  chroms=args.vchroms,
-                                                  shuffle=True
-                                                  ),
+                            roi_pool=validate_examples.ROI_pool,
                             cell_type_list=maxatac_model.cell_types,
                             rand_ratio=args.rand_ratio,
                             chroms=args.vchroms,
@@ -116,5 +125,7 @@ def run_training(args):
             export_loss_mse_coeff(training_history, tf, TCL, RR, ARC, maxatac_model.results_location)
 
     logging.error("Results are saved to: " + maxatac_model.results_location)
+
+    sys.exit()
 
 # TODO write code to output model training statistics. Time to run and resources would be nice

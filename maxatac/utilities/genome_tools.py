@@ -9,7 +9,14 @@ from maxatac.utilities.system_tools import get_absolute_path
 
 def build_chrom_sizes_dict(chromosome_list, chrom_sizes_filename):
     """
-    Build a dictionary of chromosome sizes filtered for chromosomes in the input chromosome_list
+    Build a dictionary of chromosome sizes filtered for chromosomes in the input chromosome_list. 
+    
+    The dictionary takes the form of: 
+    
+        {
+         "chr1": 248956422,
+         "chr2": 242193529
+        }
 
     :param chromosome_list: list of chromosome to filter dictionary by
     :param chrom_sizes_filename: path to the chromosome sizes file
@@ -89,6 +96,29 @@ def get_bigwig_values(bigwig_path, chrom_name, chrom_end, chrom_start=0):
     """
     with pyBigWig.open(bigwig_path) as input_bw:
         return np.nan_to_num(input_bw.values(chrom_name, chrom_start, chrom_end, numpy=True))
+
+
+def get_bigwig_stats(bigwig_path, chrom_name, chrom_end, bin_count, agg_function="max"):
+    """
+    Get the values for a genomic region of interest from a bigwig file.
+
+    :param bin_count:
+    :param agg_function:
+    :param bigwig_path: Path to the bigwig file
+    :param chrom_name: Chromosome name
+    :param chrom_end: chromosome end
+
+    :return: Bigwig values from the region given
+    """
+    with pyBigWig.open(bigwig_path) as input_bw:
+        return np.nan_to_num(np.array(input_bw.stats(chrom_name,
+                                                     0,
+                                                     chrom_end,
+                                                     type=agg_function,
+                                                     nBins=bin_count,
+                                                     exact=True),
+                                      dtype=float  # need it to have NaN instead of None
+                                      ))
 
 
 def get_input_matrix(rows,
@@ -216,3 +246,29 @@ def safe_load_bigwig(location):
         return pyBigWig.open(get_absolute_path(location))
     except (RuntimeError, TypeError):
         return EmptyStream()
+
+
+def chromosome_blacklist_mask(blacklist, chromosome, chromosome_length, nBins=False, agg_method="max"):
+    """
+    Import the chromosome signal from a blacklist bigwig file and convert to a numpy array to use to generate the array
+    to use to exclude regions. If a number of bins are provided, then the function will use the stats method from 
+    pyBigWig to bin the data. 
+
+    :return: blacklist_mask: A np.array the has True for regions that are NOT in the blacklist.
+    """
+    with load_bigwig(blacklist) as blacklist_bigwig_stream:
+        if nBins:
+            return np.array(blacklist_bigwig_stream.stats(chromosome,
+                                                          0,
+                                                          chromosome_length,
+                                                          type=agg_method,
+                                                          nBins=nBins
+                                                          ),
+                            dtype=float  # need it to have NaN instead of None
+                            ) != 1  # Convert to boolean array, select areas that are not 1
+
+        else:
+            return blacklist_bigwig_stream.values(chromosome,
+                                                  0,
+                                                  chromosome_length,
+                                                  numpy=True) != 1  # Convert to boolean array, select areas that are not 1

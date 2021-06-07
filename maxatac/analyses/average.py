@@ -1,7 +1,6 @@
 import logging
 import pyBigWig
 import os
-import tqdm
 
 from maxatac.utilities.system_tools import get_dir, Mute
 
@@ -14,7 +13,7 @@ def run_averaging(args):
     """
     Average multiple bigwig files into one file.
 
-    This function can take a list of input bigwig files and average their scores using pyBigWig. The only requirement
+    This function can take a list of input bigwig files and averages their scores using pyBigWig. The only requirement
     for the bigwig files is that they contain the same chromosomes or there might be an error about retrieving scores.
     ________________________
     Workflow Overview
@@ -46,7 +45,6 @@ def run_averaging(args):
                   "Restricting to chromosomes: \n   - " + "\n   - ".join(args.chromosomes) + "\n"
                   )
 
-    # TODO add a flag for different reference genomes
     # Build a dictionary of chromosomes sizes using the chromosomes and chromosome sizes files provided
     # The function will filter the dictionary based on the input list
     chromosome_sizes_dictionary = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
@@ -58,23 +56,14 @@ def run_averaging(args):
 
         output_bw.addHeader(header)
 
-        # Create a status bar for to look fancy and count what chromosome you are on
-        chrom_status_bar = tqdm.tqdm(total=len(args.chromosomes), desc='Chromosomes Processed', position=0)
-
         # Loop through the chromosomes and average the values across files
         for chrom_name, chrom_length in header:
             # Create an array of zeroes to start the averaging process
             chrom_vals = np.zeros(chrom_length)
 
-            # Create a file status bar to look fancy and count what the files you are working on
-            file_status_bar = tqdm.tqdm(total=len(args.bigwig_files), desc='Extracting Values from Bigwigs', position=1)
-
             # Loop through the bigwig files and get the values and add them to the array.
             for bigwig_file in args.bigwig_files:
                 chrom_vals += get_bigwig_values(bigwig_file, chrom_name, chrom_length)
-
-                # Update the file status bar
-                file_status_bar.update(1)
 
             # After looping through the files average the values
             chrom_vals = chrom_vals / number_input_bigwigs
@@ -88,8 +77,5 @@ def run_averaging(args):
                 step=1,
                 values=chrom_vals.tolist()
             )
-
-            # Update the chromosome status bar
-            chrom_status_bar.update(1)
 
     logging.error("Results saved to: " + output_bigwig_filename)

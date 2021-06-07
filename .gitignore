@@ -13,3 +13,10 @@ maxatac.egg-info/top_level.txt
 .idea/maxATAC.iml
 .idea/maxATAC.iml
 /data/test/
+docs/notebooks/examples/.ipynb_checkpoints/RandomRegionsGenerator-checkpoint.ipynb
+*.log
+*.log
+*.h5
+snakemake/dag.svg
+.idea/misc.xml
+.idea/maxATAC.iml
