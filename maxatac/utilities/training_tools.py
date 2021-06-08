@@ -5,6 +5,7 @@ from os import path
 import keras
 import numpy as np
 import pandas as pd
+from Bio.Seq import Seq
 
 from maxatac.architectures.dcnn import get_dilated_cnn
 from maxatac.architectures.multi_modal_models import MM_DCNN_V2
@@ -228,7 +229,7 @@ def DataGenerator(
             inputs_batch = roi_input_batch
             targets_batch = roi_target_batch
 
-        yield inputs_batch, targets_batch
+        return inputs_batch, targets_batch #change to yield
 
 
 def get_input_matrix(rows,
@@ -238,11 +239,13 @@ def get_input_matrix(rows,
                      bp_order,
                      chromosome,
                      start,  # end - start = cols
-                     end
+                     end,
+                     use_complement=False,
+                     reverse_matrix=False
                      ):
     """
-    Get the matrix of values from the corresponding genomic position
-
+    Get a matrix of values from the corresponding genomic position. You can supply whether you want to use the
+    complement sequence. You can also choose whether you want to reverse the whole matrix.
     :param rows: Number of rows == channels
     :param cols: Number of cols == region length
     :param signal_stream: Signal bigwig stream
@@ -251,10 +254,29 @@ def get_input_matrix(rows,
     :param chrom: chromosome
     :param start: start
     :param end: end
-
     :return: a matrix (rows x cols) of values from the input bigwig files
     """
+    
     input_matrix = np.zeros((rows, cols))
+    for n, bp in enumerate(bp_order):
+        # Get the sequence from the interval of interest
+        target_sequence = Seq(sequence_stream.sequence(chromosome, start, end))
+        if use_complement:
+            # Get the complement of the sequence
+            target_sequence = target_sequence.complement()
+        # Get the one hot encoded sequence
+        input_matrix[n, :] = get_one_hot_encoded(target_sequence, bp)
+    
+    signal_array = np.array(signal_stream.values(chromosome, start, end))
+    input_matrix[4, :] = signal_array
+    # If reverse_matrix then reverse the matrix. This changes the left to right orientation.
+    if reverse_matrix:
+        input_matrix = input_matrix[::-1]
+
+    return input_matrix.T
+    
+    
+    '''input_matrix = np.zeros((rows, cols))
 
     for n, bp in enumerate(bp_order):
         input_matrix[n, :] = get_one_hot_encoded(sequence_stream.sequence(chromosome, start, end), bp)
@@ -263,7 +285,7 @@ def get_input_matrix(rows,
 
     input_matrix[4, :] = signal_array
 
-    return input_matrix.T
+    return input_matrix.T'''
 
 
 def create_roi_batch(sequence,
@@ -294,6 +316,7 @@ def create_roi_batch(sequence,
     while True:
         inputs_batch, targets_batch = [], []
         roi_size = roi_pool.shape[0]
+        
 
         curr_batch_idxs = random.sample(range(roi_size), n_roi)
 
@@ -317,11 +340,14 @@ def create_roi_batch(sequence,
 
             signal = meta_row.loc[0, 'ATAC_Signal_File']
             binding = meta_row.loc[0, 'Binding_File']
+            
 
             with \
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
+                
+                rev_comp = random.choice([True, False])
 
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
                                                 cols=INPUT_LENGTH,
@@ -330,9 +356,11 @@ def create_roi_batch(sequence,
                                                 sequence_stream=sequence_stream,
                                                 chromosome=chrom_name,
                                                 start=start,
-                                                end=end
+                                                end=end,
+                                                use_complement=rev_comp,
+                                                reverse_matrix=rev_comp
                                                 )
-
+                
                 inputs_batch.append(input_matrix)
 
                 # TODO we might want to test what happens if we change the
@@ -357,7 +385,7 @@ def create_roi_batch(sequence,
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
 
-        yield np.array(inputs_batch), np.array(targets_batch)
+        return np.array(inputs_batch), np.array(targets_batch) #change to yield
 
 
 def create_random_batch(
