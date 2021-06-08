@@ -229,7 +229,7 @@ def DataGenerator(
             inputs_batch = roi_input_batch
             targets_batch = roi_target_batch
 
-        return inputs_batch, targets_batch #change to yield
+        yield inputs_batch, targets_batch 
 
 
 def get_input_matrix(rows,
@@ -275,19 +275,6 @@ def get_input_matrix(rows,
 
     return input_matrix.T
     
-    
-    '''input_matrix = np.zeros((rows, cols))
-
-    for n, bp in enumerate(bp_order):
-        input_matrix[n, :] = get_one_hot_encoded(sequence_stream.sequence(chromosome, start, end), bp)
-
-    signal_array = np.nan_to_num(np.array(signal_stream.values(chromosome, start, end)))
-
-    input_matrix[4, :] = signal_array
-
-    return input_matrix.T'''
-
-
 def create_roi_batch(sequence,
                      meta_table,
                      roi_pool,
@@ -385,7 +372,7 @@ def create_roi_batch(sequence,
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
 
-        return np.array(inputs_batch), np.array(targets_batch) #change to yield
+        yield np.array(inputs_batch), np.array(targets_batch) 
 
 
 def create_random_batch(
@@ -416,6 +403,8 @@ def create_random_batch(
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
+                
+                rev_comp = random.choice([True, False])
 
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
                                                 cols=INPUT_LENGTH,
@@ -424,7 +413,9 @@ def create_random_batch(
                                                 sequence_stream=sequence_stream,
                                                 chromosome=chrom_name,
                                                 start=seq_start,
-                                                end=seq_end
+                                                end=seq_end,
+                                                use_complement=rev_comp,
+                                                reverse_matrix=rev_comp
                                                 )
 
                 inputs_batch.append(input_matrix)
