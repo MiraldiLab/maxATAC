@@ -407,8 +407,17 @@ def create_random_batch(
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
-                
-                rev_comp = random.choice([True, False])
+
+                # Choose the view of the signal to use
+                # False, False: (Reference) Reference strand sequence, 5' > 3' signal orientation
+                # False, True: (Reverse Reference) Reference strand sequence, 3' > 5' signal orientation
+                # True, True: (Complement) Complement strand sequence,  3' > 5' signal orientation
+                # True, False: (Reverse Complement) Complement strand sequence, 5' > 3' signal orientation
+                strand_view = random.choice([(True, True),
+                                             (True, False),
+                                             (False, True),
+                                             (False, False)
+                                             ])
 
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
                                                 cols=INPUT_LENGTH,
@@ -418,8 +427,8 @@ def create_random_batch(
                                                 chromosome=chrom_name,
                                                 start=seq_start,
                                                 end=seq_end,
-                                                use_complement=rev_comp,
-                                                reverse_matrix=rev_comp
+                                                use_complement=strand_view[0],
+                                                reverse_matrix=strand_view[1]
                                                 )
 
                 inputs_batch.append(input_matrix)
