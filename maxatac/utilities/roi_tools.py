@@ -36,6 +36,8 @@ class GenomicRegions(object):
 
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
+        # Select Training Cell lines
+        self.meta_dataframe = self.meta_dataframe[self.meta_dataframe["Train_Test_Label"] == 'Train']
 
         # Get a dictionary of {Cell Types: Peak Paths}
         self.atac_dictionary = pd.Series(self.meta_dataframe.ATAC_Peaks.values,
