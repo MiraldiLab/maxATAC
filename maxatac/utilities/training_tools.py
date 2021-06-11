@@ -229,7 +229,7 @@ def DataGenerator(
             inputs_batch = roi_input_batch
             targets_batch = roi_target_batch
 
-        yield inputs_batch, targets_batch 
+        yield inputs_batch, targets_batch # change to yield
 
 
 def get_input_matrix(rows,
@@ -354,6 +354,10 @@ def create_roi_batch(sequence,
                 if not quant:
                     target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
                     target_vector = np.nan_to_num(target_vector, 0.0)
+                    if rev_comp:
+                        target_vector = target_vector[::-1]
+                    
+
                     n_bins = int(target_vector.shape[0] / bp_resolution)
                     split_targets = np.array(np.split(target_vector, n_bins, axis=0))
                     bin_sums = np.sum(split_targets, axis=1)
@@ -372,7 +376,7 @@ def create_roi_batch(sequence,
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
 
-        yield np.array(inputs_batch), np.array(targets_batch) 
+        yield np.array(inputs_batch), np.array(targets_batch) #change to yield
 
 
 def create_random_batch(
@@ -423,6 +427,10 @@ def create_random_batch(
                 if not quant:
                     target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
                     target_vector = np.nan_to_num(target_vector, 0.0)
+                    
+                    if rev_comp:
+                        target_vector = target_vector[::-1]
+                    
                     n_bins = int(target_vector.shape[0] / bp_resolution)
                     split_targets = np.array(np.split(target_vector, n_bins, axis=0))
                     bin_sums = np.sum(split_targets, axis=1)
@@ -442,7 +450,7 @@ def create_random_batch(
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
 
-        yield np.array(inputs_batch), np.array(targets_batch)
+        yield np.array(inputs_batch), np.array(targets_batch) # change to yield
 
 
 class RandomRegionsPool:
