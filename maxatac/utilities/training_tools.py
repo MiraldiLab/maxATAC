@@ -333,8 +333,17 @@ def create_roi_batch(sequence,
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
-                
-                rev_comp = random.choice([True, False])
+
+                # Choose the view of the signal to use
+                # False, False: (Reference) Reference strand sequence, 5' > 3' signal orientation
+                # False, True: (Reverse Reference) Reference strand sequence, 3' > 5' signal orientation
+                # True, True: (Complement) Complement strand sequence,  3' > 5' signal orientation
+                # True, False: (Reverse Complement) Complement strand sequence, 5' > 3' signal orientation
+                strand_view = random.choice([(True, True),
+                                             (True, False),
+                                             (False, True),
+                                             (False, False)
+                                             ])
 
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
                                                 cols=INPUT_LENGTH,
@@ -344,8 +353,8 @@ def create_roi_batch(sequence,
                                                 chromosome=chrom_name,
                                                 start=start,
                                                 end=end,
-                                                use_complement=rev_comp,
-                                                reverse_matrix=rev_comp
+                                                use_complement=strand_view[0],
+                                                reverse_matrix=strand_view[1]
                                                 )
                 
                 inputs_batch.append(input_matrix)
@@ -567,10 +576,8 @@ class ROIPool(object):
 
         # If an ROI path is provided import it as the ROI pool
         if self.roi_file_path:
-            self.ROI_pool = self.__import_roi_pool__(filepath=self.roi_file_path,
-                                                     chroms=self.chroms,
-                                                     shuffle=shuffle
-                                                     )
+            self.ROI_pool = self.__import_roi_pool__(shuffle=shuffle)
+            
         # Import the data from the meta file.
         else:
             regions = GenomicRegions(meta_path=self.meta_file,
@@ -609,56 +616,3 @@ class ROIPool(object):
             roi_df = roi_df.sample(frac=1)
 
         return roi_df
-
-
-class TrainingDataGenerator(keras.utils.Sequence):
-    def __init__(self,
-                 signal,
-                 sequence,
-                 input_channels,
-                 input_length,
-                 predict_roi_df,
-                 batch_size=32
-                 ):
-        'Initialization'
-        self.batch_size = batch_size
-        self.predict_roi_df = predict_roi_df
-        self.indexes = np.arange(self.predict_roi_df.shape[0])
-        self.signal = signal
-        self.sequence = sequence
-        self.input_channels = input_channels
-        self.input_length = input_length
-
-    def __len__(self):
-        'Denotes the number of batches per epoch'
-        return int(self.predict_roi_df.shape[0] / self.batch_size)
-
-    def __getitem__(self, index):
-        'Generate one batch of data'
-        # Generate indexes of the batch
-        batch_indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
-
-        # Generate data
-        X = self.__data_generation(batch_indexes)
-
-        return X
-
-    def __data_generation(self, batch_indexes):
-        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
-        # Initialization
-
-        # Generate data
-        # Store sample
-        batch_roi_df = self.predict_roi_df.loc[batch_indexes, :]
-
-        batch_roi_df.reset_index(drop=True, inplace=True)
-
-       # batch = get_region_values(signal=self.signal,
-        #                          sequence=self.sequence,
-        #                          input_channels=self.input_channels,
-        #                          input_length=self.input_length,
-        #                          roi_pool=batch_roi_df
-        #                          )
-
-        return batch_roi_df
-

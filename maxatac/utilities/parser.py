@@ -459,7 +459,6 @@ def get_parser():
 
     predict_parser.add_argument("--roi",
                                 dest="roi",
-                                type=str,
                                 default=False,
                                 required=False,
                                 help="Bed file with ranges for input sequences to be predicted. \
