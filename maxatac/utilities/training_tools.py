@@ -334,7 +334,16 @@ def create_roi_batch(sequence,
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
                 
-                rev_comp = random.choice([True, False])
+                # Choose the view of the signal to use
+                # False, False: (Reference) Reference strand sequence, 5' > 3' signal orientation
+                # False, True: (Reverse Reference) Reference strand sequence, 3' > 5' signal orientation
+                # True, True: (Complement) Complement strand sequence,  3' > 5' signal orientation
+                # True, False: (Reverse Complement) Complement strand sequence, 5' > 3' signal orientation
+                strand_view = random.choice([(True, True),
+                                             (True, False),
+                                             (False, True),
+                                             (False, False)
+                                             ])
 
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
                                                 cols=INPUT_LENGTH,
@@ -344,8 +353,8 @@ def create_roi_batch(sequence,
                                                 chromosome=chrom_name,
                                                 start=start,
                                                 end=end,
-                                                use_complement=rev_comp,
-                                                reverse_matrix=rev_comp
+                                                use_complement=strand_view[0],
+                                                reverse_matrix=strand_view[1]
                                                 )
                 
                 inputs_batch.append(input_matrix)
@@ -354,7 +363,7 @@ def create_roi_batch(sequence,
                 if not quant:
                     target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
                     target_vector = np.nan_to_num(target_vector, 0.0)
-                    if rev_comp:
+                    if strand_view == (False, True) or (True, True):
                         target_vector = target_vector[::-1]
                     
 
