@@ -446,7 +446,7 @@ def create_random_batch(
                     target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
                     target_vector = np.nan_to_num(target_vector, 0.0)
                     
-                    if rev_comp:
+                    if strand_view == (False, True) or (True, True):
                         target_vector = target_vector[::-1]
                     
                     n_bins = int(target_vector.shape[0] / bp_resolution)
