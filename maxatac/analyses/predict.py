@@ -122,9 +122,20 @@ def run_prediction(args):
 
     # Write the predictions to a bigwig file
     write_predictions_to_bigwig(merged_predictions,
-                                output_filename=os.path.join(output_directory, args.prefix + "_merged.bw"),
+                                output_filename=os.path.join(output_directory, args.prefix + "_max.bw"),
                                 chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
                                                                               args.chromosome_sizes
                                                                               ),
-                                chromosomes=args.chromosomes
+                                chromosomes=args.chromosomes,
+                                agg_mean=False
+                                )
+
+    # Write the predictions to a bigwig file
+    write_predictions_to_bigwig(merged_predictions,
+                                output_filename=os.path.join(output_directory, args.prefix + "_mean.bw"),
+                                chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                              args.chromosome_sizes
+                                                                              ),
+                                chromosomes=args.chromosomes,
+                                agg_mean=True
                                 )

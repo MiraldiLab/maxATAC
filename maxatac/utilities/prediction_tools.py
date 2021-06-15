@@ -18,7 +18,8 @@ def write_predictions_to_bigwig(df,
                                 output_filename,
                                 chrom_sizes_dictionary,
                                 chromosomes,
-                                number_intervals=32
+                                number_intervals=32,
+                                agg_mean=True
                                 ):
     """
     Write the predictions dataframe into a bigwig file
@@ -49,10 +50,13 @@ def write_predictions_to_bigwig(df,
     # Rename the columns of the dataframe
     windowed_coordinates_dataframe.columns = ['chr', 'start', 'stop', 'score']
 
-    # Sort dataframe to make sure that all intervals are in order
-    windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"],
+    if agg_mean:
+        # Sort dataframe to make sure that all intervals are in order
+        windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"],
                                                                             as_index=False).mean()
-
+    else:
+        windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"],
+                                                                                as_index=False).max()
     with dump_bigwig(output_filename) as data_stream:
         # Make the bigwig header using the chrom sizes dictionary
         header = [(x, chrom_sizes_dictionary[x]) for x in chromosomes]
