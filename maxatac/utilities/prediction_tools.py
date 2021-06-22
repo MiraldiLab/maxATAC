@@ -18,7 +18,6 @@ def write_predictions_to_bigwig(df,
                                 output_filename,
                                 chrom_sizes_dictionary,
                                 chromosomes,
-                                number_intervals=32,
                                 agg_mean=True
                                 ):
     """
@@ -28,35 +27,17 @@ def write_predictions_to_bigwig(df,
     :param output_filename: The output bigwig filename
     :param chrom_sizes_dictionary: A dictionary of chromosome sizes used to form the bigwig file
     :param chromosomes: A list of chromosomes that you are predicting in
-    :param number_intervals: The number of 32 bp intervals found in the sequence
 
     :return: Writes a bigwig file
     """
-    # Create BedTool object from the dataframe
-    coordinates_dataframe = pybedtools.BedTool.from_dataframe(df[['chr', 'start', 'stop']])
-
-    # Window the intervals into 32 bins
-    windowed_coordinates = coordinates_dataframe.window_maker(b=coordinates_dataframe, n=number_intervals)
-
-    # Create a dataframe from the BedTool object
-    windowed_coordinates_dataframe = windowed_coordinates.to_dataframe()
-
-    # Drop all columns except those that have scores in them
-    scores_dataframe = df.drop(['chr', 'start', 'stop'], axis=1)
-
-    # Take the scores and reshape them into a column of the pandas dataframe
-    windowed_coordinates_dataframe['score'] = scores_dataframe.to_numpy().flatten()
-
-    # Rename the columns of the dataframe
-    windowed_coordinates_dataframe.columns = ['chr', 'start', 'stop', 'score']
-
     if agg_mean:
         # Sort dataframe to make sure that all intervals are in order
-        windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"],
-                                                                            as_index=False).mean()
+        bedgraph_df = df.groupby(["chr", "start", "stop"],
+                                 as_index=False).mean()
     else:
-        windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"],
-                                                                                as_index=False).max()
+        bedgraph_df = df.groupby(["chr", "start", "stop"],
+                                 as_index=False).max()
+
     with dump_bigwig(output_filename) as data_stream:
         # Make the bigwig header using the chrom sizes dictionary
         header = [(x, chrom_sizes_dictionary[x]) for x in chromosomes]
@@ -66,7 +47,7 @@ def write_predictions_to_bigwig(df,
 
         for chromosome in chromosomes:
             # Create a tmp df from the predictions dataframe for each chrom
-            tmp_chrom_df = windowed_coordinates_dataframe[windowed_coordinates_dataframe["chr"] == chromosome].copy()
+            tmp_chrom_df = bedgraph_df[bedgraph_df["chr"] == chromosome].copy()
 
             # Bigwig files need sorted intervals as input
             tmp_chrom_df.sort_values(by=["chr", "start", "stop"], inplace=True)
@@ -280,7 +261,8 @@ class PredictionDataGenerator(keras.utils.Sequence):
                                                 chromosome=row[0],
                                                 start=int(row[1]),
                                                 end=int(row[2]),
-                                                use_complement=self.use_complement)
+                                                use_complement=self.use_complement,
+                                                reverse_matrix=self.use_complement)
 
                 # Append the matrix of values to the batch list
                 inputs_batch.append(input_matrix)
@@ -294,12 +276,13 @@ def make_stranded_predictions(signal,
                               predict_roi_df,
                               batch_size,
                               use_complement,
+                              number_intervals=32,
                               input_channels=INPUT_CHANNELS,
-                              input_length=INPUT_LENGTH
-                              ):
+                              input_length=INPUT_LENGTH):
     """
     This function will make prediction based on the forward or reverse strand sequence.
 
+    :param number_intervals: Number of intervals to split array into
     :param signal: Input ATAC-seq signal
     :param sequence: Input 2bit DNA sequence
     :param models: Input pre-trained model
@@ -333,8 +316,30 @@ def make_stranded_predictions(signal,
 
     predictions_df = pd.DataFrame(data=predictions, index=None, columns=None)
 
+    if use_complement:
+        # If reverse + complement used, reverse the columns of the pandas df in order to
+        predictions_df = predictions_df[predictions_df.columns[::-1]]
+
     predictions_df["chr"] = predict_roi_df["chr"]
     predictions_df["start"] = predict_roi_df["start"]
     predictions_df["stop"] = predict_roi_df["stop"]
 
-    return predictions_df
+    # Create BedTool object from the dataframe
+    coordinates_dataframe = pybedtools.BedTool.from_dataframe(predictions_df[['chr', 'start', 'stop']])
+
+    # Window the intervals into 32 bins
+    windowed_coordinates = coordinates_dataframe.window_maker(b=coordinates_dataframe, n=number_intervals)
+
+    # Create a dataframe from the BedTool object
+    windowed_coordinates_dataframe = windowed_coordinates.to_dataframe()
+
+    # Drop all columns except those that have scores in them
+    scores_dataframe = predictions_df.drop(['chr', 'start', 'stop'], axis=1)
+
+    # Take the scores and reshape them into a column of the pandas dataframe
+    windowed_coordinates_dataframe['score'] = scores_dataframe.to_numpy().flatten()
+
+    # Rename the columns of the dataframe
+    windowed_coordinates_dataframe.columns = ['chr', 'start', 'stop', 'score']
+
+    return windowed_coordinates_dataframe
