@@ -342,4 +342,8 @@ def make_stranded_predictions(signal,
     # Rename the columns of the dataframe
     windowed_coordinates_dataframe.columns = ['chr', 'start', 'stop', 'score']
 
+    # Get the mean of all sliding window predicitons
+    windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"],
+                                                                            as_index=False).mean()
+
     return windowed_coordinates_dataframe
