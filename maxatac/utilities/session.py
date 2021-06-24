@@ -8,9 +8,9 @@ with Mute():  # hide stdout from loading the modules
 
 def configure_session(threads, number_GPU=0, reserved=0.05):
     # config = tf.ConfigProto(device_count={'GPU': number_GPU, 'CPU': threads})
-    config = tf.ConfigProto()
+    config = tf.compat.v1.ConfigProto()
 
     memory_fraction = 1 / float(threads) - reserved
     config.gpu_options.per_process_gpu_memory_fraction = memory_fraction
-    set_session(tf.Session(config=config))
+    set_session(tf.compat.v1.Session(config=config))
     K.set_image_data_format("channels_last")

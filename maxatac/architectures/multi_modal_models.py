@@ -47,10 +47,10 @@ def loss_function(
         y_pred_max
     )
     losses = tf.boolean_mask(
-        -y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred),
-        K.greater_equal(y_true, y_true_min)
+        tensor=-y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred),
+        mask=K.greater_equal(y_true, y_true_min)
     )
-    return tf.reduce_mean(losses)
+    return tf.reduce_mean(input_tensor=losses)
 
 
 def dice_coef(

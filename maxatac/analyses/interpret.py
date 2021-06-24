@@ -63,7 +63,7 @@ def run_interpretation(args):
     os.chdir(maxatac_model.interpret_location)
 
     maxatac_model.nn_model.layers[-2].activation = keras.activations.linear
-    maxatac_model.nn_model.save(maxatac_model.interpret_model_file)
+    maxatac_model.nn_model.save(maxatac_model.interpret_model_file, save_format='h5')
 
     # re-load model with custom functions
     keras.backend.clear_session()
