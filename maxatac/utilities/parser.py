@@ -459,12 +459,18 @@ def get_parser():
 
     predict_parser.add_argument("--roi",
                                 dest="roi",
-                                type=str,
                                 default=False,
                                 required=False,
                                 help="Bed file with ranges for input sequences to be predicted. \
                                       Default: None, predictions are done on the whole chromosome length"
                                 )
+
+    predict_parser.add_argument("--stranded",
+                                dest="stranded",
+                                default=False,
+                                action='store_true',
+                                required=False,
+                                help="Whether to make predictions based on both strands")
 
     predict_parser.add_argument("--keep",
                                 dest="keep",
