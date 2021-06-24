@@ -465,6 +465,13 @@ def get_parser():
                                       Default: None, predictions are done on the whole chromosome length"
                                 )
 
+    predict_parser.add_argument("--stranded",
+                                dest="stranded",
+                                default=False,
+                                action='store_true',
+                                required=False,
+                                help="Whether to make predictions based on both strands")
+
     predict_parser.add_argument("--keep",
                                 dest="keep",
                                 action="store_true",

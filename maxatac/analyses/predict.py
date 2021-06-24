@@ -88,54 +88,67 @@ def run_prediction(args):
                                                            batch_size=args.batch_size,
                                                            use_complement=False)
 
-    logging.error("Make prediction on reverse strand")
+    if args.stranded:
+        logging.error("Make prediction on reverse strand")
 
-    reverse_strand_prediction = make_stranded_predictions(signal=args.signal,
-                                                          sequence=args.sequence,
-                                                          models=args.models[0],
-                                                          predict_roi_df=regions_pool,
-                                                          batch_size=args.batch_size,
-                                                          use_complement=True)
+        reverse_strand_prediction = make_stranded_predictions(signal=args.signal,
+                                                              sequence=args.sequence,
+                                                              models=args.models[0],
+                                                              predict_roi_df=regions_pool,
+                                                              batch_size=args.batch_size,
+                                                              use_complement=True)
 
-    logging.error("Write predictions to a bigwig file")
+        logging.error("Write predictions to a bigwig file")
 
-    # Write the predictions to a bigwig file
-    write_predictions_to_bigwig(forward_strand_predictions,
-                                output_filename=os.path.join(output_directory, args.prefix + "_forward.bw"),
-                                chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
-                                                                              args.chromosome_sizes
-                                                                              ),
-                                chromosomes=args.chromosomes
-                                )
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(forward_strand_predictions,
+                                    output_filename=os.path.join(output_directory, args.prefix + "_forward.bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes
+                                    )
 
-    # Write the predictions to a bigwig file
-    write_predictions_to_bigwig(reverse_strand_prediction,
-                                output_filename=os.path.join(output_directory, args.prefix + "_reverse.bw"),
-                                chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
-                                                                              args.chromosome_sizes
-                                                                              ),
-                                chromosomes=args.chromosomes
-                                )
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(reverse_strand_prediction,
+                                    output_filename=os.path.join(output_directory, args.prefix + "_reverse.bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes
+                                    )
 
-    # Merge both strand predictions
-    merged_predictions = pd.concat([forward_strand_predictions, reverse_strand_prediction])
+        # Merge both strand predictions
+        merged_predictions = pd.concat([forward_strand_predictions, reverse_strand_prediction])
 
-    # Write the predictions to a bigwig file
-    write_predictions_to_bigwig(merged_predictions,
-                                output_filename=os.path.join(output_directory, args.prefix + "_max.bw"),
-                                chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
-                                                                              args.chromosome_sizes
-                                                                              ),
-                                chromosomes=args.chromosomes,
-                                agg_mean=False
-                                )
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(merged_predictions,
+                                    output_filename=os.path.join(output_directory, args.prefix + "_max.bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes,
+                                    agg_mean=False
+                                    )
 
-    # Write the predictions to a bigwig file
-    write_predictions_to_bigwig(merged_predictions,
-                                output_filename=os.path.join(output_directory, args.prefix + "_mean.bw"),
-                                chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
-                                                                              args.chromosome_sizes
-                                                                              ),
-                                chromosomes=args.chromosomes,
-                                agg_mean=True
-                                )
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(merged_predictions,
+                                    output_filename=os.path.join(output_directory, args.prefix + "_mean.bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes,
+                                    agg_mean=True
+                                    )
+
+    else:
+        logging.error("Write predictions to a bigwig file")
+
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(forward_strand_predictions,
+                                    output_filename=os.path.join(output_directory, args.prefix + ".bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes
+                                    )
