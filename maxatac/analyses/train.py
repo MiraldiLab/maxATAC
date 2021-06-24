@@ -1,5 +1,7 @@
 import logging
 import sys
+import timeit
+
 from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
 
@@ -35,6 +37,9 @@ def run_training(args):
 
     :returns: Trained models saved after each epoch
     """
+    # Start Timer
+    startTime = timeit.default_timer()
+    
     # Initialize the model with the architecture of choice
     maxatac_model = MaxATACModel(arch=args.arch,
                                  seed=args.seed,
@@ -125,6 +130,16 @@ def run_training(args):
             export_loss_mse_coeff(training_history, tf, TCL, RR, ARC, maxatac_model.results_location)
 
     logging.error("Results are saved to: " + maxatac_model.results_location)
+    
+    # Measure End Time of Training
+    stopTime = timeit.default_timer()
+    totalTime = stopTime - startTime
+    
+    # Output running time in a nice format.
+    mins, secs = divmod(totalTime, 60)
+    hours, mins = divmod(mins, 60)
+
+    logging.error("Total training time: %d:%d:%d.\n" % (hours, mins, secs))
 
     sys.exit()
 
