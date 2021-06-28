@@ -20,6 +20,7 @@ with Mute():
     from maxatac.analyses.train import run_training
     from maxatac.analyses.normalize import run_normalization
     from maxatac.analyses.benchmark import run_benchmarking
+    from maxatac.analyses.epoch_selection import find_epoch
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.interpret import run_interpretation
     from maxatac.analyses.mean_combine import run_max_combine
@@ -538,6 +539,226 @@ def get_parser():
                                       Default: 1, 8"
                                 )
 
+    # Epoch Selection Parser
+    
+    epoch_selection_parser = subparsers.add_parser("epoch_selection",
+                                         parents=[parent_parser],
+                                         help="Run select best epoch from each maxATAC model"
+                                         )
+
+    epoch_selection_parser.set_defaults(func=find_epoch)
+
+    epoch_selection_parser.add_argument("--model_dir",
+                              dest="model_dir",
+                              type=str,
+                              required=True,
+                              help="Location of model dir to find best model"
+                              )
+    
+    epoch_selection_parser.add_argument("--train_tf",
+                                  dest="train_tf",
+                                  type=str,
+                                  required=True,
+                                  help="Transcription Factor to train on. Restricted to only 1 TF."
+                                  )
+    
+    epoch_selection_parser.add_argument("--sequence",
+                              dest="sequence",
+                              type=str,
+                              required=False,
+                              help="Genome sequence 2bit file"
+                              )
+
+    epoch_selection_parser.add_argument("--quant",
+                              dest="quant",
+                              action='store_true',
+                              default=False,
+                              help="This argument should be set to true to build models based on quantitative data"
+                              )
+
+    epoch_selection_parser.add_argument("--meta_file",
+                              dest="meta_file",
+                              type=str,
+                              required=False,
+                              help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
+                              )
+
+    epoch_selection_parser.add_argument("--train_roi",
+                              dest="train_roi",
+                              type=str,
+                              required=False,
+                              help="Bed file with ranges for input sequences. Required for peak-centric training of "
+                                   "the model. "
+                              )
+
+    epoch_selection_parser.add_argument("--validate_roi",
+                              dest="validate_roi",
+                              type=str,
+                              required=False,
+                              help="Bed file  with ranges for input sequences to validate the model"
+                              )
+
+    epoch_selection_parser.add_argument("--target_scale_factor",
+                              dest="target_scale_factor",
+                              type=float,
+                              required=False,
+                              default=1,
+                              help="Scaling factor for scaling model targets. Use only for Quant models"
+                              )
+
+    # I set default to sigmoid.
+    epoch_selection_parser.add_argument("--output_activation",
+                              dest="output_activation",
+                              type=str,
+                              required=False,
+                              default="sigmoid",
+                              help="activation function for model output layer. Support for Linear and Sigmoid"
+                              )
+
+    epoch_selection_parser.add_argument("--chroms",
+                              dest="chroms",
+                              type=str,
+                              nargs="+",
+                              required=False,
+                              default=DEFAULT_CHRS,
+                              help="Chromosome list for analysis. \
+                                    Regions in a form of chrN:start-end are ignored. \
+                                    Use --filters instead \
+                                    Default: main human chromosomes, whole length"
+                              )
+
+    epoch_selection_parser.add_argument("--tchroms",
+                              dest="tchroms",
+                              type=str,
+                              nargs="+",
+                              required=False,
+                              default=DEFAULT_TRAIN_CHRS,
+                              help="Chromosomes from --chroms fixed for training. \
+                                    Regions in a form of chrN:start-end are ignored. \
+                                    Use --filters instead \
+                                    Default: None, whole length"
+                              )
+
+    epoch_selection_parser.add_argument("--vchroms",
+                              dest="vchroms",
+                              type=str,
+                              nargs="+",
+                              required=False,
+                              default=DEFAULT_VALIDATE_CHRS,
+                              help="Chromosomes from --chroms fixed for validation. \
+                                    Regions in a form of chrN:start-end are ignored. \
+                                    Use --filters instead \
+                                    Default: None, whole length"
+                              )
+
+    epoch_selection_parser.add_argument("--arch",
+                              dest="arch",
+                              type=str,
+                              required=False,
+                              help="Specify the model architecture. Currently support DCNN_V2, RES_DCNN_V2, "
+                                   "MM_DCNN_V2 and MM_Res_DCNN_V2 "
+                              )
+
+    epoch_selection_parser.add_argument("--rand_ratio",
+                              dest="rand_ratio",
+                              type=float,
+                              required=False,
+                              help="Ratio for controlling fraction of random sequences in each training batch. float "
+                                   "[0, 1] "
+                              )
+
+    epoch_selection_parser.add_argument("--seed",
+                              dest="seed",
+                              type=int,
+                              default=random.randint(1, 99999),
+                              help="Seed for pseudo-random generanor. Default: random int [1, 99999]"
+                              )
+
+    epoch_selection_parser.add_argument("--weights",
+                              dest="weights",
+                              type=str,
+                              help="Weights to initialize model before training. Default: do not load"
+                              )
+
+    epoch_selection_parser.add_argument("--epochs",
+                              dest="epochs",
+                              type=int,
+                              default=DEFAULT_TRAIN_EPOCHS,
+                              help="# of training epochs. Default: " + str(DEFAULT_TRAIN_EPOCHS)
+                              )
+
+    epoch_selection_parser.add_argument("--batches",
+                              dest="batches",
+                              type=int,
+                              default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
+                              help="# of training batches per epoch. Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH)
+                              )
+
+    epoch_selection_parser.add_argument("--batch_size",
+                              dest="batch_size",
+                              type=int,
+                              default=BATCH_SIZE,
+                              help="# of training batch size Default: " + str(BATCH_SIZE)
+                              )
+
+    epoch_selection_parser.add_argument("--val_batch_size",
+                              dest="val_batch_size",
+                              type=int,
+                              default=VAL_BATCH_SIZE,
+                              help="# of training validation batch size Default: " + str(VAL_BATCH_SIZE)
+                              )
+
+    epoch_selection_parser.add_argument("--prefix",
+                              dest="prefix",
+                              type=str,
+                              default="maxatac_model",
+                              help="Output prefix. Default: weights"
+                              )
+
+    epoch_selection_parser.add_argument("--output",
+                              dest="output",
+                              type=str,
+                              default="./training_results",
+                              help="Folder for training results. Default: ./training_results"
+                              )
+
+    epoch_selection_parser.add_argument("--plot",
+                              dest="plot",
+                              action="store_true",
+                              default=True,
+                              help="Plot model structure and training history. Default: True"
+                              )
+
+    epoch_selection_parser.add_argument("--dense",
+                              dest="dense",
+                              action="store_true",
+                              default=False,
+                              help="if dense is True, then make a dense layer before model output. Default: False"
+                              )
+
+    epoch_selection_parser.add_argument("--threads",
+                              dest="threads",
+                              type=int,
+                              default=get_cpu_count(),
+                              help="# of processes to run training in parallel. Default: 1"
+                              )
+
+    epoch_selection_parser.add_argument("--loglevel",
+                              dest="loglevel",
+                              type=str,
+                              default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                              choices=LOG_LEVELS.keys(),
+                              help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                              )
+
+    epoch_selection_parser.add_argument("--shuffle_cell_type",
+                              dest="shuffle_cell_type",
+                              action="store_true",
+                              default=False,
+                              help="If shuffle_cell_type is true, then shuffle training ROI cell type label"
+                              )
+
+    
     # Train parser
     train_parser = subparsers.add_parser("train",
                                          parents=[parent_parser],
@@ -1226,6 +1447,26 @@ def parse_arguments(argsl, cwd_abs_path=None):
             ],
             cwd_abs_path
         )
+    
+    if args.func == find_epoch:
+        args = normalize_args(
+            args,
+            [
+                "func", "loglevel", "threads", "seed",
+                "proportion", "vchroms", "tchroms",
+                "chroms", "keep", "epochs", "batches",
+                "prefix", "plot", "lrate", "decay", "bin",
+                "minimum", "test_cell_lines", "rand_ratio",
+                "train_tf", "arch", "quant", "batch_size",
+                "val_batch_size", "target_scale_factor",
+                "output_activation", "dense", "shuffle_cell_type",
+                "model_dir"
+            ],
+            cwd_abs_path
+        )
+
+    
 
     assert_and_fix_args(args)
     return args
+
