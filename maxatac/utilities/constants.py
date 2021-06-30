@@ -42,11 +42,11 @@ AUTOSOMAL_CHRS = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6",
                   ]
 
 # Defualt chrs excludes 1,8
-DEFAULT_CHRS = ["chr2", "chr3", "chr4", "chr5", "chr6",
-                "chr7", "chr9", "chr10", "chr11", "chr12",
-                "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
-                "chr19", "chr20", "chr21", "chr22", "chrX"
-                ]
+DEFAULT_TRAIN_VALIDATE_CHRS = ["chr2", "chr3", "chr4", "chr5", "chr6",
+                               "chr7", "chr9", "chr10", "chr11", "chr12",
+                               "chr13", "chr14", "chr15", "chr16", "chr17", "chr18",
+                               "chr19", "chr20", "chr21", "chr22", "chrX"
+                               ]
 
 # Default train chrs exclude 1,2,8,19,X,Y,M
 DEFAULT_TRAIN_CHRS = ["chr3", "chr4", "chr5", "chr6",
