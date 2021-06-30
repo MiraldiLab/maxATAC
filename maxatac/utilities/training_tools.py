@@ -2,7 +2,7 @@ import random
 import sys
 from os import path
 
-import keras
+import tensorflow as tf
 import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
@@ -73,7 +73,9 @@ class MaxATACModel(object):
         # Set the random seed for the model
         random.seed(seed)
 
+
         configure_session(1)
+        #tf.compat.v1.Session()
 
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
@@ -619,7 +621,7 @@ class ROIPool(object):
         return roi_df
 
 
-class TrainingDataGenerator(keras.utils.Sequence):
+class TrainingDataGenerator(tf.keras.utils.Sequence):
     def __init__(self,
                  signal,
                  sequence,

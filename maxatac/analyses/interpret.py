@@ -2,6 +2,7 @@ import pickle
 from collections import OrderedDict
 from os import path
 
+#from tensorflow.keras import keras
 import keras
 import modisco
 import modisco.affinitymat.core
