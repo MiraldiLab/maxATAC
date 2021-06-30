@@ -1,7 +1,7 @@
 import random
 import sys
 from os import path
-
+import glob
 import keras
 import numpy as np
 import pandas as pd
@@ -229,7 +229,7 @@ def DataGenerator(
             inputs_batch = roi_input_batch
             targets_batch = roi_target_batch
 
-        yield inputs_batch, targets_batch # change to yield
+        yield inputs_batch, targets_batch  # change to yield
 
 
 def get_input_matrix(rows,
@@ -256,7 +256,7 @@ def get_input_matrix(rows,
     :param end: end
     :return: a matrix (rows x cols) of values from the input bigwig files
     """
-    
+
     input_matrix = np.zeros((rows, cols))
     for n, bp in enumerate(bp_order):
         # Get the sequence from the interval of interest
@@ -266,7 +266,7 @@ def get_input_matrix(rows,
             target_sequence = target_sequence.complement()
         # Get the one hot encoded sequence
         input_matrix[n, :] = get_one_hot_encoded(target_sequence, bp)
-    
+
     signal_array = np.array(signal_stream.values(chromosome, start, end))
     input_matrix[4, :] = signal_array
     # If reverse_matrix then reverse the matrix. This changes the left to right orientation.
@@ -304,7 +304,6 @@ def create_roi_batch(sequence,
     while True:
         inputs_batch, targets_batch = [], []
         roi_size = roi_pool.shape[0]
-        
 
         curr_batch_idxs = random.sample(range(roi_size), n_roi)
 
@@ -328,7 +327,6 @@ def create_roi_batch(sequence,
 
             signal = meta_row.loc[0, 'ATAC_Signal_File']
             binding = meta_row.loc[0, 'Binding_File']
-            
 
             with \
                     load_2bit(sequence) as sequence_stream, \
@@ -348,7 +346,7 @@ def create_roi_batch(sequence,
                                                 use_complement=rev_comp,
                                                 reverse_matrix=rev_comp
                                                 )
-                
+
                 inputs_batch.append(input_matrix)
 
                 # TODO we might want to test what happens if we change the
@@ -357,7 +355,6 @@ def create_roi_batch(sequence,
                     target_vector = np.nan_to_num(target_vector, 0.0)
                     if rev_comp:
                         target_vector = target_vector[::-1]
-                    
 
                     n_bins = int(target_vector.shape[0] / bp_resolution)
                     split_targets = np.array(np.split(target_vector, n_bins, axis=0))
@@ -377,7 +374,7 @@ def create_roi_batch(sequence,
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
 
-        yield np.array(inputs_batch), np.array(targets_batch) #change to yield
+        yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
 
 def create_random_batch(
@@ -408,7 +405,7 @@ def create_random_batch(
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
-                
+
                 rev_comp = random.choice([True, False])
 
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
@@ -428,10 +425,10 @@ def create_random_batch(
                 if not quant:
                     target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
                     target_vector = np.nan_to_num(target_vector, 0.0)
-                    
+
                     if rev_comp:
                         target_vector = target_vector[::-1]
-                    
+
                     n_bins = int(target_vector.shape[0] / bp_resolution)
                     split_targets = np.array(np.split(target_vector, n_bins, axis=0))
                     bin_sums = np.sum(split_targets, axis=1)
@@ -451,7 +448,7 @@ def create_random_batch(
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
 
-        yield np.array(inputs_batch), np.array(targets_batch) # change to yield
+        yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
 
 class RandomRegionsPool:
@@ -577,7 +574,7 @@ class ROIPool(object):
         # If an ROI path is provided import it as the ROI pool
         if self.roi_file_path:
             self.ROI_pool = self.__import_roi_pool__(shuffle=shuffle)
-            
+
         # Import the data from the meta file.
         else:
             regions = GenomicRegions(meta_path=self.meta_file,
@@ -616,3 +613,19 @@ class ROIPool(object):
             roi_df = roi_df.sample(frac=1)
 
         return roi_df
+
+
+def model_selection(training_history, quant, output_dir):
+    df = pd.DataFrame(training_history.history)
+
+    if quant:
+        epoch = df['val_coeff_determination'].idxmax() + 1
+
+    else:
+        epoch = df['val_dice_coef'].idxmax() + 1
+
+    out = pd.DataFrame([glob.glob(output_dir + "/*" + str(epoch) + ".h5")], columns=['Best_Model_Path'])
+
+    out.to_csv(output_dir + "/" + "best_epoch.txt", sep='\t', index=None, header=None)
+
+    return epoch
