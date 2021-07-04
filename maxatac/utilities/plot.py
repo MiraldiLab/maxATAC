@@ -4,7 +4,7 @@ import numpy as np
 import pyBigWig
 
 with Mute():
-    from keras.utils import plot_model
+    from tensorflow.keras.utils import plot_model
 
 
 def export_model_structure(model, file_location, suffix="_model_structure", ext=".png", skip_tags="_{epoch}"):

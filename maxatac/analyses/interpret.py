@@ -2,8 +2,7 @@ import pickle
 from collections import OrderedDict
 from os import path
 
-#from tensorflow.keras import keras
-import keras
+import tensorflow.keras
 import modisco
 import modisco.affinitymat.core
 import modisco.aggregator
@@ -63,13 +62,13 @@ def run_interpretation(args):
 
     os.chdir(maxatac_model.interpret_location)
 
-    maxatac_model.nn_model.layers[-2].activation = keras.activations.linear
+    maxatac_model.nn_model.layers[-2].activation = tensorflow.keras.activations.linear
     maxatac_model.nn_model.save(maxatac_model.interpret_model_file, save_format='h5')
 
     # re-load model with custom functions
-    keras.backend.clear_session()
+    tensorflow.keras.backend.clear_session()
 
-    model = keras.models.load_model(maxatac_model.interpret_model_file,
+    model = tensorflow.keras.models.load_model(maxatac_model.interpret_model_file,
                                     custom_objects={'loss_function': loss_function, 'dice_coef': dice_coef}
                                     )
 

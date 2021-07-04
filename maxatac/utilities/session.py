@@ -4,8 +4,7 @@ from tensorflow.compat.v1 import ConfigProto
 #from tensorflow.compat.v1 import InteractiveSession
 
 with Mute():  # hide stdout from loading the modules
-    from keras import backend as K
-    from keras.backend.tensorflow_backend import set_session
+    from tensorflow.keras import backend as K
     import tensorflow as tf
 
 
@@ -17,5 +16,4 @@ def configure_session(threads, number_GPU=0, reserved=0.05):
 
     session = tf.compat.v1.Session(config=config)
 
-    #set_session(tf.compat.v1.Session(config=config))
     K.set_image_data_format("channels_last")

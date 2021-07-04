@@ -3,8 +3,8 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():
     import tensorflow as tf
-    from keras.models import Model
-    from keras.layers import (
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import (
         Input,
         concatenate,
         Conv1D,
@@ -13,8 +13,8 @@ with Mute():
         Lambda,
         BatchNormalization
     )
-    from keras.optimizers import Adam
-    from keras import backend as K
+    from tensorflow.keras.optimizers import Adam
+    from tensorflow.keras import backend as K
 
 
 def loss_function(

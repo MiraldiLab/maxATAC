@@ -100,20 +100,20 @@ def run_training(args):
 
     # Fit the model
     training_history = maxatac_model.nn_model.fit_generator(generator=train_gen,
-                                                            validation_data=val_gen,
-                                                            steps_per_epoch=args.batches,
-                                                            validation_steps=args.batches,
-                                                            epochs=args.epochs,
-                                                            callbacks=get_callbacks(
-                                                                model_location=maxatac_model.results_location,
-                                                                log_location=maxatac_model.log_location,
-                                                                tensor_board_log_dir=maxatac_model.tensor_board_log_dir,
-                                                                monitor=TRAIN_MONITOR
-                                                            ),
-                                                            use_multiprocessing=args.threads > 1,
-                                                            workers=args.threads,
-                                                            verbose=1
-                                                            )
+                                                validation_data=val_gen,
+                                                steps_per_epoch=args.batches,
+                                                validation_steps=args.batches,
+                                                epochs=args.epochs,
+                                                callbacks=get_callbacks(
+                                                    model_location=maxatac_model.results_location,
+                                                    log_location=maxatac_model.log_location,
+                                                    tensor_board_log_dir=maxatac_model.tensor_board_log_dir,
+                                                    monitor=TRAIN_MONITOR
+                                                    ),
+                                                use_multiprocessing=args.threads > 1,
+                                                workers=args.threads,
+                                                verbose=1
+                                                )
 
     # If plot then plot the model structure and training metrics
     if args.plot:

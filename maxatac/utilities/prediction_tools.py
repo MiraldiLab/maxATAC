@@ -1,14 +1,15 @@
 import logging
 
-import keras
+
 import numpy as np
 import pandas as pd
 import pybedtools
+import tensorflow as tf
 
 from maxatac.utilities.system_tools import Mute
 
 with Mute():
-    from keras.models import load_model
+    from tensorflow.keras.models import load_model
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig
     from maxatac.utilities.training_tools import get_input_matrix
 
@@ -298,7 +299,7 @@ def create_prediction_regions(region_length,
     return df
 
 
-class PredictionDataGenerator(keras.utils.Sequence):
+class PredictionDataGenerator(tf.keras.utils.Sequence):
     def __init__(self,
                  signal,
                  sequence,

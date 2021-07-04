@@ -9,7 +9,7 @@ with Mute():
     from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, make_predictions, \
         import_prediction_regions, create_prediction_regions, PredictionDataGenerator
     from maxatac.utilities.session import configure_session
-    from keras.models import load_model
+    from tensorflow.keras.models import load_model
 
 
 def run_prediction(args):
