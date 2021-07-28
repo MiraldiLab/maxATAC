@@ -369,7 +369,7 @@ def get_parser():
                                 dest="prefix",
                                 type=str,
                                 required=True,
-                                help="Output prefix."
+                                help="Output filename prefix."
                                 )
 
     average_parser.add_argument("--chrom_sizes",
@@ -383,9 +383,9 @@ def get_parser():
                                 dest="chromosomes",
                                 type=str,
                                 nargs="+",
-                                default=ALL_CHRS,
+                                default=AUTOSOMAL_CHRS,
                                 help="Chromosomes for averaging. \
-                                      Default: 1-22,X,Y"
+                                      Default: 1-22"
                                 )
 
     average_parser.add_argument("--output",
