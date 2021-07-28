@@ -152,7 +152,7 @@ class ChromosomeAUPRC(object):
         prediction_val_df= pd.DataFrame({"chr": 'chr1',
                                          "start": np.arange(0, self.bin_count * self.bin_size, self.bin_size),
                                          "stop": np.arange(self.bin_size, self.bin_count * self.bin_size + self.bin_size, self.bin_size),
-                                         "values": self.prediction_array
+                                         "count": self.prediction_array
                                          })
 
         self.results_location_2 = '.'.join(['_'.join([self.results_location.split(".")[0][:-4], 'prediction_value']), 'tsv'])
