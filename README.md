@@ -45,7 +45,7 @@ You will also need to have BEDtools installed or loaded on your PATH.
 Steps in training and assessing a maxATAC model. Relevant functions are listed below each step. 
 
 1. Prepare Input Data
-   * `average`
+   * [`average`](./docs/average.md#Average)
     * `normalize`
    * `roi`
 
@@ -67,7 +67,7 @@ The maxATAC bundle has several useful functions needed for building a deep learn
 
 **Data Pre-processing:**
 
-* `average`
+* [`average`](./docs/average.md#Average)
 * `normalize`
 * `roi`
 
@@ -84,23 +84,6 @@ The maxATAC bundle has several useful functions needed for building a deep learn
 * `threshold`
 * `benchmark`
 
-### Average
-
-The `average` function will average multiple bigwig files into a single output bigwig file.
-
-This function can take a list of input bigwig files and average their scores using pyBigWig. The only requirement for the bigwig files is that they contain the same chromosomes or there might be an error about retrieving scores.
-
-**Workflow Overview**
-
-1) Create directories and set up filenames
-2) Build a dictionary of chromosome sizes and filter it based on desired chromosomes to average
-3) Open the bigwig file for writing
-4) Loop through each entry in the chromosome sizes dictionary and calculate the average across all inputs
-5) Write the bigwig file
-
-```bash
-maxatac average --bigwigs ENCSR499ASS_1_correct.bw ENCSR499ASS_1_incorrect.bw --prefix IMR-90 --output ./test --chroms chr1
-```
 ### Normalize
 
 The `normalize` function will take an input bigwig file and minmax normalize the values genome wide.
