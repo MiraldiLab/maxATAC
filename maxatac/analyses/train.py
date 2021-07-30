@@ -7,7 +7,7 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():  # hide stdout from loading the modules
     from maxatac.utilities.model_tools import get_callbacks
-    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool
+    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, threadsafe_iter#, SeqDataGenerator
     from maxatac.utilities.plot import export_loss_dice_accuracy, export_loss_mse_coeff, export_model_structure
 
 
@@ -85,6 +85,11 @@ def run_training(args):
                               shuffle_cell_type=args.shuffle_cell_type
                               )
 
+    # Make Train Gen thread safe
+    train_safe_gen = threadsafe_iter(train_gen)
+
+    #seq_train_safe_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
+
     # Initialize the validation generator
     val_gen = DataGenerator(sequence=args.sequence,
                             meta_table=maxatac_model.meta_dataframe,
@@ -98,7 +103,29 @@ def run_training(args):
                             shuffle_cell_type=args.shuffle_cell_type
                             )
 
+    # Make Validation Gen thread safe
+    validate_safe_gen = threadsafe_iter(val_gen)
+
+    #seq_validate_safe_gen = SeqDataGenerator(batches=args.batches, generator=val_gen)
+
     # Fit the model
+    training_history = maxatac_model.nn_model.fit(train_safe_gen,
+                                                validation_data=validate_safe_gen,
+                                                steps_per_epoch=args.batches,
+                                                validation_steps=args.batches,
+                                                epochs=args.epochs,
+                                                callbacks=get_callbacks(
+                                                    model_location=maxatac_model.results_location,
+                                                    log_location=maxatac_model.log_location,
+                                                    tensor_board_log_dir=maxatac_model.tensor_board_log_dir,
+                                                    monitor=TRAIN_MONITOR
+                                                    ),
+                                                use_multiprocessing=False,#args.threads > 1,
+                                                workers=1,#args.threads,
+                                                verbose=1
+                                                )
+
+    '''
     training_history = maxatac_model.nn_model.fit_generator(generator=train_gen,
                                                 validation_data=val_gen,
                                                 steps_per_epoch=args.batches,
@@ -114,6 +141,7 @@ def run_training(args):
                                                 workers=args.threads,
                                                 verbose=1
                                                 )
+    '''
 
     # If plot then plot the model structure and training metrics
     if args.plot:
