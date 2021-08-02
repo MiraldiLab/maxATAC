@@ -20,6 +20,7 @@ with Mute():
     from maxatac.analyses.train import run_training
     from maxatac.analyses.normalize import run_normalization
     from maxatac.analyses.benchmark import run_benchmarking
+    from maxatac.analyses.prediction_signal import run_prediction_signal
     from maxatac.analyses.epoch_selection import find_epoch
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.interpret import run_interpretation
@@ -949,6 +950,96 @@ def get_parser():
                                   )
 
     benchmark_parser.add_argument("--blacklist",
+                                  dest="blacklist",
+                                  type=str,
+                                  default=BLACKLISTED_REGIONS_BIGWIG,
+                                  help="The blacklisted regions to exclude"
+                                  )
+
+    # Prediction_signal parser
+    prediction_signal_parser = subparsers.add_parser("prediction_signal",
+                                             parents=[parent_parser],
+                                             help="Run maxATAC prediction_signal"
+                                             )
+
+    prediction_signal_parser.set_defaults(func=run_prediction_signal)
+
+    prediction_signal_parser.add_argument("--prediction",
+                                  dest="prediction",
+                                  type=str,
+                                  required=True,
+                                  help="Prediction bigWig file"
+                                  )
+    prediction_signal_parser.add_argument("--quant",
+                                  dest="quant",
+                                  action='store_true',
+                                  default=False,
+                                  help="This argument should be set to true for models based on quantitative data"
+                                  )
+
+    prediction_signal_parser.add_argument("--sequence",
+                                  dest="sequence",
+                                  type=str,
+                                  required=True,
+                                  help="hg38 sequence file"
+                                  )
+
+    prediction_signal_parser.add_argument("--chromosomes",
+                                  dest="chromosomes",
+                                  type=str,
+                                  nargs="+",
+                                  default=DEFAULT_TEST_CHRS,
+                                  help="Chromosomes list for analysis. \
+                                            Optionally with regions in a form of chrN:start-end. \
+                                            Default: main human chromosomes, whole length"
+                                  )
+
+    prediction_signal_parser.add_argument("--bin_size",
+                                  dest="bin_size",
+                                  type=int,
+                                  default=DEFAULT_BENCHMARKING_BIN_SIZE,
+                                  help="Bin size to split prediction and control data before running prediction. \
+                                            Default: " + str(DEFAULT_BENCHMARKING_BIN_SIZE)
+                                  )
+
+    prediction_signal_parser.add_argument("--agg",
+                                  dest="agg_function",
+                                  type=str,
+                                  default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
+                                  help="Aggregation function to use for combining results into bins: \
+                                            max, coverage, mean, std, min"
+                                  )
+
+    prediction_signal_parser.add_argument("--round_predictions",
+                                  dest="round_predictions",
+                                  type=int,
+                                  default=DEFAULT_ROUND,
+                                  help="Round binned values to this number of decimal places"
+                                  )
+
+    prediction_signal_parser.add_argument("--prefix",
+                                  dest="prefix",
+                                  type=str,
+                                  required=True,
+                                  help="Prefix for the file name"
+                                  )
+
+    prediction_signal_parser.add_argument("--output_directory",
+                                  dest="output_directory",
+                                  type=str,
+                                  default="./benchmarking_results",
+                                  help="Folder for benchmarking results. Default: ./benchmarking_results"
+                                  )
+
+    prediction_signal_parser.add_argument("--loglevel",
+                                  dest="loglevel",
+                                  type=str,
+                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                  choices=LOG_LEVELS.keys(),
+                                  help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                                  )
+
+    prediction_signal_parser.add_argument("--blacklist",
                                   dest="blacklist",
                                   type=str,
                                   default=BLACKLISTED_REGIONS_BIGWIG,
