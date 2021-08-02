@@ -75,7 +75,7 @@ class MaxATACModel(object):
         random.seed(seed)
 
 
-        configure_session(1)
+        #configure_session(1)
         #tf.compat.v1.Session()
 
         # Import meta txt as dataframe

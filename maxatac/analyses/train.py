@@ -121,7 +121,7 @@ def run_training(args):
                                                     monitor=TRAIN_MONITOR
                                                     ),
                                                 use_multiprocessing=False,#args.threads > 1,
-                                                workers=1,#args.threads,
+                                                workers=args.threads,
                                                 verbose=1
                                                 )
 
