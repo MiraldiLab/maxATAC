@@ -46,7 +46,7 @@ Steps in training and assessing a maxATAC model. Relevant functions are listed b
 
 1. Prepare Input Data
    * [`average`](./docs/average.md#Average)
-    * `normalize`
+   * [`normalize`](./docs/normalize.md#Normalize)
    * `roi`
 
 2. Train a model
@@ -68,7 +68,7 @@ The maxATAC bundle has several useful functions needed for building a deep learn
 **Data Pre-processing:**
 
 * [`average`](./docs/average.md#Average)
-* `normalize`
+* [`normalize`](./docs/normalize.md#Normalize)
 * `roi`
 
 **TF Binding Prediction Functions:**
@@ -84,24 +84,6 @@ The maxATAC bundle has several useful functions needed for building a deep learn
 * `threshold`
 * `benchmark`
 
-### Normalize
-
-The `normalize` function will take an input bigwig file and minmax normalize the values genome wide.
-
-This function will min-max a bigwig file based on the minimum and maximum values in the chromosomes of interest. The code will loop through each chromosome and find the min and max values. It will then create a dataframe of the values per chromosome. It will then scale all other values between [0,1].
-
-**Workflow Overview**
-
-1) Create directories and set up filenames
-2) Build a dictionary of the chromosomes sizes.
-3) Find the genomic min and max values by looping through each chromosome
-4) Loop through each chromosome and min-max normalize the values based on the genomic values.
-
-Example command:
-
-```bash
-maxatac normalize --signal ENCFF015CKI_chromFiltered_5prime_slop0bp_RP20M.bw --output /Users/caz3so/scratch --chroms chr1 --log_transform
-```
 ### Train
 
 The `train` function takes as input ATAC-seq signal, DNA sequence, Delta ATAC-seq signal, and ChIP-seq signal to train a neural network with the architecture of choice.
@@ -151,6 +133,7 @@ Example command:
 ```bash
 maxatac predict --models CTCF_epoch10.h5 --sequence hg38.2bit --signal GM12878__CTCF_slop20bp_RP20M_logp1_minmax01.bw --roi chr1_w1024_PC.bed --prefix test_preds
 ```
+
 ### Benchmark
 
 The `benchmark` function takes as input a prediction bigwig signal track and a ChIP-seq gold standard bigwig track to calculate precision and recall.
@@ -170,6 +153,7 @@ Example command:
 ```bash
 maxatac benchmark --prediction ELK1_slop20_RR30_epoch20_GM12878.bw --gold_standard GM12878__ELK1.bw --prefix ELK1_GM12878_chr1 --output /benchmark_result --bin_size 10000 --chromosomes chr1
 ```
+
 ### ROI
 
 The `roi` function will generate regions of interest based on input ChIP-seq, ATAC-seq, or randomly generated regions. 
@@ -186,7 +170,3 @@ The input meta file must have the columns in any order:
 2) Write the ChIP, ATAC, and combined ROI pools with stats
 3) Import the ATAC-seq and ChIP-seq and filter for validation chromosomes
 4) Write the ChIP, ATAC, and combined ROI pools with stats
-
-### Interpret
-
-The `interpret` function will interpret a trained maxATAC model using TFmodisco, DeepLift, and DeepShap. 
