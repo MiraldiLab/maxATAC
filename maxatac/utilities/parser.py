@@ -789,7 +789,6 @@ def get_parser():
                                   dest="chroms",
                                   type=str,
                                   nargs="+",
-                                  required=False,
                                   default=AUTOSOMAL_CHRS,
                                   help="Chromosome list for analysis. \
                                     Regions in a form of chrN:start-end are ignored. \
@@ -800,7 +799,7 @@ def get_parser():
     normalize_parser.add_argument("--output",
                                   dest="output",
                                   type=str,
-                                  default="./normalization_results",
+                                  default="./normalize",
                                   help="Folder for normalization results. Default: ./normalization_results")
 
     normalize_parser.add_argument("--prefix",
@@ -849,14 +848,6 @@ def get_parser():
                                   default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
-
-    normalize_parser.add_argument("--log_transform",
-                                  dest="log_transform",
-                                  action='store_true',
-                                  default=False,
-                                  help="This argument should be set to true to log(counts +1) transform data before "
-                                       "minmax normalization"
-                                  )
 
     normalize_parser.add_argument("--blacklist",
                                   dest="blacklist",
