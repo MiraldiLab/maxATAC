@@ -2,12 +2,14 @@ import logging
 import sys
 import timeit
 
+from keras.utils.data_utils import OrderedEnqueuer
+
 from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
 
 with Mute():  # hide stdout from loading the modules
     from maxatac.utilities.model_tools import get_callbacks
-    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, threadsafe_iter#, SeqDataGenerator
+    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, threadsafe_iter, SeqDataGenerator
     from maxatac.utilities.plot import export_loss_dice_accuracy, export_loss_mse_coeff, export_model_structure
 
 
@@ -86,9 +88,13 @@ def run_training(args):
                               )
 
     # Make Train Gen thread safe
-    train_safe_gen = threadsafe_iter(train_gen)
+    # train_safe_gen = threadsafe_iter(train_gen)
 
-    #seq_train_safe_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
+    seq_train_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
+
+    train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
+    train_gen_enq.start(workers=10, max_queue_size=20)
+    enq_train_gen = train_gen_enq.get()
 
     # Initialize the validation generator
     val_gen = DataGenerator(sequence=args.sequence,
@@ -104,13 +110,19 @@ def run_training(args):
                             )
 
     # Make Validation Gen thread safe
-    validate_safe_gen = threadsafe_iter(val_gen)
+    #validate_safe_gen = threadsafe_iter(val_gen)
 
-    #seq_validate_safe_gen = SeqDataGenerator(batches=args.batches, generator=val_gen)
+    seq_validate_gen = SeqDataGenerator(batches=args.batches, generator=val_gen)
+
+    val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
+    val_gen_enq.start(workers=10, max_queue_size=20)
+
+    enq_val_gen = val_gen_enq.get()
+
 
     # Fit the model
-    training_history = maxatac_model.nn_model.fit(train_safe_gen,
-                                                validation_data=validate_safe_gen,
+    training_history = maxatac_model.nn_model.fit(enq_train_gen,
+                                                validation_data=enq_val_gen,
                                                 steps_per_epoch=args.batches,
                                                 validation_steps=args.batches,
                                                 epochs=args.epochs,
@@ -120,8 +132,9 @@ def run_training(args):
                                                     tensor_board_log_dir=maxatac_model.tensor_board_log_dir,
                                                     monitor=TRAIN_MONITOR
                                                     ),
-                                                use_multiprocessing=False,#args.threads > 1,
-                                                workers=args.threads,
+                                                max_queue_size=10,
+                                                use_multiprocessing=False, #args.threads > 1,
+                                                workers=1, #args.threads,
                                                 verbose=1
                                                 )
 

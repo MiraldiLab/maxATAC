@@ -687,7 +687,7 @@ class threadsafe_iter:
         with self.lock:
             return next(self.it)
 
-'''class SeqDataGenerator(tf.keras.utils.Sequence):
+class SeqDataGenerator(tf.keras.utils.Sequence):
     # ‘Generates data for Keras’
 
     def __init__(self, batches, generator):
@@ -701,4 +701,4 @@ class threadsafe_iter:
         # ‘Generate one batch of data’
         # Generate indexes of the batch
         # Generate data
-        return next(self.generator)'''
+        return next(self.generator)
