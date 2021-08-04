@@ -20,11 +20,12 @@ with Mute():
     from maxatac.analyses.train import run_training
     from maxatac.analyses.normalize import run_normalization
     from maxatac.analyses.benchmark import run_benchmarking
+    from maxatac.analyses.epoch_selection import find_epoch
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.interpret import run_interpretation
     from maxatac.analyses.mean_combine import run_max_combine
 
-from maxatac.utilities.constants import (DEFAULT_CHRS,
+from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
                                          DEFAULT_LOG_LEVEL,
                                          DEFAULT_TRAIN_EPOCHS,
@@ -368,7 +369,7 @@ def get_parser():
                                 dest="prefix",
                                 type=str,
                                 required=True,
-                                help="Output prefix."
+                                help="Output filename prefix."
                                 )
 
     average_parser.add_argument("--chrom_sizes",
@@ -382,9 +383,9 @@ def get_parser():
                                 dest="chromosomes",
                                 type=str,
                                 nargs="+",
-                                default=ALL_CHRS,
+                                default=AUTOSOMAL_CHRS,
                                 help="Chromosomes for averaging. \
-                                      Default: 1-22,X,Y"
+                                      Default: 1-22"
                                 )
 
     average_parser.add_argument("--output",
@@ -459,12 +460,18 @@ def get_parser():
 
     predict_parser.add_argument("--roi",
                                 dest="roi",
-                                type=str,
                                 default=False,
                                 required=False,
                                 help="Bed file with ranges for input sequences to be predicted. \
                                       Default: None, predictions are done on the whole chromosome length"
                                 )
+
+    predict_parser.add_argument("--stranded",
+                                dest="stranded",
+                                default=False,
+                                action='store_true',
+                                required=False,
+                                help="Whether to make predictions based on both strands")
 
     predict_parser.add_argument("--keep",
                                 dest="keep",
@@ -532,6 +539,36 @@ def get_parser():
                                       Default: 1, 8"
                                 )
 
+    # Epoch Selection Parser
+    
+    epoch_selection_parser = subparsers.add_parser("epoch_selection",
+                                         parents=[parent_parser],
+                                         help="Run select best epoch from each maxATAC model"
+                                         )
+
+    epoch_selection_parser.set_defaults(func=find_epoch)
+
+    epoch_selection_parser.add_argument("--model_dir",
+                              dest="model_dir",
+                              type=str,
+                              required=True,
+                              help="Location of model dir to find best model"
+                              )
+    
+    epoch_selection_parser.add_argument("--train_tf",
+                                  dest="train_tf",
+                                  type=str,
+                                  required=True,
+                                  help="Transcription Factor to train on. Restricted to only 1 TF."
+                                  )
+
+    epoch_selection_parser.add_argument("--quant",
+                              dest="quant",
+                              action='store_true',
+                              default=False,
+                              help="This argument should be set to true to build models based on quantitative data"
+                              )
+
     # Train parser
     train_parser = subparsers.add_parser("train",
                                          parents=[parent_parser],
@@ -558,22 +595,23 @@ def get_parser():
                               dest="meta_file",
                               type=str,
                               required=True,
-                              help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
+                              help="Meta file containing ATAC Signal and peak path for all cell lines (.tsv format)"
                               )
 
     train_parser.add_argument("--train_roi",
                               dest="train_roi",
                               type=str,
                               required=False,
-                              help="Bed file with ranges for input sequences. Required for peak-centric training of "
-                                   "the model. "
+                              help="Optional BED format file that will be used as the training regions of interest "
+                                   "instead of using the peak files to build training regions"
                               )
 
     train_parser.add_argument("--validate_roi",
                               dest="validate_roi",
                               type=str,
                               required=False,
-                              help="Bed file  with ranges for input sequences to validate the model"
+                              help="Optional BED format file that will be used as the validation regions of interest "
+                                   "instead of using the peak files to build validation regions"
                               )
 
     train_parser.add_argument("--target_scale_factor",
@@ -581,7 +619,7 @@ def get_parser():
                               type=float,
                               required=False,
                               default=1,
-                              help="Scaling factor for scaling model targets. Use only for Quant models"
+                              help="Scaling factor for scaling model targets signal. Used only for quantitative models"
                               )
 
     # I set default to sigmoid.
@@ -590,7 +628,7 @@ def get_parser():
                               type=str,
                               required=False,
                               default="sigmoid",
-                              help="activation function for model output layer. Support for Linear and Sigmoid"
+                              help="Activation function used for model output layer. Default: sigmoid"
                               )
 
     train_parser.add_argument("--chroms",
@@ -598,11 +636,8 @@ def get_parser():
                               type=str,
                               nargs="+",
                               required=False,
-                              default=DEFAULT_CHRS,
-                              help="Chromosome list for analysis. \
-                                    Regions in a form of chrN:start-end are ignored. \
-                                    Use --filters instead \
-                                    Default: main human chromosomes, whole length"
+                              default=DEFAULT_TRAIN_VALIDATE_CHRS,
+                              help="Chromosome list to use for training and validation."
                               )
 
     train_parser.add_argument("--tchroms",
@@ -611,10 +646,7 @@ def get_parser():
                               nargs="+",
                               required=False,
                               default=DEFAULT_TRAIN_CHRS,
-                              help="Chromosomes from --chroms fixed for training. \
-                                    Regions in a form of chrN:start-end are ignored. \
-                                    Use --filters instead \
-                                    Default: None, whole length"
+                              help="Chromosome list to use for training."
                               )
 
     train_parser.add_argument("--vchroms",
@@ -623,16 +655,14 @@ def get_parser():
                               nargs="+",
                               required=False,
                               default=DEFAULT_VALIDATE_CHRS,
-                              help="Chromosomes from --chroms fixed for validation. \
-                                    Regions in a form of chrN:start-end are ignored. \
-                                    Use --filters instead \
-                                    Default: None, whole length"
+                              help="Chromosome list to use for validation"
                               )
 
     train_parser.add_argument("--arch",
                               dest="arch",
                               type=str,
-                              required=True,
+                              required=False,
+                              default="DCNN_V2",
                               help="Specify the model architecture. Currently support DCNN_V2, RES_DCNN_V2, "
                                    "MM_DCNN_V2 and MM_Res_DCNN_V2 "
                               )
@@ -640,9 +670,10 @@ def get_parser():
     train_parser.add_argument("--rand_ratio",
                               dest="rand_ratio",
                               type=float,
-                              required=True,
-                              help="Ratio for controlling fraction of random sequences in each training batch. float "
-                                   "[0, 1] "
+                              required=False,
+                              default=.3,
+                              help="Ratio for controlling fraction of random sequences in each training batch. "
+                                   "Default: .3 "
                               )
 
     train_parser.add_argument("--seed",
@@ -662,28 +693,28 @@ def get_parser():
                               dest="epochs",
                               type=int,
                               default=DEFAULT_TRAIN_EPOCHS,
-                              help="# of training epochs. Default: " + str(DEFAULT_TRAIN_EPOCHS)
+                              help="Number of training epochs. Default: " + str(DEFAULT_TRAIN_EPOCHS)
                               )
 
     train_parser.add_argument("--batches",
                               dest="batches",
                               type=int,
                               default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
-                              help="# of training batches per epoch. Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH)
+                              help="Number of training batches per epoch. Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH)
                               )
 
     train_parser.add_argument("--batch_size",
                               dest="batch_size",
                               type=int,
                               default=BATCH_SIZE,
-                              help="# of training batch size Default: " + str(BATCH_SIZE)
+                              help="Number of examples per batch. Default: " + str(BATCH_SIZE)
                               )
 
     train_parser.add_argument("--val_batch_size",
                               dest="val_batch_size",
                               type=int,
                               default=VAL_BATCH_SIZE,
-                              help="# of training validation batch size Default: " + str(VAL_BATCH_SIZE)
+                              help="Number of examples per batch. Default: " + str(VAL_BATCH_SIZE)
                               )
 
     train_parser.add_argument("--prefix",
@@ -711,14 +742,14 @@ def get_parser():
                               dest="dense",
                               action="store_true",
                               default=False,
-                              help="if dense is True, then make a dense layer before model output. Default: False"
+                              help="If True, then make a dense layer before model output. Default: False"
                               )
 
     train_parser.add_argument("--threads",
                               dest="threads",
                               type=int,
                               default=get_cpu_count(),
-                              help="# of processes to run training in parallel. Default: 1"
+                              help="Number of processes to run training in parallel. Default: 1"
                               )
 
     train_parser.add_argument("--loglevel",
@@ -732,7 +763,7 @@ def get_parser():
     train_parser.add_argument("--shuffle_cell_type",
                               dest="shuffle_cell_type",
                               action="store_true",
-                              default=False,
+                              default=True,
                               help="If shuffle_cell_type is true, then shuffle training ROI cell type label"
                               )
     # Normalize parser
@@ -758,7 +789,6 @@ def get_parser():
                                   dest="chroms",
                                   type=str,
                                   nargs="+",
-                                  required=False,
                                   default=AUTOSOMAL_CHRS,
                                   help="Chromosome list for analysis. \
                                     Regions in a form of chrN:start-end are ignored. \
@@ -769,7 +799,7 @@ def get_parser():
     normalize_parser.add_argument("--output",
                                   dest="output",
                                   type=str,
-                                  default="./normalization_results",
+                                  default="./normalize",
                                   help="Folder for normalization results. Default: ./normalization_results")
 
     normalize_parser.add_argument("--prefix",
@@ -818,14 +848,6 @@ def get_parser():
                                   default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL)
-
-    normalize_parser.add_argument("--log_transform",
-                                  dest="log_transform",
-                                  action='store_true',
-                                  default=False,
-                                  help="This argument should be set to true to log(counts +1) transform data before "
-                                       "minmax normalization"
-                                  )
 
     normalize_parser.add_argument("--blacklist",
                                   dest="blacklist",
@@ -1222,4 +1244,6 @@ def parse_arguments(argsl, cwd_abs_path=None):
         )
 
     assert_and_fix_args(args)
+
     return args
+

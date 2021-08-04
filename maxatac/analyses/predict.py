@@ -6,10 +6,9 @@ from maxatac.utilities.system_tools import get_dir, Mute
 with Mute():
     from maxatac.utilities.genome_tools import build_chrom_sizes_dict
     from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH
-    from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, make_predictions, \
-        import_prediction_regions, create_prediction_regions, PredictionDataGenerator
+    from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, \
+        import_prediction_regions, create_prediction_regions, PredictionDataGenerator, make_stranded_predictions
     from maxatac.utilities.session import configure_session
-    from tensorflow.keras.models import load_model
 
 
 def run_prediction(args):
@@ -32,7 +31,6 @@ def run_prediction(args):
     2) Prepare regions for prediction
     3) Convert predictions to bigwig format and write results
 
-
     :param args : output_directory, prefix, signal, sequence, models, predict_chromosomes, minimum, threads, batch_size
     roi, chromosome_sizes, blacklist, average
 
@@ -54,8 +52,6 @@ def run_prediction(args):
                   "Batch Size: " + str(args.batch_size) + "\n" +
                   "Output filename: " + outfile_name_bigwig + "\n"
                   )
-
-    logging.error("Import regions for prediction")
 
     # Import the regions for prediction.
     # The function build_chrom_sizes_dict is used to make sure regions fall within chromosome bounds.
@@ -81,36 +77,78 @@ def run_prediction(args):
                                                  step_size=args.step_size
                                                  )
 
-    logging.error("Make predictions")
-
     configure_session(1)
 
-    data_generator = PredictionDataGenerator(signal=args.signal,
-                                             sequence=args.sequence,
-                                             input_channels=INPUT_CHANNELS,
-                                             input_length=INPUT_LENGTH,
-                                             predict_roi_df=regions_pool,
-                                             batch_size=args.batch_size)
+    logging.error("Make prediction on forward strand")
 
-    nn_model = load_model(args.models[0], compile=False)
+    forward_strand_predictions = make_stranded_predictions(signal=args.signal,
+                                                           sequence=args.sequence,
+                                                           models=args.models[0],
+                                                           predict_roi_df=regions_pool,
+                                                           batch_size=args.batch_size,
+                                                           use_complement=False)
 
-    predictions = nn_model.predict(data_generator)
+    if args.stranded:
+        logging.error("Make prediction on reverse strand")
 
-    logging.error("Parsing results into pandas dataframe")
+        reverse_strand_prediction = make_stranded_predictions(signal=args.signal,
+                                                              sequence=args.sequence,
+                                                              models=args.models[0],
+                                                              predict_roi_df=regions_pool,
+                                                              batch_size=args.batch_size,
+                                                              use_complement=True)
 
-    predictions_df = pd.DataFrame(data=predictions, index=None, columns=None)
+        logging.error("Write predictions to a bigwig file")
 
-    predictions_df["chr"] = data_generator.predict_roi_df["chr"]
-    predictions_df["start"] = data_generator.predict_roi_df["start"]
-    predictions_df["stop"] = data_generator.predict_roi_df["stop"]
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(forward_strand_predictions,
+                                    output_filename=os.path.join(output_directory, args.prefix + "_forward.bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes
+                                    )
 
-    logging.error("Write predictions to a bigwig file")
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(reverse_strand_prediction,
+                                    output_filename=os.path.join(output_directory, args.prefix + "_reverse.bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes
+                                    )
 
-    # Write the predictions to a bigwig file
-    write_predictions_to_bigwig(predictions_df,
-                                output_filename=outfile_name_bigwig,
-                                chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
-                                                                              args.chromosome_sizes
-                                                                              ),
-                                chromosomes=args.chromosomes
-                                )
+        # Merge both strand predictions
+        merged_predictions = pd.concat([forward_strand_predictions, reverse_strand_prediction])
+
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(merged_predictions,
+                                    output_filename=os.path.join(output_directory, args.prefix + "_max.bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes,
+                                    agg_mean=False
+                                    )
+
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(merged_predictions,
+                                    output_filename=os.path.join(output_directory, args.prefix + "_mean.bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes,
+                                    agg_mean=True
+                                    )
+
+    else:
+        logging.error("Write predictions to a bigwig file")
+
+        # Write the predictions to a bigwig file
+        write_predictions_to_bigwig(forward_strand_predictions,
+                                    output_filename=os.path.join(output_directory, args.prefix + ".bw"),
+                                    chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
+                                                                                  args.chromosome_sizes
+                                                                                  ),
+                                    chromosomes=args.chromosomes
+                                    )
