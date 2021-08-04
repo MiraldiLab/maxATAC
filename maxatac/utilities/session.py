@@ -8,6 +8,7 @@ with Mute():  # hide stdout from loading the modules
     import tensorflow as tf
 
 
+# TODO This is no longer used in training_tools.py so it can be deleted. Just double check
 def configure_session(threads, number_GPU=0, reserved=0.05):
     # config = tf.ConfigProto(device_count={'GPU': number_GPU, 'CPU': threads})
     config = ConfigProto()

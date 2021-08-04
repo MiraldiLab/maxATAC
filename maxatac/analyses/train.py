@@ -9,7 +9,7 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():  # hide stdout from loading the modules
     from maxatac.utilities.model_tools import get_callbacks
-    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, threadsafe_iter, SeqDataGenerator
+    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, SeqDataGenerator
     from maxatac.utilities.plot import export_loss_dice_accuracy, export_loss_mse_coeff, export_model_structure
 
 
@@ -90,8 +90,10 @@ def run_training(args):
     # Make Train Gen thread safe
     # train_safe_gen = threadsafe_iter(train_gen)
 
+    # Create keras.utils.sequence object from training generator
     seq_train_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
 
+    # Builds a Enqueuer from a Sequence.
     train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
     train_gen_enq.start(workers=10, max_queue_size=20)
     enq_train_gen = train_gen_enq.get()
@@ -109,11 +111,10 @@ def run_training(args):
                             shuffle_cell_type=args.shuffle_cell_type
                             )
 
-    # Make Validation Gen thread safe
-    #validate_safe_gen = threadsafe_iter(val_gen)
-
+    # Create keras.utils.sequence object from validation generator
     seq_validate_gen = SeqDataGenerator(batches=args.batches, generator=val_gen)
 
+    # Builds a Enqueuer from a Sequence.
     val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
     val_gen_enq.start(workers=10, max_queue_size=20)
 
@@ -137,24 +138,6 @@ def run_training(args):
                                                 workers=1, #args.threads,
                                                 verbose=1
                                                 )
-
-    '''
-    training_history = maxatac_model.nn_model.fit_generator(generator=train_gen,
-                                                validation_data=val_gen,
-                                                steps_per_epoch=args.batches,
-                                                validation_steps=args.batches,
-                                                epochs=args.epochs,
-                                                callbacks=get_callbacks(
-                                                    model_location=maxatac_model.results_location,
-                                                    log_location=maxatac_model.log_location,
-                                                    tensor_board_log_dir=maxatac_model.tensor_board_log_dir,
-                                                    monitor=TRAIN_MONITOR
-                                                    ),
-                                                use_multiprocessing=args.threads > 1,
-                                                workers=args.threads,
-                                                verbose=1
-                                                )
-    '''
 
     # If plot then plot the model structure and training metrics
     if args.plot:

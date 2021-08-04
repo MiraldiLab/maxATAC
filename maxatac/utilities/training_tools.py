@@ -74,10 +74,6 @@ class MaxATACModel(object):
         # Set the random seed for the model
         random.seed(seed)
 
-
-        #configure_session(1)
-        #tf.compat.v1.Session()
-
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
 
@@ -621,71 +617,6 @@ class ROIPool(object):
 
         return roi_df
 
-
-class TrainingDataGenerator(tf.keras.utils.Sequence):
-    def __init__(self,
-                 signal,
-                 sequence,
-                 input_channels,
-                 input_length,
-                 predict_roi_df,
-                 batch_size=32
-                 ):
-        'Initialization'
-        self.batch_size = batch_size
-        self.predict_roi_df = predict_roi_df
-        self.indexes = np.arange(self.predict_roi_df.shape[0])
-        self.signal = signal
-        self.sequence = sequence
-        self.input_channels = input_channels
-        self.input_length = input_length
-
-    def __len__(self):
-        'Denotes the number of batches per epoch'
-        return int(self.predict_roi_df.shape[0] / self.batch_size)
-
-    def __getitem__(self, index):
-        'Generate one batch of data'
-        # Generate indexes of the batch
-        batch_indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
-
-        # Generate data
-        X = self.__data_generation(batch_indexes)
-
-        return X
-
-    def __data_generation(self, batch_indexes):
-        'Generates data containing batch_size samples'  # X : (n_samples, *dim, n_channels)
-        # Initialization
-
-        # Generate data
-        # Store sample
-        batch_roi_df = self.predict_roi_df.loc[batch_indexes, :]
-
-        batch_roi_df.reset_index(drop=True, inplace=True)
-
-       # batch = get_region_values(signal=self.signal,
-        #                          sequence=self.sequence,
-        #                          input_channels=self.input_channels,
-        #                          input_length=self.input_length,
-        #                          roi_pool=batch_roi_df
-        #                          )
-
-        return batch_roi_df
-
-
-class threadsafe_iter:
-    """Takes an iterator/generator and makes it thread-safe by
-    serializing call to the `next` method of given iterator/generator.
-    """
-    def __init__(self, it):
-        self.it = it
-        self.lock = threading.Lock()
-    def __iter__(self):
-        return self
-    def __next__(self):
-        with self.lock:
-            return next(self.it)
 
 class SeqDataGenerator(tf.keras.utils.Sequence):
     # ‘Generates data for Keras’

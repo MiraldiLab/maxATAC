@@ -293,7 +293,7 @@ def get_dilated_cnn(
                 decay=adam_decay
             ),
             loss=loss_function,
-            metrics=[dice_coef, 'accuracy', tf.keras.metrics.Precision(), tf.keras.metrics.Recall(), pearson, spearman]
+            metrics=[dice_coef]
         )
 
     else:
