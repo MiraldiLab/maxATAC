@@ -4,8 +4,8 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():
     import tensorflow as tf
-    from keras.models import Model
-    from keras.layers import (
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import (
         Add,
         Input,
         Conv1D,
@@ -15,9 +15,9 @@ with Mute():
         Flatten,
         Dense
     )
-    from keras.optimizers import Adam
-    from keras.callbacks import ModelCheckpoint
-    from keras import backend as K
+    from tensorflow.keras.optimizers import Adam
+    from tensorflow.keras.callbacks import ModelCheckpoint
+    from tensorflow.keras import backend as K
 
     from maxatac.utilities.constants import KERNEL_INITIALIZER, INPUT_LENGTH, INPUT_CHANNELS, INPUT_FILTERS, \
     INPUT_KERNEL_SIZE, INPUT_ACTIVATION, OUTPUT_FILTERS, OUTPUT_KERNEL_SIZE, FILTERS_SCALING_FACTOR, DILATION_RATE, \
@@ -39,10 +39,10 @@ def loss_function(
         y_pred_max
     )
     losses = tf.boolean_mask(
-        -y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred),
-        K.greater_equal(y_true, y_true_min)
+        tensor=-y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred),
+        mask=K.greater_equal(y_true, y_true_min)
     )
-    return tf.reduce_mean(losses)
+    return tf.reduce_mean(input_tensor=losses)
 
 
 def dice_coef(
@@ -122,7 +122,7 @@ def acc(y_true, y_pred, pred_thresh=0.5):
 
 def coeff_determination(y_true, y_pred):
     # verify if below line is required.
-    from keras import backend as K
+    from tensorflow.keras import backend as K
     SS_res = K.sum(K.square(y_true - y_pred))
     SS_tot = K.sum(K.square(y_true - K.mean(y_true)))
     return (1 - SS_res / (SS_tot + K.epsilon()))

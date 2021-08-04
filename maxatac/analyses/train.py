@@ -2,12 +2,14 @@ import logging
 import sys
 import timeit
 
+from keras.utils.data_utils import OrderedEnqueuer
+
 from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
 
 with Mute():  # hide stdout from loading the modules
     from maxatac.utilities.model_tools import get_callbacks
-    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, model_selection
+    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, SeqDataGenerator, model_selection
     from maxatac.utilities.plot import export_binary_metrics, export_loss_mse_coeff, export_model_structure
 
 
@@ -92,6 +94,17 @@ def run_training(args):
                               shuffle_cell_type=args.shuffle_cell_type
                               )
 
+    # Make Train Gen thread safe
+    # train_safe_gen = threadsafe_iter(train_gen)
+
+    # Create keras.utils.sequence object from training generator
+    seq_train_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
+
+    # Builds a Enqueuer from a Sequence.
+    train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
+    train_gen_enq.start(workers=10, max_queue_size=20)
+    enq_train_gen = train_gen_enq.get()
+
     # Initialize the validation generator
     val_gen = DataGenerator(sequence=args.sequence,
                             meta_table=maxatac_model.meta_dataframe,
@@ -105,24 +118,33 @@ def run_training(args):
                             shuffle_cell_type=args.shuffle_cell_type
                             )
 
-    logging.error("Fit model")
+    # Create keras.utils.sequence object from validation generator
+    seq_validate_gen = SeqDataGenerator(batches=args.batches, generator=val_gen)
+
+    # Builds a Enqueuer from a Sequence.
+    val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
+    val_gen_enq.start(workers=10, max_queue_size=20)
+
+    enq_val_gen = val_gen_enq.get()
+
 
     # Fit the model
-    training_history = maxatac_model.nn_model.fit_generator(generator=train_gen,
-                                                            validation_data=val_gen,
-                                                            steps_per_epoch=args.batches,
-                                                            validation_steps=args.batches,
-                                                            epochs=args.epochs,
-                                                            callbacks=get_callbacks(
-                                                                model_location=maxatac_model.results_location,
-                                                                log_location=maxatac_model.log_location,
-                                                                tensor_board_log_dir=maxatac_model.tensor_board_log_dir,
-                                                                monitor=TRAIN_MONITOR
-                                                            ),
-                                                            use_multiprocessing=args.threads > 1,
-                                                            workers=args.threads,
-                                                            verbose=1
-                                                            )
+    training_history = maxatac_model.nn_model.fit(enq_train_gen,
+                                                validation_data=enq_val_gen,
+                                                steps_per_epoch=args.batches,
+                                                validation_steps=args.batches,
+                                                epochs=args.epochs,
+                                                callbacks=get_callbacks(
+                                                    model_location=maxatac_model.results_location,
+                                                    log_location=maxatac_model.log_location,
+                                                    tensor_board_log_dir=maxatac_model.tensor_board_log_dir,
+                                                    monitor=TRAIN_MONITOR
+                                                    ),
+                                                max_queue_size=10,
+                                                use_multiprocessing=False, #args.threads > 1,
+                                                workers=1, #args.threads,
+                                                verbose=1
+                                                )
 
     logging.error("Plot and save results")
 

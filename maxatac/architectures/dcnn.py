@@ -5,9 +5,9 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():
     import tensorflow as tf
-    from keras import backend as K
-    from keras.callbacks import ModelCheckpoint
-    from keras.layers import (
+    from tensorflow.keras import backend as K
+    from tensorflow.keras.callbacks import ModelCheckpoint
+    from tensorflow.keras.layers import (
         Input,
         Conv1D,
         MaxPooling1D,
@@ -16,8 +16,8 @@ with Mute():
         Dense,
         Flatten
     )
-    from keras.models import Model
-    from keras.optimizers import Adam
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.optimizers import Adam
 
     from maxatac.utilities.constants import KERNEL_INITIALIZER, INPUT_LENGTH, INPUT_CHANNELS, INPUT_FILTERS, \
         INPUT_KERNEL_SIZE, INPUT_ACTIVATION, OUTPUT_FILTERS, OUTPUT_KERNEL_SIZE, FILTERS_SCALING_FACTOR, DILATION_RATE, \
@@ -39,10 +39,10 @@ def loss_function(
         y_pred_max
     )
     losses = tf.boolean_mask(
-        -y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred),
-        K.greater_equal(y_true, y_true_min)
+        tensor=-y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred),
+        mask=K.greater_equal(y_true, y_true_min)
     )
-    return tf.reduce_mean(losses)
+    return tf.reduce_mean(input_tensor=losses)
 
 def pearson(y_true, y_pred):
     import scipy.stats as measures
@@ -221,7 +221,7 @@ def get_dilated_cnn(
     layer = input_layer  # redefined in encoder/decoder loops
     filters = input_filters  # redefined in encoder/decoder loops
 
-    logging.debug("Added inputs layer: " + "\n - " + str(layer))
+    #logging.debug("Added inputs layer: " + "\n - " + str(layer))
 
     # Encoder
     all_layers = []
@@ -236,7 +236,7 @@ def get_dilated_cnn(
             dilation_rate=layer_dilation_rate,
             kernel_initializer=KERNEL_INITIALIZER
         )
-        logging.debug("Added convolution layer: " + str(i) + "\n - " + str(layer))
+        #logging.debug("Added convolution layer: " + str(i) + "\n - " + str(layer))
         # encoder_layers.append(layer)  # save all layers wo MaxPooling1D
         if i < conv_blocks - 1:  # need to update all except the last layers
             filters = round(filters * filters_scaling_factor)

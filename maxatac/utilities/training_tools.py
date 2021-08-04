@@ -1,11 +1,13 @@
 import random
 import sys
 from os import path
+
+import tensorflow as tf
 import glob
-import keras
 import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
+import threading
 
 from maxatac.architectures.dcnn import get_dilated_cnn
 from maxatac.architectures.multi_modal_models import MM_DCNN_V2
@@ -72,8 +74,6 @@ class MaxATACModel(object):
 
         # Set the random seed for the model
         random.seed(seed)
-
-        configure_session(1)
 
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
@@ -614,6 +614,22 @@ class ROIPool(object):
 
         return roi_df
 
+
+class SeqDataGenerator(tf.keras.utils.Sequence):
+    # ‘Generates data for Keras’
+
+    def __init__(self, batches, generator):
+        # ‘Initialization’
+        self.batches = batches
+        self.generator = generator
+    def __len__(self):
+        # ‘Denotes the number of batches per epoch’
+        return self.batches
+    def __getitem__(self, index):
+        # ‘Generate one batch of data’
+        # Generate indexes of the batch
+        # Generate data
+        return next(self.generator)
 
 def model_selection(training_history, quant, output_dir):
     df = pd.DataFrame(training_history.history)
