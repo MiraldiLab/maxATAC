@@ -763,9 +763,17 @@ def get_parser():
     train_parser.add_argument("--shuffle_cell_type",
                               dest="shuffle_cell_type",
                               action="store_true",
-                              default=True,
-                              help="If shuffle_cell_type is true, then shuffle training ROI cell type label"
+                              default=False,
+                              help="If shuffle_cell_type, then shuffle training ROI cell type label"
                               )
+
+    train_parser.add_argument("--rev_comp",
+                              dest="rev_comp",
+                              action="store_true",
+                              default=False,
+                              help="If rev_comp, then use the reverse complement in training"
+                              )
+
     # Normalize parser
     normalize_parser = subparsers.add_parser("normalize",
                                              parents=[parent_parser],
@@ -1238,7 +1246,7 @@ def parse_arguments(argsl, cwd_abs_path=None):
                 "minimum", "test_cell_lines", "rand_ratio",
                 "train_tf", "arch", "quant", "batch_size",
                 "val_batch_size", "target_scale_factor",
-                "output_activation", "dense", "shuffle_cell_type"
+                "output_activation", "dense", "shuffle_cell_type", "rev_comp"
             ],
             cwd_abs_path
         )

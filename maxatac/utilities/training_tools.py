@@ -23,6 +23,12 @@ from maxatac.utilities.system_tools import get_dir, remove_tags, replace_extensi
 class MaxATACModel(object):
     """
     This object will organize the input model parameters and initialize the maxATAC model
+
+    The methods are:
+
+    __get_interpretation_attributes: This will import the interpretation inputs if interpretation module is being used.
+
+    __get_model: This will get the correct architecture and parameters based on the user input
     """
 
     def __init__(self,
@@ -146,11 +152,14 @@ def DataGenerator(
         quant=False,
         target_scale_factor=1,
         batch_size=BATCH_SIZE,
-        shuffle_cell_type=False
+        shuffle_cell_type=False,
+        rev_comp_train=False
 
 ):
     """
-    Initiate a generator
+    Initiate a data generator that will yield a batch of examples for training. This generator will mix samples from a
+    pool of random regions and a pool of regions of interest based on the user defined ratio. The examples will be
+    returned as a list of numpy arrays.
 
     _________________
     Workflow Overview
@@ -197,7 +206,8 @@ def DataGenerator(
                                bp_resolution=bp_resolution,
                                quant=quant,
                                target_scale_factor=target_scale_factor,
-                               shuffle_cell_type=shuffle_cell_type
+                               shuffle_cell_type=shuffle_cell_type,
+                               rev_comp_train=rev_comp_train
                                )
 
     # Initialize the random regions generator
@@ -208,7 +218,8 @@ def DataGenerator(
                                    regions_pool=train_random_regions_pool,
                                    bp_resolution=bp_resolution,
                                    quant=quant,
-                                   target_scale_factor=target_scale_factor
+                                   target_scale_factor=target_scale_factor,
+                                   rev_comp_train=rev_comp_train
                                    )
 
     while True:
@@ -246,6 +257,7 @@ def get_input_matrix(rows,
     """
     Get a matrix of values from the corresponding genomic position. You can supply whether you want to use the
     complement sequence. You can also choose whether you want to reverse the whole matrix.
+
     :param rows: Number of rows == channels
     :param cols: Number of cols == region length
     :param signal_stream: Signal bigwig stream
@@ -261,14 +273,18 @@ def get_input_matrix(rows,
     for n, bp in enumerate(bp_order):
         # Get the sequence from the interval of interest
         target_sequence = Seq(sequence_stream.sequence(chromosome, start, end))
+
         if use_complement:
             # Get the complement of the sequence
             target_sequence = target_sequence.complement()
+
         # Get the one hot encoded sequence
         input_matrix[n, :] = get_one_hot_encoded(target_sequence, bp)
 
     signal_array = np.array(signal_stream.values(chromosome, start, end))
+
     input_matrix[4, :] = signal_array
+
     # If reverse_matrix then reverse the matrix. This changes the left to right orientation.
     if reverse_matrix:
         input_matrix = input_matrix[::-1]
@@ -284,57 +300,72 @@ def create_roi_batch(sequence,
                      bp_resolution=1,
                      quant=False,
                      target_scale_factor=1,
-                     shuffle_cell_type=False
+                     shuffle_cell_type=False,
+                     rev_comp_train=False
                      ):
     """
-    Create a batch of examples from regions of interest
+    Create a batch of examples from regions of interest. The batch size is defined by n_roi. This code will randomly
+    generate a batch of examples based on an input meta file that defines the paths to training data. The cell_type_list
+    is used to randomly select the cell type that the training signal is drawn from.
 
-    :param sequence:
-    :param meta_table:
-    :param roi_pool:
-    :param n_roi:
-    :param cell_type_list:
-    :param bp_resolution:
-    :param quant:
-    :param target_scale_factor:
-    :param shuffle_cell_type:
+    :param sequence: The input 2bit DNA sequence
+    :param meta_table: The meta file that contains the paths to signal and peak files
+    :param roi_pool: The pool of regions that we want to sample from
+    :param n_roi: The number of regions that go into each batch
+    :param cell_type_list: A list of unique training cell types
+    :param bp_resolution: The resolution of the output bins. i.e. 32 bp
+    :param quant: Boolean flag of whether the input data is quantitative or binary
+    :param target_scale_factor: The scaling factor to use for quantitative data
+    :param shuffle_cell_type: Whether to shuffle cell types during training
 
-    :return: np.array(inputs_batch), np.array(targets_batch
+    :return: np.array(inputs_batch), np.array(targets_batch)
     """
     while True:
+        # Create empty lists that will hold the signal tracks
         inputs_batch, targets_batch = [], []
+
+        # Get the shape of the ROI pool
         roi_size = roi_pool.shape[0]
 
+        # Randomly select n regions from the pool
         curr_batch_idxs = random.sample(range(roi_size), n_roi)
 
-        # Here I will process by row, if performance is bad then process by cell line
+        # Extract the signal for every sample
         for row_idx in curr_batch_idxs:
             roi_row = roi_pool.iloc[row_idx, :]
 
+            # If shuffle_cell_type the cell type will be randomly chosen
             if shuffle_cell_type:
                 cell_line = random.choice(cell_type_list)
 
             else:
                 cell_line = roi_row['Cell_Line']
 
-            chrom_name = roi_row['Chr']
-
-            start = int(roi_row['Start'])
-            end = int(roi_row['Stop'])
-
+            # Get the paths for the cell type of interest.
             meta_row = meta_table[(meta_table['Cell_Line'] == cell_line)]
             meta_row = meta_row.reset_index(drop=True)
 
+            # Rename some variables. This just helps clean up code downstream
+            chrom_name = roi_row['Chr']
+            start = int(roi_row['Start'])
+            end = int(roi_row['Stop'])
+
             signal = meta_row.loc[0, 'ATAC_Signal_File']
             binding = meta_row.loc[0, 'Binding_File']
+
+            # Choose whether to use the reverse complement of the region
+            if rev_comp_train:
+                rev_comp = random.choice([True, False])
+
+            else:
+                rev_comp = False
 
             with \
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
 
-                rev_comp = random.choice([True, False])
-
+                # Get the input matrix of values and one-hot encoded sequence
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
                                                 cols=INPUT_LENGTH,
                                                 bp_order=BP_ORDER,
@@ -347,29 +378,44 @@ def create_roi_batch(sequence,
                                                 reverse_matrix=rev_comp
                                                 )
 
-                inputs_batch.append(input_matrix)
+            # Append the sample to the inputs batch.
+            inputs_batch.append(input_matrix)
 
-                # TODO we might want to test what happens if we change the
-                if not quant:
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-                    target_vector = np.nan_to_num(target_vector, 0.0)
-                    if rev_comp:
-                        target_vector = target_vector[::-1]
+            # Some bigwig files do not have signal for some chromosomes because they do not have peaks in those regions
+            # Our workaround for issue#42 is to provide a zero matrix for that position
+            try:
+                # Get the target matrix
+                target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
 
-                    n_bins = int(target_vector.shape[0] / bp_resolution)
-                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                    bin_sums = np.sum(split_targets, axis=1)
-                    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-                    targets_batch.append(bin_vector)
+            except:
+                # TODO change length of array
+                target_vector = np.zeros(1024)
 
-                else:
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-                    target_vector = np.nan_to_num(target_vector, 0.0)
-                    n_bins = int(target_vector.shape[0] / bp_resolution)
-                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                    bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
-                    targets_batch.append(bin_vector)
+            # change nan to numbers
+            target_vector = np.nan_to_num(target_vector, 0.0)
 
+            # If reverse compliment, reverse the matrix
+            if rev_comp:
+                target_vector = target_vector[::-1]
+
+            # get the number of 32 bp bins across the input sequence
+            n_bins = int(target_vector.shape[0] / bp_resolution)
+
+            # Split the data up into 32 x 32 bp bins.
+            split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+
+            # TODO we might want to test what happens if we change the
+            if not quant:
+                bin_sums = np.sum(split_targets, axis=1)
+                bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+
+            else:
+                bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
+
+            # Append the sample to the target batch
+            targets_batch.append(bin_vector)
+
+        # If quantitative data, scale by target factor
         if quant:
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
@@ -385,8 +431,13 @@ def create_random_batch(
         regions_pool,
         bp_resolution=1,
         quant=False,
-        target_scale_factor=1
+        target_scale_factor=1,
+        rev_comp_train=False
 ):
+    """
+    This function will create a batch of examples that are randomly generated. This batch of data is created the same
+    as the roi batches.
+    """
     while True:
         inputs_batch, targets_batch = [], []
 
@@ -406,7 +457,11 @@ def create_random_batch(
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
 
-                rev_comp = random.choice([True, False])
+                if rev_comp_train:
+                    rev_comp = random.choice([True, False])
+
+                else:
+                    rev_comp = False
 
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
                                                 cols=INPUT_LENGTH,
@@ -423,7 +478,14 @@ def create_random_batch(
                 inputs_batch.append(input_matrix)
 
                 if not quant:
-                    target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
+                    try:
+                        # Get the target matrix
+                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+
+                    except:
+                        # TODO change length of array
+                        target_vector = np.zeros(1024)
+
                     target_vector = np.nan_to_num(target_vector, 0.0)
 
                     if rev_comp:
@@ -436,7 +498,14 @@ def create_random_batch(
                     targets_batch.append(bin_vector)
 
                 else:
-                    target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
+                    try:
+                        # Get the target matrix
+                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+
+                    except:
+                        # TODO change length of array
+                        target_vector = np.zeros(1024)
+
                     target_vector = np.nan_to_num(target_vector, 0.0)
                     n_bins = int(target_vector.shape[0] / bp_resolution)
                     split_targets = np.array(np.split(target_vector, n_bins, axis=0))
@@ -622,16 +691,23 @@ class SeqDataGenerator(tf.keras.utils.Sequence):
         # ‘Initialization’
         self.batches = batches
         self.generator = generator
+
     def __len__(self):
         # ‘Denotes the number of batches per epoch’
         return self.batches
+
     def __getitem__(self, index):
         # ‘Generate one batch of data’
         # Generate indexes of the batch
         # Generate data
         return next(self.generator)
 
+
 def model_selection(training_history, quant, output_dir):
+    """
+    This function will take the training history and output the best model based on the dice coefficient value.
+    """
+    # Create a dataframe from the history object
     df = pd.DataFrame(training_history.history)
 
     if quant:
@@ -640,8 +716,10 @@ def model_selection(training_history, quant, output_dir):
     else:
         epoch = df['val_dice_coef'].idxmax() + 1
 
+    # Get the realpath to the best model
     out = pd.DataFrame([glob.glob(output_dir + "/*" + str(epoch) + ".h5")], columns=['Best_Model_Path'])
 
+    # Write the location of the best model to a file
     out.to_csv(output_dir + "/" + "best_epoch.txt", sep='\t', index=None, header=None)
 
     return epoch
