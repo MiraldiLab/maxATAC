@@ -25,73 +25,23 @@ You will also need to have BEDtools installed or loaded on your PATH.
 
 Steps in training and assessing a maxATAC model. Relevant functions are listed below each step. 
 
-1. Prepare Input Data
+### 1. Prepare Input Data
    * [`average`](./docs/average.md#Average)
    * [`normalize`](./docs/normalize.md#Normalize)
-   * `roi`
-
-2. Train a model
-    * `train`
+   
+### 2. Train a model
+   * [`train`](./docs/train.md#Train)
     
-3. Predict in new cell type
+### 3. Predict in new cell type
    * `predict`
+   
+### 4. Benchmark models against experimental data
+   * `benchmark`
     
-4. Benchmark models against experimental data
-    * `benchmark`
-    
-5. Learn features import to predict TF binding with a neural network
-    * `interpret`
+### 5. Learn features import to predict TF binding with a neural network
+   * `interpret`
 
-## Functions
-
-The maxATAC bundle has several useful functions needed for building a deep learning model of TF binding.
-
-**Data Pre-processing:**
-
-* [`average`](./docs/average.md#Average)
-* [`normalize`](./docs/normalize.md#Normalize)
-* `roi`
-
-**TF Binding Prediction Functions:**
-
-* `train`
-* `predict`
-* `peaks`
-  
-**Analayze TF Binding Predictions**
-
-* `interpret`
-* `mean-combine`
-* `threshold`
-* `benchmark`
-
-### Train
-
-The `train` function takes as input ATAC-seq signal, DNA sequence, Delta ATAC-seq signal, and ChIP-seq signal to train a neural network with the architecture of choice.
-
-The primary input to the training function is a meta file that contains all the information for the locations of ATAC-seq signal, ChIP-seq signal, TF, and Cell type.
-
-Example header for meta file. The meta file must be a tsv file, but the order of the columns does not matter. As long as the column names are the same:
-
-`TF | Cell_Type | ATAC_Signal_File | Binding_File | ATAC_Peaks | ChIP_peaks`
-
-**Workflow Overview**
-
-1) Create directories and set up filenames
-2) Initialize the model based on the desired architectures
-3) Read in the meta table
-4) Read in training and validation pool
-5) Initialize the training generator
-6) Initialize the validation generator
-7) Fit the models with the specific parameters
-
-
-Example command:
-
-```bash
-maxatac train --sequence hg38.2bit --meta_file CTCF_META.tsv --prefix CTCF_test --arch DCNN_V2 --rand_ratio 0 --shuffle_cell_type
-```
-
+## Walkthroughs
 
 ### Predict
 
@@ -134,20 +84,3 @@ Example command:
 ```bash
 maxatac benchmark --prediction ELK1_slop20_RR30_epoch20_GM12878.bw --gold_standard GM12878__ELK1.bw --prefix ELK1_GM12878_chr1 --output /benchmark_result --bin_size 10000 --chromosomes chr1
 ```
-
-### ROI
-
-The `roi` function will generate regions of interest based on input ChIP-seq, ATAC-seq, or randomly generated regions. 
-
-This method will use the run meta file to merge the ATAC-seq peaks and ChIP-seq peaks into BED files where each entry is an example region. ONE MAJOR ASSUMPTION IS THAT THE TEST CELL LINE IS NOT INCLUDED IN THE META FILE!!!!!
-
-The input meta file must have the columns in any order:
-
-`TF | Cell_Type | ATAC_Signal_File | Binding_File | ATAC_Peaks | ChIP_peaks`
-
-**Workflow Overview**
-
-1) Import the ATAC-seq and ChIP-seq and filter for training chromosomes
-2) Write the ChIP, ATAC, and combined ROI pools with stats
-3) Import the ATAC-seq and ChIP-seq and filter for validation chromosomes
-4) Write the ChIP, ATAC, and combined ROI pools with stats

@@ -4,26 +4,21 @@ from os import getcwd
 
 from yaml import dump
 
-from maxatac.analyses.peaks import call_peaks
-from maxatac.analyses.threshold import run_thresholding
-from maxatac.utilities.system_tools import (
-    get_version,
-    get_absolute_path,
-    get_cpu_count,
-    Mute
-)
+from maxatac.utilities.system_tools import (get_version,
+                                            get_absolute_path,
+                                            get_cpu_count,
+                                            Mute
+                                            )
 
 with Mute():
     from maxatac.analyses.average import run_averaging
     from maxatac.analyses.predict import run_prediction
-    from maxatac.analyses.roi import run_roi
     from maxatac.analyses.train import run_training
     from maxatac.analyses.normalize import run_normalization
     from maxatac.analyses.benchmark import run_benchmarking
-    from maxatac.analyses.epoch_selection import find_epoch
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.interpret import run_interpretation
-    from maxatac.analyses.mean_combine import run_max_combine
+    from maxatac.analyses.peaks import call_peaks
 
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
@@ -194,159 +189,6 @@ def get_parser():
                                 version=get_version(),
                                 help="Print version information and exit"
                                 )
-
-    # Average parser
-    maxcombine_parser = subparsers.add_parser("max_combine",
-                                              parents=[parent_parser],
-                                              help="Run maxATAC max_combine"
-                                              )
-
-    # Set the default function to run averaging
-    maxcombine_parser.set_defaults(func=run_max_combine)
-
-    maxcombine_parser.add_argument("--average_signal",
-                                   dest="average_signal",
-                                   type=str,
-                                   required=True,
-                                   help="average_signal"
-                                   )
-
-    maxcombine_parser.add_argument("--maxatac_prediction",
-                                   dest="maxatac_prediction",
-                                   type=str,
-                                   required=True,
-                                   help="maxatac_prediction"
-                                   )
-
-    maxcombine_parser.add_argument("--chromosome",
-                                   dest="chromosome",
-                                   type=str,
-                                   required=True,
-                                   help="Chromosome name"
-                                   )
-
-    maxcombine_parser.add_argument("--output",
-                                   dest="output",
-                                   type=str,
-                                   required=True,
-                                   help="Output name"
-                                   )
-
-    maxcombine_parser.add_argument("--chrom_sizes",
-                                   dest="chrom_sizes",
-                                   type=str,
-                                   default=DEFAULT_CHROM_SIZES,
-                                   help="Input chromosome sizes file. Default is hg38."
-                                   )
-
-    maxcombine_parser.add_argument("--loglevel",
-                                   dest="loglevel",
-                                   type=str,
-                                   default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
-                                   choices=LOG_LEVELS.keys(),
-                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                                   )
-
-    # Average parser
-    roi_parser = subparsers.add_parser("roi",
-                                       parents=[parent_parser],
-                                       help="Run maxATAC roi"
-                                       )
-
-    # Set the default function to run averaging
-    roi_parser.set_defaults(func=run_roi)
-
-    roi_parser.add_argument("--meta_file",
-                            dest="meta_file",
-                            type=str,
-                            required=True,
-                            help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
-                            )
-
-    roi_parser.add_argument("--region_length",
-                            dest="region_length",
-                            type=int,
-                            default=INPUT_LENGTH,
-                            help="Meta file containing ATAC Signal and Bindings path for all cell lines (.tsv format)"
-                            )
-
-    roi_parser.add_argument("--train_chroms",
-                            dest="train_chroms",
-                            type=str,
-                            nargs="+",
-                            default=DEFAULT_TRAIN_CHRS,
-                            help="Chromosomes from --chromosomes fixed for training. \
-                                  Default: 3-7,9-18,20-22"
-                            )
-
-    roi_parser.add_argument("--validate_chroms",
-                            dest="validate_chroms",
-                            type=str,
-                            nargs="+",
-                            default=DEFAULT_VALIDATE_CHRS,
-                            help="Chromosomes from fixed for validation. \
-                                  Default: chr2, chr19"
-                            )
-
-    roi_parser.add_argument("--chromosome_sizes",
-                            dest="chromosome_sizes",
-                            type=str,
-                            default=DEFAULT_CHROM_SIZES,
-                            help="The chromosome sizes file to reference"
-                            )
-
-    roi_parser.add_argument("--blacklist",
-                            dest="blacklist",
-                            type=str,
-                            default=BLACKLISTED_REGIONS,
-                            help="The blacklisted regions to exclude"
-                            )
-
-    roi_parser.add_argument("--output",
-                            dest="output_dir",
-                            type=str,
-                            default="./average",
-                            help="Output directory."
-                            )
-
-    roi_parser.add_argument("--loglevel",
-                            dest="loglevel",
-                            type=str,
-                            default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
-                            choices=LOG_LEVELS.keys(),
-                            help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                            )
-
-    roi_parser.add_argument("--validate_random_ratio",
-                            dest="validate_random_ratio",
-                            type=float,
-                            required=False,
-                            default=DEFAULT_VALIDATE_RAND_RATIO,
-                            help="Ratio for controlling fraction of random seqeuences in each validation batch. float "
-                                 "[0, 1]"
-                            )
-
-    roi_parser.add_argument("--training_prefix",
-                            dest="training_prefix",
-                            type=str,
-                            default="training_test",
-                            required=False,
-                            help="Prefix to use for naming the training ROI file"
-                            )
-
-    roi_parser.add_argument("--validation_prefix",
-                            dest="validation_prefix",
-                            type=str,
-                            default="validation_test",
-                            required=False,
-                            help="Prefix to use for naming the validation ROI file"
-                            )
-
-    roi_parser.add_argument("--threads",
-                            dest="threads",
-                            type=int,
-                            help="# of processes to run training in parallel. Default: 1"
-                            )
 
     # Average parser
     average_parser = subparsers.add_parser("average",
@@ -539,36 +381,6 @@ def get_parser():
                                       Default: 1, 8"
                                 )
 
-    # Epoch Selection Parser
-    
-    epoch_selection_parser = subparsers.add_parser("epoch_selection",
-                                         parents=[parent_parser],
-                                         help="Run select best epoch from each maxATAC model"
-                                         )
-
-    epoch_selection_parser.set_defaults(func=find_epoch)
-
-    epoch_selection_parser.add_argument("--model_dir",
-                              dest="model_dir",
-                              type=str,
-                              required=True,
-                              help="Location of model dir to find best model"
-                              )
-    
-    epoch_selection_parser.add_argument("--train_tf",
-                                  dest="train_tf",
-                                  type=str,
-                                  required=True,
-                                  help="Transcription Factor to train on. Restricted to only 1 TF."
-                                  )
-
-    epoch_selection_parser.add_argument("--quant",
-                              dest="quant",
-                              action='store_true',
-                              default=False,
-                              help="This argument should be set to true to build models based on quantitative data"
-                              )
-
     # Train parser
     train_parser = subparsers.add_parser("train",
                                          parents=[parent_parser],
@@ -700,7 +512,8 @@ def get_parser():
                               dest="batches",
                               type=int,
                               default=DEFAULT_TRAIN_BATCHES_PER_EPOCH,
-                              help="Number of training batches per epoch. Default: " + str(DEFAULT_TRAIN_BATCHES_PER_EPOCH)
+                              help="Number of training batches per epoch. Default: " + str(
+                                  DEFAULT_TRAIN_BATCHES_PER_EPOCH)
                               )
 
     train_parser.add_argument("--batch_size",
@@ -1105,72 +918,6 @@ def get_parser():
                                   )
 
     # threshold_parser
-    threshold_parser = subparsers.add_parser("threshold",
-                                             parents=[parent_parser],
-                                             help="Run maxATAC threshold"
-                                             )
-
-    # Set the default function to run averaging
-    threshold_parser.set_defaults(func=run_thresholding)
-
-    threshold_parser.add_argument("--prefix",
-                                  dest="prefix",
-                                  type=str,
-                                  required=True,
-                                  help="Output prefix."
-                                  )
-
-    threshold_parser.add_argument("--chrom_sizes",
-                                  dest="chrom_sizes",
-                                  type=str,
-                                  default=DEFAULT_CHROM_SIZES,
-                                  help="Input chromosome sizes file. Default is hg38."
-                                  )
-
-    threshold_parser.add_argument("--bin_size",
-                                  dest="bin_size",
-                                  type=int,
-                                  default=DEFAULT_BENCHMARKING_BIN_SIZE,
-                                  help="Chromosomes for averaging")
-
-    threshold_parser.add_argument("--output",
-                                  dest="output_dir",
-                                  type=str,
-                                  default="./threshold",
-                                  help="Output directory."
-                                  )
-
-    threshold_parser.add_argument("--loglevel",
-                                  dest="loglevel",
-                                  type=str,
-                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
-                                  choices=LOG_LEVELS.keys(),
-                                  help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                                  )
-
-    threshold_parser.add_argument("--blacklist",
-                                  dest="blacklist",
-                                  type=str,
-                                  default=BLACKLISTED_REGIONS_BIGWIG,
-                                  help="The blacklisted regions to exclude"
-                                  )
-
-    threshold_parser.add_argument("--meta_file",
-                                  dest="meta_file",
-                                  type=str,
-                                  required=True,
-                                  help="Meta file containing Prediction signal and GS path for all cell lines (.tsv format)"
-                                  )
-    threshold_parser.add_argument("--chromosomes",
-                                  dest="chromosomes",
-                                  type=str,
-                                  nargs="+",
-                                  default=DEFAULT_VALIDATE_CHRS,
-                                  help="Chromosomes for thresholding predictions. \
-                                      Default: 1-22,X,Y"
-                                  )
-
-    # threshold_parser
     peaks_parser = subparsers.add_parser("peaks",
                                          parents=[parent_parser],
                                          help="Run maxATAC peaks"
@@ -1254,4 +1001,3 @@ def parse_arguments(argsl, cwd_abs_path=None):
     assert_and_fix_args(args)
 
     return args
-
