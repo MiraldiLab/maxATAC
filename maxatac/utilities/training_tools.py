@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
 import threading
+import pybedtools
 
 from maxatac.architectures.dcnn import get_dilated_cnn
 from maxatac.architectures.multi_modal_models import MM_DCNN_V2
@@ -721,6 +722,7 @@ def model_selection(training_history, quant, output_dir):
     out.to_csv(output_dir + "/" + "best_epoch.txt", sep='\t', index=None, header=None)
 
     return epoch
+
 
 class GenomicRegions(object):
     """

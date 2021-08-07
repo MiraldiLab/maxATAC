@@ -21,7 +21,7 @@ You will also need to have BEDtools installed or loaded on your PATH.
 
 *Note: sometimes SHAP will produce an error when installing with `pip3 install -e .` due to conflicts with numpy. In this case, you will need to install numpy into your virtual env BEFORE installing maxATAC*
 
-## Predicting TF Binding Workflow Overview
+## maxATAC Workflow Overview
 
 Steps in training and assessing a maxATAC model. Relevant functions are listed below each step. 
 
