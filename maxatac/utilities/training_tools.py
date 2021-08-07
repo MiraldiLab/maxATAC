@@ -3,12 +3,13 @@ import sys
 from os import path
 
 import tensorflow as tf
-import glob
 import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
 import threading
 import pybedtools
+import os
+import glob
 
 from maxatac.architectures.dcnn import get_dilated_cnn
 from maxatac.architectures.multi_modal_models import MM_DCNN_V2
