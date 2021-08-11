@@ -9,13 +9,13 @@ The maxATAC package is a collection of tools used for learning to predict TF bin
 
 ## Requirements
 
-This version requires python 3.6 and BEDTools. 
+This version requires python 3.6 and BEDTools.
 
 ## Installation
 
 It is best to install maxATAC into a dedicated virtual environment. Clone the repository with `git clone` into your `repo` directory of choice. 
 
-Change into the maxATAC repository with `cd maxATAC` and use `pip3 install -e .` to install the package. 
+Change into the maxATAC repository with `cd maxATAC` and use `pip3 install -e .` to install the package.
 
 You will also need to have BEDtools installed or loaded on your PATH.
 
@@ -23,7 +23,7 @@ You will also need to have BEDtools installed or loaded on your PATH.
 
 ## maxATAC Workflow Overview
 
-Steps in training and assessing a maxATAC model. Relevant functions are listed below each step. 
+Steps in training and assessing a maxATAC model. Relevant functions are listed below each step.
 
 ### 1. Prepare Input Data
    * [`average`](./docs/average.md#Average)
@@ -33,54 +33,10 @@ Steps in training and assessing a maxATAC model. Relevant functions are listed b
    * [`train`](./docs/train.md#Train)
     
 ### 3. Predict in new cell type
-   * `predict`
+   * [`predict`](./docs/predict.md#Predict)
    
 ### 4. Benchmark models against experimental data
-   * `benchmark`
+   * [`benchmark`](./docs/benchmark.md#Benchmark)
     
 ### 5. Learn features import to predict TF binding with a neural network
    * `interpret`
-
-## Walkthroughs
-
-### Predict
-
-The `predict` function takes as input BED formatted genomic regions to predict TF binding using a trained maxATAC model.
-
-BED file requirements for prediction. You must have at least a 3 column file with chromosome, start, and stop coordinates. The interval distance has to be the same as the distance used to train the model. If you trained a model with a resolution 1024, you need to make sure your intervals are spaced 1024 bp apart for prediction with your model.
-
-Example input BED file for prediction:
-
-`chr1   1000    2024`
-
-**Workflow Overview**
-
-1) Create directories and set up filenames
-2) Make predictions
-3) Convert predictions to bigwig format and write results
-
-Example command:
-
-```bash
-maxatac predict --models CTCF_epoch10.h5 --sequence hg38.2bit --signal GM12878__CTCF_slop20bp_RP20M_logp1_minmax01.bw --roi chr1_w1024_PC.bed --prefix test_preds
-```
-
-### Benchmark
-
-The `benchmark` function takes as input a prediction bigwig signal track and a ChIP-seq gold standard bigwig track to calculate precision and recall.
-
-The inputs need to be in bigwig format to use this function. You can also provide a custom blacklist to filter out regions that you do not want to include in your comparison. We use a np.mask to exclude these regions.
-
-Currently, benchmarking is set up for one chromosome at a time. The most time-consuming step is importing and binning the input bigwig files to resolutions smaller than 100bp. We are also only benchmarking on whole chromosomes at the moment so everything not in the blacklist will be considered a potential region.
-
-**Workflow Overview**
-
-1) Create directories and set up filenames
-2) Get the blacklist mask using the input blacklist and bin it at the same resolution as the predictions and GS
-3) Calculate the AUPR
-
-Example command:
-
-```bash
-maxatac benchmark --prediction ELK1_slop20_RR30_epoch20_GM12878.bw --gold_standard GM12878__ELK1.bw --prefix ELK1_GM12878_chr1 --output /benchmark_result --bin_size 10000 --chromosomes chr1
-```

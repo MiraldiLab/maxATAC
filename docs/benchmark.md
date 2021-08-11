@@ -1,4 +1,4 @@
-# Bencmark
+# Benchmark
 
 The `benchmark` function can be used to calculate the area under the precision recall curve (AUPRc) for a bigwig file compared to a gold standard in bigwig format. The user must provide the predictions in bigwig format and specify the resolution they want their prediction at. 
 
