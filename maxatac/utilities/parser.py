@@ -279,13 +279,6 @@ def get_parser():
                                 help="Input signal file"
                                 )
 
-    predict_parser.add_argument("--minimum",
-                                dest="minimum",
-                                type=float,
-                                default=DEFAULT_MIN_PREDICTION,
-                                help="Minimum prediction value to be reported. Default: " + str(DEFAULT_MIN_PREDICTION)
-                                )
-
     predict_parser.add_argument("--output",
                                 dest="output",
                                 type=str,
@@ -315,12 +308,6 @@ def get_parser():
                                 required=False,
                                 help="Whether to make predictions based on both strands")
 
-    predict_parser.add_argument("--keep",
-                                dest="keep",
-                                action="store_true",
-                                help="Keep temporary files. Default: False"
-                                )
-
     predict_parser.add_argument("--threads",
                                 dest="threads",
                                 default=get_cpu_count(),
@@ -335,13 +322,6 @@ def get_parser():
                                 default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
                                 choices=LOG_LEVELS.keys(),
                                 help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                                )
-
-    predict_parser.add_argument("--predict_roi",
-                                dest="predict_roi",
-                                type=str,
-                                help="Bed file with ranges for input sequences to be predicted. \
-                                      Default: None, predictions are done on the whole chromosome length"
                                 )
 
     predict_parser.add_argument("--batch_size",

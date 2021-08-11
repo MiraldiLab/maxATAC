@@ -1,29 +1,57 @@
-# Calculating the AUPR curve for chromosome-wide predictions against a ChIP-seq gold standard
+# Bencmark
 
-## Rational
+The `benchmark` function can be used to calculate the area under the precision recall curve (AUPRc) for a bigwig file compared to a gold standard in bigwig format. The user must provide the predictions in bigwig format and specify the resolution they want their prediction at. 
 
-Many methods have been developed to predict TF binding along the genome, but how do you test if any of them are good? How can you be sure that when you apply your predictions to a new setting that you will be able to make reliable predictions? Here I discuss how we evaluate our TF binding predictions against known experimentally derived binding sites to gauge our model performance. 
+## Example
 
-## Types of benchmarking
+```bash
+maxatac benchmark --prediction GM12878_CTCF_chr1.bw --gold_standard GM12878_CTCF_ENCODE_IDR.bw --chromosomes chr1 --bin_size 200
+```
 
-The type of benchmarking that you need to perform depends on the type of data that you are comparing. There are multiple considerations like whether the predictions have been made genome-wide, chromosome-wide, or in specific regions of interest like peaks. You must also consider the type of predictions that are being benchmarked. Are they binary predictions where the target binding site is denoted as a 0 or 1. Or quantitative predictions that are meant to predict read counts or other continuous data? The different methods are explained below in each section.
+## Required Arguments
 
-### Whole chromosome prediction
+### `--prediction`
 
-Predicting TF binding chromosome-wide is the approach many of the DREAM challenge competitors used to benchmark their methods. The rational is that a whole chromosome would contain a mix of bound/unbound regions that would closely resemble the task of predicting across a genome and looking for TF binding locations.
+The input bigwig file of transcription factor binding predictions. 
 
-For the whole chromosome approach, a chromosome of interest is split into windows that are the size of the inputs for the model (i.e. 1024 bp). 
+### `--gold_standard`
 
-This can be accomplished using bedtools to window the genome into non-overlapping intervals based on the chromosome sizes.
+The input gold standard bigwig file.
 
-```bedtools makewindows -w 1024 -s 1024 -g hg38.chrom.sizes > hg38_w1024_s1024.bed```
+### `--prefix`
 
-The windowed chromosome regions are then input into your model for prediction. The output to our maxATAC model is a bigwig file that corresponds to the input genomic intervals along the chromosome. If you are using another method like peak based prediction, then you will need to convert your predictions to bigwig format to use our AUPR method.
+The output filename prefix to use. Default: `maxatac_benchmark`
 
-#### Binary Predictions
+## Optional Arguments
 
-A binary benchmarking approach uses metrics like precision, recall, and AUPR to benchmark a model against a binary gold standard. In the context of genomics, a binary gold standard would have a 1 at each base position for which there is an experimental ChIP-seq peak found. The predictions output from our method and other methods usually do not provide the score in a binary format, instead it is usually in the form of float between [0,1]. If we were to round these values to 1 using some cutoff we would end up with a single precision recall point. 
+### `--quant`
 
-### Peak based predictions
+Whether the predictions should be assessed with the Rsquared metric. Default: `False`
 
-The output to our model is a bigwig file containing chromosome wide predictions of TF binding. 
+### `--chromosomes`
+
+The chromosomes to benchmark the predictions for. Default: `chr`
+
+### `--bin_size`
+
+The size of the bin to use for aggregating the single base-pair predictions. Default: `200`
+
+### `--agg`
+
+The method to use for aggregating the single base-pair predictions into larger bins. 
+
+### `--round_predictions`
+
+This flag will set the precision of the predictions signal track. Provide an integer that represents the number of floats before rounding. Currently the predictions go from 0-.0000000001. Default: `9`
+
+### `--output_directory`
+
+The output directory to write the results to. Default: `./prediction_results`
+
+### `--blacklist`
+
+The path to the blacklist bigwig signal track of regions that should be excluded. 
+
+### `--loglevel`
+
+This argument is used to set the logging level. Currently, the only working logging level is `ERROR`.
