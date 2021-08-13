@@ -37,14 +37,3 @@ bedtools intersect -a /data/miraldiNB/Tareian/scratch/20210726_ATAC_64samples_PC
 
 done
 ```
-
-### Collect read statistics from txt log files
-
-```bash
-for stats_file in /scratch/caz3so/ATAC_processing/stat/*.txt;
-do
-file_name=`basename ${stats_file} _R2_uniquely_mapped_sorted_bam_statistics_report.txt`
-mapped_reads=$(grep "reads mapped:" ${stats_file} | cut -f 2 -d ":")
-echo ${file_name} ${mapped_reads}
-done
-```

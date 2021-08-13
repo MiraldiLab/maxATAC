@@ -36,7 +36,7 @@ def run_training(args):
 
     :params args: arch, seed, output, prefix, output_activation, lrate, decay, weights, quant, target_scale_factor,
     dense, batch_size, val_batch_size, train roi, validate roi, meta_file, sequence, average, threads, epochs, batches,
-    tchroms, vchroms, shuffle_cell_type
+    tchroms, vchroms, shuffle_cell_type, rev_comp
 
     :returns: Trained models saved after each epoch
     """
@@ -91,7 +91,8 @@ def run_training(args):
                               quant=args.quant,
                               batch_size=args.batch_size,
                               target_scale_factor=args.target_scale_factor,
-                              shuffle_cell_type=args.shuffle_cell_type
+                              shuffle_cell_type=args.shuffle_cell_type,
+                              rev_comp_train=args.rev_comp
                               )
 
     # Make Train Gen thread safe
@@ -115,7 +116,8 @@ def run_training(args):
                             quant=args.quant,
                             batch_size=args.batch_size,
                             target_scale_factor=args.target_scale_factor,
-                            shuffle_cell_type=args.shuffle_cell_type
+                            shuffle_cell_type=args.shuffle_cell_type,
+                            rev_comp_train=args.rev_comp
                             )
 
     # Create keras.utils.sequence object from validation generator
