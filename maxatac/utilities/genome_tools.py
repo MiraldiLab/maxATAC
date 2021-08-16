@@ -121,47 +121,6 @@ def get_bigwig_stats(bigwig_path, chrom_name, chrom_end, bin_count, agg_function
                                       ))
 
 
-def get_input_matrix(rows,
-                     cols,
-                     signal_stream,
-                     sequence_stream,
-                     chromosome,
-                     start,  # end - start = cols
-                     end,
-                     scale_signal
-                     ):
-    """
-    Generate the matrix of values from the signal, sequence, and average data tracks
-
-    :param rows: (int) The number of channels or rows
-    :param cols: (int) The number of columns or length
-    :param signal_stream: (str) ATAC-seq signal
-    :param sequence_stream: (str) One-hot encoded sequence
-    :param chromosome: (str) Chromosome name
-    :param start: (str) Chromosome start
-    :param end: (str) Chromosome end
-    :param scale_signal: (tuple) Randomly scale input signal by these values
-
-    :return: A matrix that is rows x columns with the values from each file
-    """
-    input_matrix = np.zeros((rows, cols))
-
-    for n, bp in enumerate(["A", "C", "G", "T"]):
-        input_matrix[n, :] = get_one_hot_encoded(
-            sequence_stream.sequence(chromosome, start, end),
-            bp
-        )
-
-    signal_array = np.array(signal_stream.values(chromosome, start, end))
-    input_matrix[4, :] = signal_array
-
-    if scale_signal is not None:
-        scaling_factor = random.random() * (scale_signal[1] - scale_signal[0]) + scale_signal[0]
-        input_matrix[4, :] = input_matrix[4, :] * scaling_factor
-
-    return input_matrix.T
-
-
 def get_target_matrix(binding,
                       chromosome,
                       start,

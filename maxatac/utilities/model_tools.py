@@ -1,4 +1,4 @@
-from keras.callbacks import ModelCheckpoint, CSVLogger, TensorBoard
+from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, TensorBoard
 
 
 def get_callbacks(model_location,
