@@ -17,7 +17,6 @@ with Mute():
     from maxatac.analyses.normalize import run_normalization
     from maxatac.analyses.benchmark import run_benchmarking
     from maxatac.analyses.prediction_signal import run_prediction_signal
-    from maxatac.analyses.epoch_selection import find_epoch
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.interpret import run_interpretation
     from maxatac.analyses.peaks import call_peaks
