@@ -112,7 +112,10 @@ class ChromosomeAUPRC(object):
         self.chromosome = chromosome
 
         self.chromosome_length = self.goldstandard_stream.chroms(self.chromosome)
+
         self.bin_count = int(int(self.chromosome_length) / int(bin_size))  # need to floor the number
+        self.bin_size = bin_size
+
         self.agg_function = agg_function
 
         self.blacklist_mask = chromosome_blacklist_mask(blacklist_bw, self.chromosome, self.chromosome_length,
@@ -145,6 +148,7 @@ class ChromosomeAUPRC(object):
                                                        ))
 
         self.prediction_array = np.round(self.prediction_array, round_prediction)
+
 
     def __import_goldstandard_array__(self):
         """
