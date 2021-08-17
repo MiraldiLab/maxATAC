@@ -82,7 +82,7 @@ def run_prediction(args):
                                                  step_size=args.step_size
                                                  )
 
-    configure_session(1)
+    # configure_session(1)
 
     logging.error("Make prediction on forward strand")
 
