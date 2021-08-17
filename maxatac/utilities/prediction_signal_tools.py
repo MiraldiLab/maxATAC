@@ -79,13 +79,15 @@ class Predicion_Signal(object):
 
         self.prediction_array = np.round(self.prediction_array, round_prediction)
 
-        prediction_val_df= pd.DataFrame({"chr": 'chr1',
+        logging.error("Creating Prediction Values")
+
+        prediction_val_df= pd.DataFrame({"chr": self.chromosome,
                                          "start": np.arange(0, self.bin_count * self.bin_size, self.bin_size),
                                          "stop": np.arange(self.bin_size, self.bin_count * self.bin_size + self.bin_size, self.bin_size),
                                          "count": self.prediction_array
                                          })
 
-        self.results_location_2 = '.'.join(['_'.join([self.results_location.split(".")[0][:-4], 'prediction_value']), 'tsv'])
+        self.results_location = '.'.join(['_'.join([self.results_location.split(".")[0][:-4], 'prediction_value']), 'tsv'])
 
 
-        prediction_val_df.to_csv(self.results_location_2, sep='\t', index=False)
+        prediction_val_df.to_csv(self.results_location, sep='\t', index=False)
