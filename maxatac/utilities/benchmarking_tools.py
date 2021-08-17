@@ -265,7 +265,9 @@ class ChromosomeAUPRC(object):
         #    lambda x: self.__get_bin_count__(x))
 
         # Calculate the total gold standard bins
-        #self.PR_CURVE_DF["Total_GoldStandard_Bins"] = len(np.argwhere(self.goldstandard_array == True))
+        logging.error("Calculate Total GoldStandard Bins")
+        
+        self.PR_CURVE_DF["Total_GoldStandard_Bins"] = len(np.argwhere(self.goldstandard_array == True))
 
         # Calculate the true positives at each cutoff
         #self.PR_CURVE_DF["True_positive"] = self.PR_CURVE_DF["Threshold"].apply(

@@ -1,11 +1,15 @@
 import random
 import sys
 from os import path
-import glob
-import keras
+
+import tensorflow as tf
 import numpy as np
 import pandas as pd
 from Bio.Seq import Seq
+import threading
+import pybedtools
+import os
+import glob
 
 from maxatac.architectures.dcnn import get_dilated_cnn
 from maxatac.architectures.multi_modal_models import MM_DCNN_V2
@@ -13,14 +17,18 @@ from maxatac.architectures.res_dcnn import get_res_dcnn
 from maxatac.utilities.constants import BP_RESOLUTION, BATCH_SIZE, CHR_POOL_SIZE, INPUT_LENGTH, INPUT_CHANNELS, \
     BP_ORDER, TRAIN_SCALE_SIGNAL, BLACKLISTED_REGIONS, DEFAULT_CHROM_SIZES
 from maxatac.utilities.genome_tools import load_bigwig, load_2bit, get_one_hot_encoded, build_chrom_sizes_dict
-from maxatac.utilities.roi_tools import GenomicRegions
-from maxatac.utilities.session import configure_session
 from maxatac.utilities.system_tools import get_dir, remove_tags, replace_extension
 
 
 class MaxATACModel(object):
     """
     This object will organize the input model parameters and initialize the maxATAC model
+
+    The methods are:
+
+    __get_interpretation_attributes: This will import the interpretation inputs if interpretation module is being used.
+
+    __get_model: This will get the correct architecture and parameters based on the user input
     """
 
     def __init__(self,
@@ -72,8 +80,6 @@ class MaxATACModel(object):
 
         # Set the random seed for the model
         random.seed(seed)
-
-        configure_session(1)
 
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
@@ -146,11 +152,14 @@ def DataGenerator(
         quant=False,
         target_scale_factor=1,
         batch_size=BATCH_SIZE,
-        shuffle_cell_type=False
+        shuffle_cell_type=False,
+        rev_comp_train=False
 
 ):
     """
-    Initiate a generator
+    Initiate a data generator that will yield a batch of examples for training. This generator will mix samples from a
+    pool of random regions and a pool of regions of interest based on the user defined ratio. The examples will be
+    returned as a list of numpy arrays.
 
     _________________
     Workflow Overview
@@ -197,7 +206,8 @@ def DataGenerator(
                                bp_resolution=bp_resolution,
                                quant=quant,
                                target_scale_factor=target_scale_factor,
-                               shuffle_cell_type=shuffle_cell_type
+                               shuffle_cell_type=shuffle_cell_type,
+                               rev_comp_train=rev_comp_train
                                )
 
     # Initialize the random regions generator
@@ -208,7 +218,8 @@ def DataGenerator(
                                    regions_pool=train_random_regions_pool,
                                    bp_resolution=bp_resolution,
                                    quant=quant,
-                                   target_scale_factor=target_scale_factor
+                                   target_scale_factor=target_scale_factor,
+                                   rev_comp_train=rev_comp_train
                                    )
 
     while True:
@@ -246,6 +257,7 @@ def get_input_matrix(rows,
     """
     Get a matrix of values from the corresponding genomic position. You can supply whether you want to use the
     complement sequence. You can also choose whether you want to reverse the whole matrix.
+
     :param rows: Number of rows == channels
     :param cols: Number of cols == region length
     :param signal_stream: Signal bigwig stream
@@ -261,14 +273,18 @@ def get_input_matrix(rows,
     for n, bp in enumerate(bp_order):
         # Get the sequence from the interval of interest
         target_sequence = Seq(sequence_stream.sequence(chromosome, start, end))
+
         if use_complement:
             # Get the complement of the sequence
             target_sequence = target_sequence.complement()
+
         # Get the one hot encoded sequence
         input_matrix[n, :] = get_one_hot_encoded(target_sequence, bp)
 
     signal_array = np.array(signal_stream.values(chromosome, start, end))
+
     input_matrix[4, :] = signal_array
+
     # If reverse_matrix then reverse the matrix. This changes the left to right orientation.
     if reverse_matrix:
         input_matrix = input_matrix[::-1]
@@ -284,57 +300,72 @@ def create_roi_batch(sequence,
                      bp_resolution=1,
                      quant=False,
                      target_scale_factor=1,
-                     shuffle_cell_type=False
+                     shuffle_cell_type=False,
+                     rev_comp_train=False
                      ):
     """
-    Create a batch of examples from regions of interest
+    Create a batch of examples from regions of interest. The batch size is defined by n_roi. This code will randomly
+    generate a batch of examples based on an input meta file that defines the paths to training data. The cell_type_list
+    is used to randomly select the cell type that the training signal is drawn from.
 
-    :param sequence:
-    :param meta_table:
-    :param roi_pool:
-    :param n_roi:
-    :param cell_type_list:
-    :param bp_resolution:
-    :param quant:
-    :param target_scale_factor:
-    :param shuffle_cell_type:
+    :param sequence: The input 2bit DNA sequence
+    :param meta_table: The meta file that contains the paths to signal and peak files
+    :param roi_pool: The pool of regions that we want to sample from
+    :param n_roi: The number of regions that go into each batch
+    :param cell_type_list: A list of unique training cell types
+    :param bp_resolution: The resolution of the output bins. i.e. 32 bp
+    :param quant: Boolean flag of whether the input data is quantitative or binary
+    :param target_scale_factor: The scaling factor to use for quantitative data
+    :param shuffle_cell_type: Whether to shuffle cell types during training
 
-    :return: np.array(inputs_batch), np.array(targets_batch
+    :return: np.array(inputs_batch), np.array(targets_batch)
     """
     while True:
+        # Create empty lists that will hold the signal tracks
         inputs_batch, targets_batch = [], []
+
+        # Get the shape of the ROI pool
         roi_size = roi_pool.shape[0]
 
+        # Randomly select n regions from the pool
         curr_batch_idxs = random.sample(range(roi_size), n_roi)
 
-        # Here I will process by row, if performance is bad then process by cell line
+        # Extract the signal for every sample
         for row_idx in curr_batch_idxs:
             roi_row = roi_pool.iloc[row_idx, :]
 
+            # If shuffle_cell_type the cell type will be randomly chosen
             if shuffle_cell_type:
                 cell_line = random.choice(cell_type_list)
 
             else:
                 cell_line = roi_row['Cell_Line']
 
-            chrom_name = roi_row['Chr']
-
-            start = int(roi_row['Start'])
-            end = int(roi_row['Stop'])
-
+            # Get the paths for the cell type of interest.
             meta_row = meta_table[(meta_table['Cell_Line'] == cell_line)]
             meta_row = meta_row.reset_index(drop=True)
 
+            # Rename some variables. This just helps clean up code downstream
+            chrom_name = roi_row['Chr']
+            start = int(roi_row['Start'])
+            end = int(roi_row['Stop'])
+
             signal = meta_row.loc[0, 'ATAC_Signal_File']
             binding = meta_row.loc[0, 'Binding_File']
+
+            # Choose whether to use the reverse complement of the region
+            if rev_comp_train:
+                rev_comp = random.choice([True, False])
+
+            else:
+                rev_comp = False
 
             with \
                     load_2bit(sequence) as sequence_stream, \
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
 
-                rev_comp = random.choice([True, False])
-
+                # Get the input matrix of values and one-hot encoded sequence
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
                                                 cols=INPUT_LENGTH,
                                                 bp_order=BP_ORDER,
@@ -347,29 +378,44 @@ def create_roi_batch(sequence,
                                                 reverse_matrix=rev_comp
                                                 )
 
-                inputs_batch.append(input_matrix)
+            # Append the sample to the inputs batch.
+            inputs_batch.append(input_matrix)
 
-                # TODO we might want to test what happens if we change the
-                if not quant:
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-                    target_vector = np.nan_to_num(target_vector, 0.0)
-                    if rev_comp:
-                        target_vector = target_vector[::-1]
+            # Some bigwig files do not have signal for some chromosomes because they do not have peaks in those regions
+            # Our workaround for issue#42 is to provide a zero matrix for that position
+            try:
+                # Get the target matrix
+                target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
 
-                    n_bins = int(target_vector.shape[0] / bp_resolution)
-                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                    bin_sums = np.sum(split_targets, axis=1)
-                    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-                    targets_batch.append(bin_vector)
+            except:
+                # TODO change length of array
+                target_vector = np.zeros(1024)
 
-                else:
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-                    target_vector = np.nan_to_num(target_vector, 0.0)
-                    n_bins = int(target_vector.shape[0] / bp_resolution)
-                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                    bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
-                    targets_batch.append(bin_vector)
+            # change nan to numbers
+            target_vector = np.nan_to_num(target_vector, 0.0)
 
+            # If reverse compliment, reverse the matrix
+            if rev_comp:
+                target_vector = target_vector[::-1]
+
+            # get the number of 32 bp bins across the input sequence
+            n_bins = int(target_vector.shape[0] / bp_resolution)
+
+            # Split the data up into 32 x 32 bp bins.
+            split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+
+            # TODO we might want to test what happens if we change the
+            if not quant:
+                bin_sums = np.sum(split_targets, axis=1)
+                bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+
+            else:
+                bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
+
+            # Append the sample to the target batch
+            targets_batch.append(bin_vector)
+
+        # If quantitative data, scale by target factor
         if quant:
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
@@ -385,8 +431,13 @@ def create_random_batch(
         regions_pool,
         bp_resolution=1,
         quant=False,
-        target_scale_factor=1
+        target_scale_factor=1,
+        rev_comp_train=False
 ):
+    """
+    This function will create a batch of examples that are randomly generated. This batch of data is created the same
+    as the roi batches.
+    """
     while True:
         inputs_batch, targets_batch = [], []
 
@@ -406,7 +457,11 @@ def create_random_batch(
                     load_bigwig(signal) as signal_stream, \
                     load_bigwig(binding) as binding_stream:
 
-                rev_comp = random.choice([True, False])
+                if rev_comp_train:
+                    rev_comp = random.choice([True, False])
+
+                else:
+                    rev_comp = False
 
                 input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
                                                 cols=INPUT_LENGTH,
@@ -423,7 +478,14 @@ def create_random_batch(
                 inputs_batch.append(input_matrix)
 
                 if not quant:
-                    target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
+                    try:
+                        # Get the target matrix
+                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+
+                    except:
+                        # TODO change length of array
+                        target_vector = np.zeros(1024)
+
                     target_vector = np.nan_to_num(target_vector, 0.0)
 
                     if rev_comp:
@@ -436,7 +498,14 @@ def create_random_batch(
                     targets_batch.append(bin_vector)
 
                 else:
-                    target_vector = np.array(binding_stream.values(chrom_name, seq_start, seq_end)).T
+                    try:
+                        # Get the target matrix
+                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+
+                    except:
+                        # TODO change length of array
+                        target_vector = np.zeros(1024)
+
                     target_vector = np.nan_to_num(target_vector, 0.0)
                     n_bins = int(target_vector.shape[0] / bp_resolution)
                     split_targets = np.array(np.split(target_vector, n_bins, axis=0))
@@ -615,7 +684,30 @@ class ROIPool(object):
         return roi_df
 
 
+class SeqDataGenerator(tf.keras.utils.Sequence):
+    # ‘Generates data for Keras’
+
+    def __init__(self, batches, generator):
+        # ‘Initialization’
+        self.batches = batches
+        self.generator = generator
+
+    def __len__(self):
+        # ‘Denotes the number of batches per epoch’
+        return self.batches
+
+    def __getitem__(self, index):
+        # ‘Generate one batch of data’
+        # Generate indexes of the batch
+        # Generate data
+        return next(self.generator)
+
+
 def model_selection(training_history, quant, output_dir):
+    """
+    This function will take the training history and output the best model based on the dice coefficient value.
+    """
+    # Create a dataframe from the history object
     df = pd.DataFrame(training_history.history)
 
     if quant:
@@ -624,8 +716,189 @@ def model_selection(training_history, quant, output_dir):
     else:
         epoch = df['val_dice_coef'].idxmax() + 1
 
+    # Get the realpath to the best model
     out = pd.DataFrame([glob.glob(output_dir + "/*" + str(epoch) + ".h5")], columns=['Best_Model_Path'])
 
+    # Write the location of the best model to a file
     out.to_csv(output_dir + "/" + "best_epoch.txt", sep='\t', index=None, header=None)
 
     return epoch
+
+
+class GenomicRegions(object):
+    """
+    This class will generate a pool of examples based on regions of interest defined by ATAC-seq and ChIP-seq peaks.
+    """
+
+    def __init__(self,
+                 meta_path,
+                 chromosomes,
+                 chromosome_sizes_dictionary,
+                 blacklist,
+                 region_length
+                 ):
+        """
+        When the object is initialized it will import all of the peaks in the meta files and parse them into training
+        and validation regions of interest. These will be output in the form of TSV formatted file similar to a BED file.
+
+        :param meta_path: Path to the meta file
+        :param chromosomes: List of chromosomes to use
+        :param chromosome_sizes_dictionary: A dictionary of chromosome sizes
+        :param blacklist: The blacklist file of BED regions to exclude
+        :param region_length: Length of the input regions
+        """
+        self.meta_path = meta_path
+        self.chromosome_sizes_dictionary = chromosome_sizes_dictionary
+        self.chromosomes = chromosomes
+        self.blacklist = blacklist
+        self.region_length = region_length
+
+        # Import meta txt as dataframe
+        self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
+        # Select Training Cell lines
+        self.meta_dataframe = self.meta_dataframe[self.meta_dataframe["Train_Test_Label"] == 'Train']
+
+        # Get a dictionary of {Cell Types: Peak Paths}
+        self.atac_dictionary = pd.Series(self.meta_dataframe.ATAC_Peaks.values,
+                                         index=self.meta_dataframe.Cell_Line).to_dict()
+
+        self.chip_dictionary = pd.Series(self.meta_dataframe.CHIP_Peaks.values,
+                                         index=self.meta_dataframe.Cell_Line).to_dict()
+
+        # You must generate the ROI pool before you can get the final shape
+        self.atac_roi_pool = self.__get_roi_pool(self.atac_dictionary, "ATAC", )
+        self.chip_roi_pool = self.__get_roi_pool(self.chip_dictionary, "CHIP")
+
+        self.combined_pool = pd.concat([self.atac_roi_pool, self.chip_roi_pool])
+
+        self.atac_roi_size = self.atac_roi_pool.shape[0]
+        self.chip_roi_size = self.chip_roi_pool.shape[0]
+
+    def __get_roi_pool(self, dictionary, roi_type_tag):
+        """
+        Build a pool of regions of interest from BED files.
+
+        :param dictionary: A dictionary of Cell Types and their associated BED files
+        :param roi_type_tag: Tag used to name the type of ROI being generated. IE Chip or ATAC
+
+        :return: A dataframe of BED regions that are formatted for maxATAC training.
+        """
+        bed_list = []
+
+        for roi_cell_tag, bed_file in dictionary.items():
+            bed_list.append(self.__import_bed(bed_file,
+                                              ROI_type_tag=roi_type_tag,
+                                              ROI_cell_tag=roi_cell_tag))
+
+        return pd.concat(bed_list)
+
+    def write_data(self, prefix="ROI_pool", output_dir="./ROI", set_tag="training"):
+        """
+        Write the ROI dataframe to a tsv and a bed for for ATAC, CHIP, and combined ROIs
+
+        :param set_tag: Tag for training or validation
+        :param prefix: Prefix for filenames to use
+        :param output_dir: Directory to output the bed and tsv files
+
+        :return: Write BED and TSV versions of the ROI data
+        """
+        output_directory = get_dir(output_dir)
+
+        combined_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.bed.gz")
+
+        stats_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI_stats")
+        total_regions_stats_filename = os.path.join(output_directory,
+                                                    prefix + "_" + set_tag + "_ROI_totalregions_stats")
+
+        self.combined_pool.to_csv(combined_BED_filename, sep="\t", index=False, header=False)
+
+        group_ms = self.combined_pool.groupby(["Chr", "Cell_Line", "ROI_Type"], as_index=False).size()
+        len_ms = self.combined_pool.shape[0]
+        group_ms.to_csv(stats_filename, sep="\t", index=False)
+
+        file = open(total_regions_stats_filename, "a")
+        file.write('Total number of regions found for ' + set_tag + ' are: {0}\n'.format(len_ms))
+        file.close()
+
+    def get_regions_list(self,
+                         n_roi):
+        """
+        Generate a batch of regions of interest from the input ChIP-seq and ATAC-seq peaks
+
+        :param n_roi: Number of regions to generate per batch
+
+        :return: A batch of training examples centered on regions of interest
+        """
+        random_roi_pool = self.combined_pool.sample(n=n_roi, replace=True, random_state=1)
+
+        return random_roi_pool.to_numpy().tolist()
+
+    def __import_bed(self,
+                     bed_file,
+                     ROI_type_tag,
+                     ROI_cell_tag):
+        """
+        Import a BED file and format the regions to be compatible with our maxATAC models
+
+        :param bed_file: Input BED file to format
+        :param ROI_type_tag: Tag to use in the description column
+        :param ROI_cell_tag: Tag to use in the description column
+
+        :return: A dataframe of BED regions compatible with our model
+        """
+        # Import dataframe
+        df = pd.read_csv(bed_file,
+                         sep="\t",
+                         usecols=[0, 1, 2],
+                         header=None,
+                         names=["Chr", "Start", "Stop"],
+                         low_memory=False)
+
+        # Make sure the chromosomes in the ROI file frame are in the target chromosome list
+        df = df[df["Chr"].isin(self.chromosomes)]
+
+        # Find the length of the regions
+        df["length"] = df["Stop"] - df["Start"]
+
+        # Find the center of each peak.
+        # We might want to use bedtools to window the regions of interest around the peak.
+        df["center"] = np.floor(df["Start"] + (df["length"] / 2)).apply(int)
+
+        # The start of the interval will be the center minus 1/2 the desired region length.
+        df["Start"] = np.floor(df["center"] - (self.region_length / 2)).apply(int)
+
+        # the end of the interval will be the center plus 1/2 the desired region length
+        df["Stop"] = np.floor(df["center"] + (self.region_length / 2)).apply(int)
+
+        # The chromosome end is defined as the chromosome length
+        df["END"] = df["Chr"].map(self.chromosome_sizes_dictionary)
+
+        # Make sure the stop is less than the end
+        df = df[df["Stop"].apply(int) < df["END"].apply(int)]
+
+        # Make sure the start is greater than the chromosome start of 0
+        df = df[df["Start"].apply(int) > 0]
+
+        # Select for the first three columns to clean up
+        df = df[["Chr", "Start", "Stop"]]
+
+        # Import the dataframe as a pybedtools object so we can remove the blacklist
+        BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
+
+        # Import the blacklist as a pybedtools object
+        blacklist_bedtool = pybedtools.BedTool(self.blacklist)
+
+        # Find the intervals that do not intersect blacklisted regions.
+        blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
+
+        # Convert the pybedtools object to a pandas dataframe.
+        df = blacklisted_df.to_dataframe()
+
+        # Rename the columns
+        df.columns = ["Chr", "Start", "Stop"]
+
+        df["ROI_Type"] = ROI_type_tag
+
+        df["Cell_Line"] = ROI_cell_tag
+
+        return df

@@ -3,8 +3,8 @@ from maxatac.utilities.system_tools import Mute
 
 with Mute():
     import tensorflow as tf
-    from keras.models import Model
-    from keras.layers import (
+    from tensorflow.keras.models import Model
+    from tensorflow.keras.layers import (
         Input,
         concatenate,
         Conv1D,
@@ -13,8 +13,8 @@ with Mute():
         Lambda,
         BatchNormalization
     )
-    from keras.optimizers import Adam
-    from keras import backend as K
+    from tensorflow.keras.optimizers import Adam
+    from tensorflow.keras import backend as K
 
 
 def loss_function(
@@ -31,10 +31,10 @@ def loss_function(
         y_pred_max
     )
     losses = tf.boolean_mask(
-        -y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred),
-        K.greater_equal(y_true, y_true_min)
+        tensor=-y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred),
+        mask=K.greater_equal(y_true, y_true_min)
     )
-    return tf.reduce_mean(losses)
+    return tf.reduce_mean(input_tensor=losses)
 
 
 def dice_coef(

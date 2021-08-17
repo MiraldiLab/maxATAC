@@ -16,18 +16,14 @@ def run_normalization(args):
     """
     Normalize a bigwig file
     
-    This function will normalize a bigwig array based on the desired method.
+    This function will normalize a bigwig array based on the desired method:
 
-    median-mad normalization: 
-    
-    min-max normalization:
-
-    zscore normalization: 
-
-    log transform:
+    -median-mad normalization
+    -min-max normalization
+    -zscore normalization
 
     The code will loop through each chromosome and find the min and max values. It will then create a dataframe of
-    the values per chromosome. It will then scale all other values between 0,1.
+    the values per chromosome. It will then scale all other values.
     _________________
     Workflow Overview
 
@@ -36,7 +32,7 @@ def run_normalization(args):
     3) Find the genomic min and max values by looping through each chromosome
     5) Loop through each chromosome and minmax normalize the values based on the genomic values.
 
-    :param args: signal, output, chrom_sizes
+    :param args: signal, output, chrom_sizes, chroms, max_percentile, method, blacklist
 
     :return: A minmax normalized bigwig file
     """
@@ -60,7 +56,9 @@ def run_normalization(args):
     if args.max:
         logging.error("Using provided minimum and maximum values for normalization")
         logging.error("Minimum value: " + str(args.min) + "\n" + "Maximum value: " + str(args.max))
-
+        max_value = args.max
+        min_value = args.min
+    
     else:
         logging.error("Calculating stats per chromosome")
 
@@ -72,7 +70,7 @@ def run_normalization(args):
                                                                                                          args.prefix))
 
         logging.error("Sample Statistics" +
-                      "\n  Genomic minimum value: " + str(args.min) +
+                      "\n  Genomic minimum value: " + str(min_value) +
                       "\n  Genomic max value: " + str(max_value) +
                       "\n  Genomic median (non-zero): " + str(median) +
                       "\n  Genomic median absolute deviation (non-zero): " + str(mad) +
