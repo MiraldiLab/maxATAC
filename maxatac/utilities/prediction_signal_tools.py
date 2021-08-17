@@ -13,14 +13,14 @@ from maxatac.utilities.system_tools import remove_tags
 
 class Predicion_Signal(object):
     """
-    Benchmark maxATAC binary predictions against a gold standard using AUPRC. You can also input quantitative
-    predictions, but they will ranked by significance.
+
+    Generating Prediction Signal from predicted bigwig file for CHEERS implementation.
 
     During initializiation the following steps will be performed:
 
     1) Set up run parameters and calculate bins needed
     2) Load bigwig files into np.arrays
-    3) Calculate AUPRC stats
+    3) Generate Prediction Signal to specified bin size
     """
 
     def __init__(self,
