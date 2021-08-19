@@ -246,11 +246,17 @@ class ChromosomeAUPRC(object):
             self.prediction_array[self.blacklist_mask])
 
         logging.error("Making DataFrame from results")
+        
         # Create a dataframe from the results
+        # Issue 56:
+        # The sklearn package will add a point at precision=1 and recall=0
+        # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_curve.html
+        # remove the last point of the array which corresponds to this extra point
         self.PR_CURVE_DF = pd.DataFrame(
-            {'Precision': self.precision, 'Recall': self.recall, "Threshold": np.insert(self.thresholds, 0, 0)})
+            {'Precision': self.precision[:-1], 'Recall': self.recall[:-1], "Threshold": self.thresholds})
 
         logging.error("Calculate AUPRc for " + self.chromosome)
+        
         # Calculate AUPRc
         self.AUPRC = metrics.auc(y=self.precision[:-1], x=self.recall[:-1])
 
