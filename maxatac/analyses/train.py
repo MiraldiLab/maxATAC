@@ -103,7 +103,7 @@ def run_training(args):
 
     # Builds a Enqueuer from a Sequence.
     train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
-    train_gen_enq.start(workers=10, max_queue_size=20)
+    train_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
     enq_train_gen = train_gen_enq.get()
 
     # Initialize the validation generator
@@ -125,7 +125,7 @@ def run_training(args):
 
     # Builds a Enqueuer from a Sequence.
     val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
-    val_gen_enq.start(workers=10, max_queue_size=20)
+    val_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
 
     enq_val_gen = val_gen_enq.get()
 

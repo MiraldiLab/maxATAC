@@ -378,44 +378,44 @@ def create_roi_batch(sequence,
                                                 reverse_matrix=rev_comp
                                                 )
 
-            # Append the sample to the inputs batch.
-            inputs_batch.append(input_matrix)
+                # Append the sample to the inputs batch.
+                inputs_batch.append(input_matrix)
 
-            # Some bigwig files do not have signal for some chromosomes because they do not have peaks in those regions
-            # Our workaround for issue#42 is to provide a zero matrix for that position
-            try:
-                # Get the target matrix
-                target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+                # Some bigwig files do not have signal for some chromosomes because they do not have peaks in those regions
+                # Our workaround for issue#42 is to provide a zero matrix for that position
+                try:
+                    # Get the target matrix
+                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
 
-            except:
-                # TODO change length of array
-                target_vector = np.zeros(1024)
+                except:
+                    # TODO change length of array
+                    target_vector = np.zeros(1024)
 
-            # change nan to numbers
-            target_vector = np.nan_to_num(target_vector, 0.0)
+                # change nan to numbers
+                target_vector = np.nan_to_num(target_vector, 0.0)
 
-            # If reverse compliment, reverse the matrix
-            if rev_comp:
-                target_vector = target_vector[::-1]
+                # If reverse compliment, reverse the matrix
+                if rev_comp:
+                    target_vector = target_vector[::-1]
 
-            # get the number of 32 bp bins across the input sequence
-            n_bins = int(target_vector.shape[0] / bp_resolution)
+                # get the number of 32 bp bins across the input sequence
+                n_bins = int(target_vector.shape[0] / bp_resolution)
 
-            # Split the data up into 32 x 32 bp bins.
-            split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+                # Split the data up into 32 x 32 bp bins.
+                split_targets = np.array(np.split(target_vector, n_bins, axis=0))
 
-            # TODO we might want to test what happens if we change the
-            if not quant:
-                bin_sums = np.sum(split_targets, axis=1)
-                bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+                # TODO we might want to test what happens if we change the
+                if not quant:
+                    bin_sums = np.sum(split_targets, axis=1)
+                    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
 
-            else:
-                bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
+                else:
+                    bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
 
-            # Append the sample to the target batch
-            targets_batch.append(bin_vector)
+                # Append the sample to the target batch
+                targets_batch.append(bin_vector)
 
-        # If quantitative data, scale by target factor
+            # If quantitative data, scale by target factor
         if quant:
             targets_batch = np.array(targets_batch)
             targets_batch = targets_batch * target_scale_factor
