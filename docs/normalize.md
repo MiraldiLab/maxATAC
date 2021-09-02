@@ -5,6 +5,7 @@ The `normalize` function will normalize an input bigwig file based on the desire
 * `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some user defined range. The max value can be calculated as the absolute max value across the genome or you can set the percentile cutoff to use to report the max value. Example: A user wants to scale all data to the 99th percentile max value of 11 instead of the absolute max value of 100.
 * `median-mad`: Find the genomic median and calculate the median absolute deviation.
 * `zscore`: Set the mean value to 0 with a standard deviation of 1.
+* `arcsinh`: Transform the values using an inverse hyperbolic sin transformation (arcsinh)
 
 ## Example
 
@@ -27,6 +28,7 @@ This argument is used to determine which method you want to use for normalizatio
 * `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some user defined range. The max value can be calculated as the absolute max value across the genome or you can set the percentile cutoff to use to report the max value. Example: A user wants to scale all data to the 99th percentile max value of 11 instead of the absolute max value of 100.
 * `median-mad`: Find the genomic median and calculate the median absolute deviation.
 * `zscore`: Set the mean value to 0 with a standard deviation of 1.
+* `arcsinh`: Transform the values using an inverse hyperbolic sin transformation (arcsinh)
 
 ### `--max_percentile`
 

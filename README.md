@@ -15,6 +15,26 @@ This version requires python 3.6 and BEDTools.
 
 It is best to install maxATAC into a dedicated virtual environment. Clone the repository with `git clone` into your `repo` directory of choice. 
 
+There are currently a few install bugs that need to be worked out. This is one method to install with anaconda on most systems. 
+
+Create an environment that is specific for the python version that we need. This can be done with `conda create -n maxatac python=3.9`. 
+
+I had to then install bedtools with:
+
+`conda install bedtools`. 
+
+Install pybedtools:
+
+`conda install -c conda-forge -c bioconda pybedtools`
+
+Install pybigwig:
+
+`conda install -c conda-forge -c bioconda pybigwig`
+
+Install py2bit:
+
+`conda install -c conda-forge -c bioconda py2bit`
+
 Change into the maxATAC repository with `cd maxATAC` and use `pip3 install -e .` to install the package.
 
 You will also need to have BEDtools installed or loaded on your PATH.

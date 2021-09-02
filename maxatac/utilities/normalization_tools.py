@@ -123,3 +123,14 @@ def zscore_normalize_array(array, mean, std_dev):
     :return: Zscore normalized array
     """
     return (array - mean) / std_dev
+
+
+def arcsinh_normalize_array(array):
+    """
+    Arcsinh normalize the numpy array
+
+    :param array: Input array of bigwig values
+
+    :return: Arcsinh normalized array
+    """
+    return np.arcsinh(array)
