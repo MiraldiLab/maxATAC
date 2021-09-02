@@ -248,7 +248,7 @@ class ChromosomeAUPRC(object):
         logging.error("Making DataFrame from results")
         
         # Create a dataframe from the results
-        # Issue 56:
+        # Issue 54:
         # The sklearn package will add a point at precision=1 and recall=0
         # https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_recall_curve.html
         # remove the last point of the array which corresponds to this extra point
