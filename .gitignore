@@ -20,3 +20,4 @@ docs/notebooks/examples/.ipynb_checkpoints/RandomRegionsGenerator-checkpoint.ipy
 snakemake/dag.svg
 .idea/misc.xml
 .idea/maxATAC.iml
+.DS_Store
