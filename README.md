@@ -13,33 +13,25 @@ This version requires python 3.6 and BEDTools.
 
 ## Installation
 
-It is best to install maxATAC into a dedicated virtual environment. Clone the repository with `git clone` into your `repo` directory of choice. 
+It is best to install maxATAC into a dedicated virtual environment. 
 
-There are currently a few install bugs that need to be worked out. This is one method to install with anaconda on most systems. 
+First, clone the repository with `git clone https://github.com/MiraldiLab/maxATAC.git` into your `repo` directory of choice.
 
-Create an environment that is specific for the python version that we need. This can be done with `conda create -n maxatac python=3.9`. 
+### Installing with Conda
 
-I had to then install bedtools with:
+1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9`
 
-`conda install bedtools`. 
+2. Activate the conda environment for maxATAC with `conda activate maxatac` or `source activate maxatac` if you have an error using a HPC.
 
-Install pybedtools:
+3. Install bedtools or make sure it is found in your `PATH` with `conda install bedtools`
+4. 
+5. Install py2bit with `conda install py2bit`
+6. Install pysam with `conda install pysam`
+7. Install pybedtools with `conda install pybedtools`
+8. Install pybigwig with `conda install pybigwig`
+9. Change into the maxATAC git repository with `cd maxATAC` and use `pip install -e .` to install maxATAC into the conda environment.
 
-`conda install -c conda-forge -c bioconda pybedtools`
-
-Install pybigwig:
-
-`conda install -c conda-forge -c bioconda pybigwig`
-
-Install py2bit:
-
-`conda install -c conda-forge -c bioconda py2bit`
-
-Change into the maxATAC repository with `cd maxATAC` and use `pip3 install -e .` to install the package.
-
-You will also need to have BEDtools installed or loaded on your PATH.
-
-*Note: sometimes SHAP will produce an error when installing with `pip3 install -e .` due to conflicts with numpy. In this case, you will need to install numpy into your virtual env BEFORE installing maxATAC*
+10. Test installation with `maxatac -h`
 
 ## maxATAC Workflow Overview
 
@@ -57,6 +49,3 @@ Steps in training and assessing a maxATAC model. Relevant functions are listed b
    
 ### 4. Benchmark models against experimental data
    * [`benchmark`](./docs/benchmark.md#Benchmark)
-    
-### 5. Learn features import to predict TF binding with a neural network
-   * `interpret`
