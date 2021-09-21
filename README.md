@@ -24,14 +24,12 @@ First, clone the repository with `git clone https://github.com/MiraldiLab/maxATA
 2. Activate the conda environment for maxATAC with `conda activate maxatac` or `source activate maxatac` if you have an error using a HPC.
 
 3. Install bedtools or make sure it is found in your `PATH` with `conda install bedtools`
-4. 
-5. Install py2bit with `conda install py2bit`
-6. Install pysam with `conda install pysam`
-7. Install pybedtools with `conda install pybedtools`
-8. Install pybigwig with `conda install pybigwig`
-9. Change into the maxATAC git repository with `cd maxATAC` and use `pip install -e .` to install maxATAC into the conda environment.
 
-10. Test installation with `maxatac -h`
+4. Install pysam with `conda install pysam`
+
+5. Change into the maxATAC git repository with `cd maxATAC` and use `pip install -e .` to install maxATAC into the conda environment.
+
+6. Test installation with `maxatac -h`
 
 ## maxATAC Workflow Overview
 
