@@ -2,7 +2,7 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-pip3 install -r $DIR/../test_requirements.txt
+pip3 install -r $DIR/../test_requirements.txt --use-feature=2020-resolver
 
 cd $DIR
 mkdir -p data
