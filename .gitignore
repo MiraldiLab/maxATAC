@@ -102,6 +102,3 @@ gen
 
 #vagrant
 .vagrant
-
-# macOS
-.DS_Store
