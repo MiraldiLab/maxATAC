@@ -2,11 +2,11 @@ import os
 import re
 import hashlib
 
-from maxatac.utilities.helpers import get_files
+from maxatac.utilities.system_tools import get_files
 
 # Directory with all input files for testing.
 # Subfolders are not allowed due to possible file name duplicates.
-DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
+DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "temp"))
 
 
 CONTROL_MD5_SUMS = {
