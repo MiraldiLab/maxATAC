@@ -7,7 +7,7 @@ from keras.utils.data_utils import OrderedEnqueuer
 from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
 
-with Mute():  # hide stdout from loading the modules
+with Mute():
     from maxatac.utilities.model_tools import get_callbacks
     from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, SeqDataGenerator, model_selection
     from maxatac.utilities.plot import export_binary_metrics, export_loss_mse_coeff, export_model_structure
@@ -24,6 +24,8 @@ def run_training(args):
     long as the column names are the same:
 
     TF | Cell_Type | ATAC_Signal_File | Binding_File | ATAC_Peaks | ChIP_peaks
+
+    ## An example meta file is included in our repo
 
     _________________
     Workflow Overview
@@ -95,9 +97,6 @@ def run_training(args):
                               rev_comp_train=args.rev_comp
                               )
 
-    # Make Train Gen thread safe
-    # train_safe_gen = threadsafe_iter(train_gen)
-
     # Create keras.utils.sequence object from training generator
     seq_train_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
 
@@ -126,7 +125,6 @@ def run_training(args):
     # Builds a Enqueuer from a Sequence.
     val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
     val_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
-
     enq_val_gen = val_gen_enq.get()
 
 
@@ -143,8 +141,8 @@ def run_training(args):
                                                     monitor=TRAIN_MONITOR
                                                     ),
                                                 max_queue_size=10,
-                                                use_multiprocessing=False, #args.threads > 1,
-                                                workers=1, #args.threads,
+                                                use_multiprocessing=False,
+                                                workers=1,
                                                 verbose=1
                                                 )
 
@@ -184,5 +182,3 @@ def run_training(args):
     logging.error("Total training time: %d:%d:%d.\n" % (hours, mins, secs))
 
     sys.exit()
-
-# TODO write code to output model training statistics. Time to run and resources would be nice
