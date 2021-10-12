@@ -1,5 +1,6 @@
 import logging
 import os
+import timeit
 import pandas as pd
 from maxatac.utilities.system_tools import get_dir, Mute
 
@@ -41,6 +42,9 @@ def run_prediction(args):
 
     :return : A bigwig file of TF binding predictions
     """
+    # Start Timer
+    startTime = timeit.default_timer()
+
     # Create the output directory set by the parser
     output_directory = get_dir(args.output)
 
@@ -81,8 +85,6 @@ def run_prediction(args):
                                                  blacklist=args.blacklist,
                                                  step_size=args.step_size
                                                  )
-
-    # configure_session(1)
 
     logging.error("Make prediction on forward strand")
 
@@ -157,3 +159,13 @@ def run_prediction(args):
                                                                                   ),
                                     chromosomes=args.chromosomes
                                     )
+
+    # Measure End Time of Training
+    stopTime = timeit.default_timer()
+    totalTime = stopTime - startTime
+
+    # Output running time in a nice format.
+    mins, secs = divmod(totalTime, 60)
+    hours, mins = divmod(mins, 60)
+
+    logging.error("Total Prediction time: %d:%d:%d.\n" % (hours, mins, secs))
