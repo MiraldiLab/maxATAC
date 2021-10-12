@@ -85,7 +85,7 @@ setup(
         "tensorboard",
         "biopython",
         "py2bit",
-        "pyBigWig==0.3.18",
+        "pyBigWig==0.3.17",
         "pydot",
         "matplotlib",
         "scikit-learn",
