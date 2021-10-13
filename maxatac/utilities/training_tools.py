@@ -180,6 +180,7 @@ def DataGenerator(
     :param target_scale_factor: Scaling factor to use for scaling target values (quantitative specific)
     :param batch_size: The number of examples to use per batch of training
     :param shuffle_cell_type: Shuffle the ROI cell type labels if True
+    :param rev_comp_train: use the reverse complement to train
 
     :return A generator that will yield a batch with number of examples equal to batch size
 
@@ -263,9 +264,12 @@ def get_input_matrix(rows,
     :param signal_stream: Signal bigwig stream
     :param sequence_stream: 2bit DNA sequence stream
     :param bp_order: BP order
-    :param chrom: chromosome
+    :param chromosome: chromosome
     :param start: start
     :param end: end
+    :param use_complement: use complement strand for training
+    :param reverse_matrix: reverse the input matrix
+
     :return: a matrix (rows x cols) of values from the input bigwig files
     """
 
@@ -317,6 +321,7 @@ def create_roi_batch(sequence,
     :param quant: Boolean flag of whether the input data is quantitative or binary
     :param target_scale_factor: The scaling factor to use for quantitative data
     :param shuffle_cell_type: Whether to shuffle cell types during training
+    :param rev_comp_train: use reverse complement for training
 
     :return: np.array(inputs_batch), np.array(targets_batch)
     """
@@ -381,7 +386,8 @@ def create_roi_batch(sequence,
                 # Append the sample to the inputs batch.
                 inputs_batch.append(input_matrix)
 
-                # Some bigwig files do not have signal for some chromosomes because they do not have peaks in those regions
+                # Some bigwig files do not have signal for some chromosomes because they do not have peaks
+                # in those regions
                 # Our workaround for issue#42 is to provide a zero matrix for that position
                 try:
                     # Get the target matrix
@@ -510,7 +516,7 @@ def create_random_batch(
                     n_bins = int(target_vector.shape[0] / bp_resolution)
                     split_targets = np.array(np.split(target_vector, n_bins, axis=0))
                     bin_vector = np.mean(split_targets,
-                                         axis=1)  # Perhaps we can change np.mean to np.median. Something to think about.
+                                         axis=1)
                     targets_batch.append(bin_vector)
 
         if quant:
@@ -663,8 +669,8 @@ class ROIPool(object):
         """
         Import the ROI file containing the regions of interest. This file is similar to a bed file, but with a header
 
-        The roi DF is read in from a TSV file that is formatted similarly as a BED file with a header. The following columns
-        are required:
+        The roi DF is read in from a TSV file that is formatted similarly as a BED file with a header. The following
+        columns are required:
 
         Chr | Start | Stop | ROI_Type | Cell_Line
 
@@ -739,7 +745,8 @@ class GenomicRegions(object):
                  ):
         """
         When the object is initialized it will import all of the peaks in the meta files and parse them into training
-        and validation regions of interest. These will be output in the form of TSV formatted file similar to a BED file.
+        and validation regions of interest. These will be output in the form of TSV formatted file similar to a BED
+        file.
 
         :param meta_path: Path to the meta file
         :param chromosomes: List of chromosomes to use
