@@ -97,8 +97,10 @@ ENV/
 *.iml
 out
 gen
-.DS_Store
 .vscode
 
 #vagrant
 .vagrant
+
+# MacOS hidden Files
+.DS_Store
