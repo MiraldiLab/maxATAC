@@ -1,6 +1,6 @@
 import logging
 import os
-
+import timeit
 from maxatac.utilities.system_tools import get_dir, Mute
 
 with Mute():
@@ -30,6 +30,9 @@ def run_benchmarking(args):
 
     :return: A tsv file of precision and recall with AUPR
     """
+    # Start Timer
+    startTime = timeit.default_timer()
+
     # Create the output directory
     output_dir = get_dir(args.output_directory)
 
@@ -74,3 +77,13 @@ def run_benchmarking(args):
                                       results_filename2,
                                       blacklist_mask
                                       )
+
+    # Measure End Time of Training
+    stopTime = timeit.default_timer()
+    totalTime = stopTime - startTime
+
+    # Output running time in a nice format.
+    mins, secs = divmod(totalTime, 60)
+    hours, mins = divmod(mins, 60)
+
+    logging.error("Total Benchmarking time: %d:%d:%d.\n" % (hours, mins, secs))
