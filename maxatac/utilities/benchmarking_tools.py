@@ -19,7 +19,7 @@ def calculate_R2_pearson_spearman(prediction,
                                   blacklist_mask
                                   ):
     """
-    Calculate the R2, Pearson, and Spearman Correlation for Quantitative Preidcitions
+    Calculate the R2, Pearson, and Spearman Correlation for Quantitative Predictions
 
     :param prediction: The input prediction bigwig file
     :param gold_standard: The input gold standard file
@@ -27,7 +27,7 @@ def calculate_R2_pearson_spearman(prediction,
     :param results_location: The location to write the results to
     :param blacklist_mask: The blacklist mask that is used to remove bins overlapping blacklist regions
 
-    :return: Writes a TSV for the P/R curve
+    :return: Writes a TSV for the R2, pearson, and spearman correlation for quantitative predictions
     """
     with load_bigwig(prediction) as prediction_stream, load_bigwig(gold_standard) as goldstandard_stream:
         # Get the end of the chromosome
@@ -44,10 +44,8 @@ def calculate_R2_pearson_spearman(prediction,
         )
 
         logging.error("Import Gold Standard Array")
-        # prediction_chromosome_data = np.round(prediction_chromosome_data, round_predictions)
 
         # Get the bin stats from the gold standard array
-
         gold_standard_chromosome_data = np.nan_to_num(
             goldstandard_stream.values(
                 chromosome,
@@ -80,7 +78,7 @@ class ChromosomeAUPRC(object):
     Benchmark maxATAC binary predictions against a gold standard using AUPRC. You can also input quantitative
     predictions, but they will ranked by significance.
 
-    During initializiation the following steps will be performed:
+    During initialization the following steps will be performed:
 
     1) Set up run parameters and calculate bins needed
     2) Load bigwig files into np.arrays
@@ -95,7 +93,8 @@ class ChromosomeAUPRC(object):
                  bin_size,
                  agg_function,
                  results_location,
-                 round_predictions):
+                 round_predictions
+                 ):
         """
         :param prediction_bw: Path to bigwig file containing maxATAC predictions
         :param goldstandard_bw: Path to gold standard bigwig file
@@ -110,7 +109,6 @@ class ChromosomeAUPRC(object):
         self.goldstandard_stream = load_bigwig(goldstandard_bw)
 
         self.chromosome = chromosome
-
         self.chromosome_length = self.goldstandard_stream.chroms(self.chromosome)
 
         self.bin_count = int(int(self.chromosome_length) / int(bin_size))  # need to floor the number
@@ -118,14 +116,14 @@ class ChromosomeAUPRC(object):
 
         self.agg_function = agg_function
 
-        self.blacklist_mask = chromosome_blacklist_mask(blacklist_bw, self.chromosome, self.chromosome_length,
+        self.blacklist_mask = chromosome_blacklist_mask(blacklist_bw,
+                                                        self.chromosome,
+                                                        self.chromosome_length,
                                                         self.bin_count)
 
         self.__import_prediction_array__(round_prediction=round_predictions)
         self.__import_goldstandard_array__()
-
         self.__AUPRC__()
-
         self.__plot()
 
     def __import_prediction_array__(self, round_prediction=6):
@@ -133,7 +131,8 @@ class ChromosomeAUPRC(object):
         Import the chromosome signal from the predictions bigwig file and convert to a numpy array.
 
         :param round_prediction: The number of floating places to round the signal to
-        :return: prediction_array: A np.array that has values binned according to bin_count and aggregated according to agg_function
+        :return: prediction_array: A np.array that has values binned according to bin_count and aggregated according
+        to agg_function
         """
         logging.error("Import Predictions Array")
 
@@ -145,10 +144,10 @@ class ChromosomeAUPRC(object):
                                                                                     nBins=self.bin_count,
                                                                                     exact=True),
                                                        dtype=float  # need it to have NaN instead of None
-                                                       ))
+                                                       )
+                                              )
 
         self.prediction_array = np.round(self.prediction_array, round_prediction)
-
 
     def __import_goldstandard_array__(self):
         """
@@ -246,7 +245,7 @@ class ChromosomeAUPRC(object):
             self.prediction_array[self.blacklist_mask])
 
         logging.error("Making DataFrame from results")
-        
+
         # Create a dataframe from the results
         # Issue 54:
         # The sklearn package will add a point at precision=1 and recall=0
@@ -256,36 +255,16 @@ class ChromosomeAUPRC(object):
             {'Precision': self.precision[:-1], 'Recall': self.recall[:-1], "Threshold": self.thresholds})
 
         logging.error("Calculate AUPRc for " + self.chromosome)
-        
+
         # Calculate AUPRc
         self.AUPRC = metrics.auc(y=self.precision[:-1], x=self.recall[:-1])
 
         self.PR_CURVE_DF["AUPRC"] = self.AUPRC
 
-        #logging.error("Calculate AUC for each threshold")
-        # Calculate AUC for each threshold
-        #self.PR_CURVE_DF["AUC"] = self.PR_CURVE_DF["Threshold"].apply(lambda x: self.__calculate_AUC_per_rank__(x))
-
-        # Calculate the total number of predictions for each threshold
-        #self.PR_CURVE_DF["Number_of_Predictions"] = self.PR_CURVE_DF["Threshold"].apply(
-        #    lambda x: self.__get_bin_count__(x))
-
         # Calculate the total gold standard bins
         logging.error("Calculate Total GoldStandard Bins")
-        
+
         self.PR_CURVE_DF["Total_GoldStandard_Bins"] = len(np.argwhere(self.goldstandard_array == True))
-
-        # Calculate the true positives at each cutoff
-        #self.PR_CURVE_DF["True_positive"] = self.PR_CURVE_DF["Threshold"].apply(
-        #    lambda x: self.__get_true_positives__(x))
-
-        # Calculate the false positive at each cutoff
-        #self.PR_CURVE_DF["False_positive"] = self.PR_CURVE_DF["Threshold"].apply(
-        #    lambda x: self.__get_false_positives__(x))
-
-        # Calculate the false negative at each cutoff
-        #self.PR_CURVE_DF["False_negative"] = self.PR_CURVE_DF["Total_GoldStandard_Bins"] - self.PR_CURVE_DF[
-        #    "True_positive"]
 
         logging.error("Write results for " + self.chromosome)
 
@@ -298,7 +277,6 @@ class ChromosomeAUPRC(object):
 
         fig, axs = plt.subplots(1, figsize=(5, 4), dpi=150)
 
-        # plt.plot(PR_CURVE_DF.Recall, PR_CURVE_DF.Threshold)
         # Create a continuous norm to map from data points to colors
         norm = plt.Normalize(0, 1)
 

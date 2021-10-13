@@ -27,6 +27,7 @@ def write_predictions_to_bigwig(df,
     :param output_filename: The output bigwig filename
     :param chrom_sizes_dictionary: A dictionary of chromosome sizes used to form the bigwig file
     :param chromosomes: A list of chromosomes that you are predicting in
+    :param agg_mean: use aggregation method of mean
 
     :return: Writes a bigwig file
     """

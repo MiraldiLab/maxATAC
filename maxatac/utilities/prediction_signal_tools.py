@@ -11,12 +11,13 @@ from scipy.stats import pearsonr
 from scipy import stats
 from maxatac.utilities.system_tools import remove_tags
 
+
 class Predicion_Signal(object):
     """
 
     Generating Prediction Signal from predicted bigwig file for CHEERS implementation.
 
-    During initializiation the following steps will be performed:
+    During initialization the following steps will be performed:
 
     1) Set up run parameters and calculate bins needed
     2) Load bigwig files into np.arrays
@@ -31,7 +32,6 @@ class Predicion_Signal(object):
                  agg_function,
                  results_location,
                  round_predictions):
-
         """
         :param prediction_bw: Path to bigwig file containing maxATAC predictions
         :param hg38_2bit: Path to sequence
@@ -54,16 +54,15 @@ class Predicion_Signal(object):
 
         self.agg_function = agg_function
 
-
         self.__import_prediction_array__(round_prediction=round_predictions)
-
 
     def __import_prediction_array__(self, round_prediction=6):
         """
         Import the chromosome signal from the predictions bigwig file and convert to a numpy array.
 
         :param round_prediction: The number of floating places to round the signal to
-        :return: prediction_array: A np.array that has values binned according to bin_count and aggregated according to agg_function
+        :return: prediction_array: A np.array that has values binned according to bin_count and aggregated
+        according to agg_function
         """
         logging.error("Import Predictions Array")
 
@@ -81,13 +80,15 @@ class Predicion_Signal(object):
 
         logging.error("Creating Prediction Values")
 
-        prediction_val_df= pd.DataFrame({"chr": self.chromosome,
-                                         "start": np.arange(0, self.bin_count * self.bin_size, self.bin_size),
-                                         "stop": np.arange(self.bin_size, self.bin_count * self.bin_size + self.bin_size, self.bin_size),
-                                         "count": self.prediction_array
-                                         })
+        prediction_val_df = pd.DataFrame({"chr": self.chromosome,
+                                          "start": np.arange(0, self.bin_count * self.bin_size, self.bin_size),
+                                          "stop": np.arange(self.bin_size,
+                                                            self.bin_count * self.bin_size + self.bin_size,
+                                                            self.bin_size),
+                                          "count": self.prediction_array
+                                          })
 
-        self.results_location = '.'.join(['_'.join([self.results_location.split(".")[0][:-4], 'prediction_value']), 'tsv'])
-
+        self.results_location = '.'.join(
+            ['_'.join([self.results_location.split(".")[0][:-4], 'prediction_value']), 'tsv'])
 
         prediction_val_df.to_csv(self.results_location, sep='\t', index=False)

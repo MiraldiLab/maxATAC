@@ -14,8 +14,9 @@ def build_chrom_sizes_dict(chromosome_list, chrom_sizes_filename):
     The dictionary takes the form of: 
     
         {
-         "chr1": 248956422,
-         "chr2": 242193529
+            "chr1": 248956422,
+            "chr2": 242193529,
+            ...
         }
 
     :param chromosome_list: list of chromosome to filter dictionary by
@@ -148,6 +149,7 @@ def get_target_matrix(binding,
     bin_sums = np.sum(split_targets, axis=1)
 
     return np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+    # TODO play with this parameter of 0.5
 
 
 def get_synced_chroms(chroms, ignore_regions=None):

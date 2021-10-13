@@ -12,8 +12,11 @@ def get_genomic_stats(bigwig_path, chrom_sizes_dict, blacklist_path, max_percent
     """
         Find the genomic minimum and maximum values in the chromosomes of interest
 
-        :param chrom_sizes_dict: (dict) A dictionary of chromosome sizes filtered for the chroms of interest
         :param bigwig_path: (str) Path to the input bigwig file
+        :param chrom_sizes_dict: (dict) A dictionary of chromosome sizes filtered for the chroms of interest
+        :param blacklist_path: (str) Path to the input blacklist file
+        :param max_percentile: maximum percentile
+        :param prefix: (str) file prefix
 
         :return: Genomic minimum and maximum values
         """
@@ -88,6 +91,7 @@ def minmax_normalize_array(array, min_value, max_value, clip=False):
     :param max_value:
     :param min_value:
     :param array: Input array of bigwig values
+    :param clip: (Boolean) clip array
 
     :return: MinMax normalized array
     """

@@ -8,7 +8,7 @@ from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
 
 with Mute():
-    from maxatac.utilities.model_tools import get_callbacks
+    from maxatac.utilities.callbacks import get_callbacks
     from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, SeqDataGenerator, model_selection
     from maxatac.utilities.plot import export_binary_metrics, export_loss_mse_coeff, export_model_structure
 
