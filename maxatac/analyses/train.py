@@ -36,7 +36,7 @@ def run_training(args):
     4) Initialize the training and validation generators
     5) Fit the models with the specific parameters
 
-    :params args: arch, seed, output, prefix, output_activation, lrate, decay, weights, quant, target_scale_factor,
+    :params args: arch, seed, output, prefix, output_activation, lrate, decay, weights, target_scale_factor,
     dense, batch_size, val_batch_size, train roi, validate roi, meta_file, sequence, average, threads, epochs, batches,
     tchroms, vchroms, shuffle_cell_type, rev_comp
 
@@ -54,7 +54,6 @@ def run_training(args):
                                  prefix=args.prefix,
                                  threads=args.threads,
                                  meta_path=args.meta_file,
-                                 quant=args.quant,
                                  output_activation=args.output_activation,
                                  target_scale_factor=args.target_scale_factor,
                                  dense=args.dense,
@@ -90,7 +89,6 @@ def run_training(args):
                               cell_type_list=maxatac_model.cell_types,
                               rand_ratio=args.rand_ratio,
                               chroms=args.tchroms,
-                              quant=args.quant,
                               batch_size=args.batch_size,
                               target_scale_factor=args.target_scale_factor,
                               shuffle_cell_type=args.shuffle_cell_type,
@@ -112,7 +110,6 @@ def run_training(args):
                             cell_type_list=maxatac_model.cell_types,
                             rand_ratio=args.rand_ratio,
                             chroms=args.vchroms,
-                            quant=args.quant,
                             batch_size=args.batch_size,
                             target_scale_factor=args.target_scale_factor,
                             shuffle_cell_type=args.shuffle_cell_type,
@@ -150,21 +147,16 @@ def run_training(args):
 
     # Select best model
     best_epoch = model_selection(training_history=training_history,
-                                 quant=args.quant,
                                  output_dir=maxatac_model.output_directory)
 
     # If plot then plot the model structure and training metrics
     if args.plot:
-        quant = args.quant
         tf = maxatac_model.train_tf
         TCL = '_'.join(maxatac_model.cell_types)
         ARC = args.arch
         RR = args.rand_ratio
 
         export_model_structure(maxatac_model.nn_model, maxatac_model.results_location)
-
-        if quant:
-            export_loss_mse_coeff(training_history, tf, TCL, RR, ARC, maxatac_model.results_location)
 
         else:
             export_binary_metrics(training_history, tf, RR, ARC, maxatac_model.results_location, best_epoch)

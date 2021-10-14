@@ -258,13 +258,6 @@ def get_parser():
                                 help="Trained model file(s)"
                                 )
 
-    predict_parser.add_argument("--quant",
-                                dest="quant",
-                                action='store_true',
-                                default=False,
-                                help="This argument should be set to true to build models based on quantitative data"
-                                )
-
     predict_parser.add_argument("--sequence",
                                 dest="sequence",
                                 type=str,
@@ -376,13 +369,6 @@ def get_parser():
                               help="Genome sequence 2bit file"
                               )
 
-    train_parser.add_argument("--quant",
-                              dest="quant",
-                              action='store_true',
-                              default=False,
-                              help="This argument should be set to true to build models based on quantitative data"
-                              )
-
     train_parser.add_argument("--meta_file",
                               dest="meta_file",
                               type=str,
@@ -404,14 +390,6 @@ def get_parser():
                               required=False,
                               help="Optional BED format file that will be used as the validation regions of interest "
                                    "instead of using the peak files to build validation regions"
-                              )
-
-    train_parser.add_argument("--target_scale_factor",
-                              dest="target_scale_factor",
-                              type=float,
-                              required=False,
-                              default=1,
-                              help="Scaling factor for scaling model targets signal. Used only for quantitative models"
                               )
 
     # I set default to sigmoid.
@@ -671,12 +649,6 @@ def get_parser():
                                   required=True,
                                   help="Prediction bigWig file"
                                   )
-    benchmark_parser.add_argument("--quant",
-                                  dest="quant",
-                                  action='store_true',
-                                  default=False,
-                                  help="This argument should be set to true for models based on quantitative data"
-                                  )
 
     benchmark_parser.add_argument("--gold_standard",
                                   dest="gold_standard",
@@ -760,12 +732,6 @@ def get_parser():
                                           type=str,
                                           required=True,
                                           help="Prediction bigWig file"
-                                          )
-    prediction_signal_parser.add_argument("--quant",
-                                          dest="quant",
-                                          action='store_true',
-                                          default=False,
-                                          help="This argument should be set to true for models based on quantitative data"
                                           )
 
     prediction_signal_parser.add_argument("--sequence",
@@ -911,7 +877,7 @@ def parse_arguments(argsl, cwd_abs_path=None):
                 "chroms", "keep", "epochs", "batches",
                 "prefix", "plot", "lrate", "decay", "bin",
                 "minimum", "test_cell_lines", "rand_ratio",
-                "train_tf", "arch", "quant", "batch_size",
+                "train_tf", "arch", "batch_size",
                 "val_batch_size", "target_scale_factor",
                 "output_activation", "dense", "shuffle_cell_type", "rev_comp"
             ],

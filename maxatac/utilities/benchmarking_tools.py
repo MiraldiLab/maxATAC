@@ -12,71 +12,9 @@ from scipy import stats
 from maxatac.utilities.system_tools import remove_tags
 
 
-def calculate_R2_pearson_spearman(prediction,
-                                  gold_standard,
-                                  chromosome,
-                                  results_location,
-                                  blacklist_mask
-                                  ):
-    """
-    Calculate the R2, Pearson, and Spearman Correlation for Quantitative Predictions
-
-    :param prediction: The input prediction bigwig file
-    :param gold_standard: The input gold standard file
-    :param chromosome: The chromosome to limit the analysis to
-    :param results_location: The location to write the results to
-    :param blacklist_mask: The blacklist mask that is used to remove bins overlapping blacklist regions
-
-    :return: Writes a TSV for the R2, pearson, and spearman correlation for quantitative predictions
-    """
-    with load_bigwig(prediction) as prediction_stream, load_bigwig(gold_standard) as goldstandard_stream:
-        # Get the end of the chromosome
-        chromosome_length = prediction_stream.chroms(chromosome)
-
-        logging.error("Import Predictions Array for Quantitative Predictions")
-
-        # Get the bin stats from the prediction array
-        prediction_chromosome_data = np.nan_to_num(
-            prediction_stream.values(
-                chromosome,
-                0,
-                chromosome_length)
-        )
-
-        logging.error("Import Gold Standard Array")
-
-        # Get the bin stats from the gold standard array
-        gold_standard_chromosome_data = np.nan_to_num(
-            goldstandard_stream.values(
-                chromosome,
-                0,
-                chromosome_length)
-        )
-
-        logging.error("Calculate R2")
-        R2_score = r2_score(gold_standard_chromosome_data[blacklist_mask],
-                            prediction_chromosome_data[blacklist_mask])
-
-        logging.error("Calculate Pearson Correlation")
-
-        pearson_score, pearson_pval = pearsonr(gold_standard_chromosome_data[blacklist_mask],
-                                               prediction_chromosome_data[blacklist_mask])
-
-        logging.error("Calculate Spearman Correlation")
-
-        spearman_score, spearman_pval = stats.spearmanr(gold_standard_chromosome_data[blacklist_mask],
-                                                        prediction_chromosome_data[blacklist_mask])
-
-        R2_Sp_P_df = pd.DataFrame([[R2_score, pearson_score, pearson_pval, spearman_score, spearman_pval]],
-                                  columns=['R2', 'pearson', 'pearson_pval', 'spearman', 'spearman_pval'])
-
-        R2_Sp_P_df.to_csv(results_location, sep='\t', index=None)
-
-
 class ChromosomeAUPRC(object):
     """
-    Benchmark maxATAC binary predictions against a gold standard using AUPRC. You can also input quantitative
-    predictions, but they will ranked by significance.
+    Benchmark maxATAC binary predictions against a gold standard using AUPRC.
 
     During initialization the following steps will be performed:
 

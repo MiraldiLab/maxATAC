@@ -64,20 +64,6 @@ def run_benchmarking(args):
                         results_filename,
                         args.round_predictions)
 
-    if args.quant:
-        blacklist_mask = chromosome_blacklist_mask(
-            args.blacklist,
-            bin_size=1,
-            chromosome=args.chromosomes[0]
-        )
-
-        calculate_R2_pearson_spearman(args.prediction,
-                                      args.gold_standard,
-                                      args.chromosomes[0],
-                                      results_filename2,
-                                      blacklist_mask
-                                      )
-
     # Measure End Time of Training
     stopTime = timeit.default_timer()
     totalTime = stopTime - startTime

@@ -204,7 +204,6 @@ def get_dilated_cnn(
         pool_size=POOL_SIZE,
         adam_beta_1=ADAM_BETA_1,
         adam_beta_2=ADAM_BETA_2,
-        quant=False,
         target_scale_factor=1,
         dense_b=False,
         weights=None
@@ -276,39 +275,22 @@ def get_dilated_cnn(
         output_layer = Dense(output_length, activation=output_activation, kernel_initializer='glorot_uniform')(
             output_layer)
 
-    if quant and output_activation in ["sigmoid"]:
-        output_layer = Lambda(lambda x: x * target_scale_factor, name='Target_Scale_Layer')(output_layer)
 
     logging.debug("Added outputs layer: " + "\n - " + str(output_layer))
 
     # Model
     model = Model(inputs=[input_layer], outputs=[output_layer])
 
-    if not quant:
-        model.compile(
-            optimizer=Adam(
-                lr=adam_learning_rate,
-                beta_1=adam_beta_1,
-                beta_2=adam_beta_2,
-                decay=adam_decay
-            ),
-            loss=loss_function,
-            metrics=[dice_coef]
-        )
-
-    else:
-        mse = tf.keras.losses.MeanSquaredError(reduction="auto",
-                                               name="mean_squared_error")  # May wnat to change Reduction methods possibly
-        model.compile(
-            optimizer=Adam(
-                lr=adam_learning_rate,
-                beta_1=adam_beta_1,
-                beta_2=adam_beta_2,
-                decay=adam_decay
-            ),
-            loss=mse,
-            metrics=[mse, coeff_determination, tf.keras.metrics.Precision(), tf.keras.metrics.Recall(), pearson, spearman]  # tf.keras.metrics.RootMeanSquaredError()
-        )
+    model.compile(
+        optimizer=Adam(
+            lr=adam_learning_rate,
+            beta_1=adam_beta_1,
+            beta_2=adam_beta_2,
+            decay=adam_decay
+        ),
+        loss=loss_function,
+        metrics=[dice_coef]
+    )
 
     logging.debug("Model compiled")
 
@@ -318,19 +300,3 @@ def get_dilated_cnn(
 
     return model
 
-
-def get_callbacks(
-        location,
-        monitor,
-        save_weights_only=False,
-        save_best_only=True
-):
-    callbacks = [
-        ModelCheckpoint(
-            filepath=location,
-            save_weights_only=save_weights_only,
-            save_best_only=save_best_only,
-            monitor=monitor
-        )
-    ]
-    return callbacks

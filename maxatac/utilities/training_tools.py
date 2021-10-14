@@ -42,7 +42,6 @@ class MaxATACModel(object):
                  dense=False,
                  target_scale_factor=TRAIN_SCALE_SIGNAL,
                  output_activation="sigmoid",
-                 quant=False,
                  interpret=False,
                  interpret_cell_type=""
                  ):
@@ -55,9 +54,7 @@ class MaxATACModel(object):
         :param prefix: Prefix to use for filename
         :param threads: Number of threads to use
         :param meta_path: Path to the meta file associated with the run
-        :param quant: Whether to perform quantitative predictions
         :param output_activation: The activation function to use in the output layer
-        :param target_scale_factor: The scale factor to use for quantitative data
         :param dense: Whether to use a dense layer on output
         :param weights: Input weights to use for model
         :param interpret: Boolean for whether this is training or interpretation
@@ -75,7 +72,6 @@ class MaxATACModel(object):
         self.output_activation = output_activation
         self.dense = dense
         self.weights = weights
-        self.quant = quant
         self.target_scale_factor = target_scale_factor
 
         # Set the random seed for the model
@@ -106,7 +102,6 @@ class MaxATACModel(object):
         # Get the neural network model based on the specified model architecture
         if self.arch == "DCNN_V2":
             return get_dilated_cnn(output_activation=self.output_activation,
-                                   quant=self.quant,
                                    target_scale_factor=self.target_scale_factor,
                                    dense_b=self.dense,
                                    weights=self.weights
@@ -115,7 +110,6 @@ class MaxATACModel(object):
         elif self.arch == "RES_DCNN_V2":
             return get_res_dcnn(output_activation=self.output_activation,
                                 weights=self.weights,
-                                quant=self.quant,
                                 target_scale_factor=self.target_scale_factor,
                                 dense_b=self.dense
                                 )
@@ -123,7 +117,6 @@ class MaxATACModel(object):
         elif self.arch == "MM_DCNN_V2":
             return MM_DCNN_V2(output_activation=self.output_activation,
                               weights=self.weights,
-                              quant=self.quant,
                               res_conn=False,
                               target_scale_factor=self.target_scale_factor,
                               dense_b=self.dense
@@ -132,7 +125,6 @@ class MaxATACModel(object):
         elif self.arch == "MM_Res_DCNN_V2":
             return MM_DCNN_V2(output_activation=self.output_activation,
                               weights=self.weights,
-                              quant=self.quant,
                               res_conn=True,
                               target_scale_factor=self.target_scale_factor,
                               dense_b=self.dense
@@ -149,7 +141,6 @@ def DataGenerator(
         rand_ratio,
         chroms,
         bp_resolution=BP_RESOLUTION,
-        quant=False,
         target_scale_factor=1,
         batch_size=BATCH_SIZE,
         shuffle_cell_type=False,
@@ -176,8 +167,6 @@ def DataGenerator(
     :param rand_ratio: The number of random examples to use per batch
     :param chroms: The training chromosomes
     :param bp_resolution: The resolution of the predictions to use
-    :param quant: Whether to use quantitative predictions
-    :param target_scale_factor: Scaling factor to use for scaling target values (quantitative specific)
     :param batch_size: The number of examples to use per batch of training
     :param shuffle_cell_type: Shuffle the ROI cell type labels if True
     :param rev_comp_train: use the reverse complement to train
@@ -205,7 +194,6 @@ def DataGenerator(
                                n_roi=n_roi,
                                cell_type_list=cell_type_list,
                                bp_resolution=bp_resolution,
-                               quant=quant,
                                target_scale_factor=target_scale_factor,
                                shuffle_cell_type=shuffle_cell_type,
                                rev_comp_train=rev_comp_train
@@ -218,7 +206,6 @@ def DataGenerator(
                                    n_rand=n_rand,
                                    regions_pool=train_random_regions_pool,
                                    bp_resolution=bp_resolution,
-                                   quant=quant,
                                    target_scale_factor=target_scale_factor,
                                    rev_comp_train=rev_comp_train
                                    )
@@ -302,7 +289,6 @@ def create_roi_batch(sequence,
                      n_roi,
                      cell_type_list,
                      bp_resolution=1,
-                     quant=False,
                      target_scale_factor=1,
                      shuffle_cell_type=False,
                      rev_comp_train=False
@@ -318,8 +304,6 @@ def create_roi_batch(sequence,
     :param n_roi: The number of regions that go into each batch
     :param cell_type_list: A list of unique training cell types
     :param bp_resolution: The resolution of the output bins. i.e. 32 bp
-    :param quant: Boolean flag of whether the input data is quantitative or binary
-    :param target_scale_factor: The scaling factor to use for quantitative data
     :param shuffle_cell_type: Whether to shuffle cell types during training
     :param rev_comp_train: use reverse complement for training
 
@@ -411,20 +395,11 @@ def create_roi_batch(sequence,
                 split_targets = np.array(np.split(target_vector, n_bins, axis=0))
 
                 # TODO we might want to test what happens if we change the
-                if not quant:
-                    bin_sums = np.sum(split_targets, axis=1)
-                    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-
-                else:
-                    bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
+                bin_sums = np.sum(split_targets, axis=1)
+                bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
 
                 # Append the sample to the target batch
                 targets_batch.append(bin_vector)
-
-            # If quantitative data, scale by target factor
-        if quant:
-            targets_batch = np.array(targets_batch)
-            targets_batch = targets_batch * target_scale_factor
 
         yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
@@ -436,7 +411,6 @@ def create_random_batch(
         n_rand,
         regions_pool,
         bp_resolution=1,
-        quant=False,
         target_scale_factor=1,
         rev_comp_train=False
 ):
@@ -483,45 +457,25 @@ def create_random_batch(
 
                 inputs_batch.append(input_matrix)
 
-                if not quant:
-                    try:
-                        # Get the target matrix
-                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+                try:
+                    # Get the target matrix
+                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
 
-                    except:
-                        # TODO change length of array
-                        target_vector = np.zeros(1024)
+                except:
+                    # TODO change length of array
+                    target_vector = np.zeros(1024)
 
-                    target_vector = np.nan_to_num(target_vector, 0.0)
+                target_vector = np.nan_to_num(target_vector, 0.0)
 
-                    if rev_comp:
-                        target_vector = target_vector[::-1]
+                if rev_comp:
+                    target_vector = target_vector[::-1]
 
-                    n_bins = int(target_vector.shape[0] / bp_resolution)
-                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                    bin_sums = np.sum(split_targets, axis=1)
-                    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-                    targets_batch.append(bin_vector)
+                n_bins = int(target_vector.shape[0] / bp_resolution)
+                split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+                bin_sums = np.sum(split_targets, axis=1)
+                bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+                targets_batch.append(bin_vector)
 
-                else:
-                    try:
-                        # Get the target matrix
-                        target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-
-                    except:
-                        # TODO change length of array
-                        target_vector = np.zeros(1024)
-
-                    target_vector = np.nan_to_num(target_vector, 0.0)
-                    n_bins = int(target_vector.shape[0] / bp_resolution)
-                    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                    bin_vector = np.mean(split_targets,
-                                         axis=1)
-                    targets_batch.append(bin_vector)
-
-        if quant:
-            targets_batch = np.array(targets_batch)
-            targets_batch = targets_batch * target_scale_factor
 
         yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
@@ -709,18 +663,14 @@ class SeqDataGenerator(tf.keras.utils.Sequence):
         return next(self.generator)
 
 
-def model_selection(training_history, quant, output_dir):
+def model_selection(training_history, output_dir):
     """
     This function will take the training history and output the best model based on the dice coefficient value.
     """
     # Create a dataframe from the history object
     df = pd.DataFrame(training_history.history)
 
-    if quant:
-        epoch = df['val_coeff_determination'].idxmax() + 1
-
-    else:
-        epoch = df['val_dice_coef'].idxmax() + 1
+    epoch = df['val_dice_coef'].idxmax() + 1
 
     # Get the realpath to the best model
     out = pd.DataFrame([glob.glob(output_dir + "/*" + str(epoch) + ".h5")], columns=['Best_Model_Path'])
