@@ -36,7 +36,7 @@ def run_training(args):
     4) Initialize the training and validation generators
     5) Fit the models with the specific parameters
 
-    :params args: arch, seed, output, prefix, output_activation, lrate, decay, weights, target_scale_factor,
+    :params args: arch, seed, output, prefix, output_activation, lrate, decay, weights,
     dense, batch_size, val_batch_size, train roi, validate roi, meta_file, sequence, average, threads, epochs, batches,
     tchroms, vchroms, shuffle_cell_type, rev_comp
 
@@ -55,7 +55,6 @@ def run_training(args):
                                  threads=args.threads,
                                  meta_path=args.meta_file,
                                  output_activation=args.output_activation,
-                                 target_scale_factor=args.target_scale_factor,
                                  dense=args.dense,
                                  weights=args.weights
                                  )
@@ -90,7 +89,6 @@ def run_training(args):
                               rand_ratio=args.rand_ratio,
                               chroms=args.tchroms,
                               batch_size=args.batch_size,
-                              target_scale_factor=args.target_scale_factor,
                               shuffle_cell_type=args.shuffle_cell_type,
                               rev_comp_train=args.rev_comp
                               )
@@ -99,8 +97,10 @@ def run_training(args):
     seq_train_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
 
     # Builds a Enqueuer from a Sequence.
-    train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
-    train_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
+    '''train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
+    train_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)'''
+    train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=False)
+    train_gen_enq.start(workers=1, max_queue_size=args.threads * 2)
     enq_train_gen = train_gen_enq.get()
 
     # Initialize the validation generator
@@ -111,7 +111,6 @@ def run_training(args):
                             rand_ratio=args.rand_ratio,
                             chroms=args.vchroms,
                             batch_size=args.batch_size,
-                            target_scale_factor=args.target_scale_factor,
                             shuffle_cell_type=args.shuffle_cell_type,
                             rev_comp_train=args.rev_comp
                             )
@@ -120,8 +119,10 @@ def run_training(args):
     seq_validate_gen = SeqDataGenerator(batches=args.batches, generator=val_gen)
 
     # Builds a Enqueuer from a Sequence.
-    val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
-    val_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
+    '''val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
+    val_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)'''
+    val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=False)
+    val_gen_enq.start(workers=1, max_queue_size=args.threads * 2)
     enq_val_gen = val_gen_enq.get()
 
 
