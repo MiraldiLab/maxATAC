@@ -158,8 +158,7 @@ def run_training(args):
 
         export_model_structure(maxatac_model.nn_model, maxatac_model.results_location)
 
-        else:
-            export_binary_metrics(training_history, tf, RR, ARC, maxatac_model.results_location, best_epoch)
+        export_binary_metrics(training_history, tf, RR, ARC, maxatac_model.results_location, best_epoch)
 
     logging.error("Results are saved to: " + maxatac_model.results_location)
     

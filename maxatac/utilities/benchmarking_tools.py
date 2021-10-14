@@ -6,8 +6,6 @@ from matplotlib.collections import LineCollection
 from maxatac.utilities.genome_tools import load_bigwig, chromosome_blacklist_mask
 from sklearn import metrics
 from sklearn.metrics import precision_recall_curve
-from sklearn.metrics import r2_score
-from scipy.stats import pearsonr
 from scipy import stats
 from maxatac.utilities.system_tools import remove_tags
 

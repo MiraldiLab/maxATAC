@@ -5,7 +5,7 @@ from maxatac.utilities.system_tools import get_dir, Mute
 
 with Mute():
     from maxatac.utilities.genome_tools import chromosome_blacklist_mask
-    from maxatac.utilities.benchmarking_tools import calculate_R2_pearson_spearman, ChromosomeAUPRC
+    from maxatac.utilities.benchmarking_tools import ChromosomeAUPRC
 
 
 def run_benchmarking(args):

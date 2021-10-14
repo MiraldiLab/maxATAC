@@ -9,7 +9,6 @@ with Mute():
     from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH
     from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, \
         import_prediction_regions, create_prediction_regions, PredictionDataGenerator, make_stranded_predictions
-    from maxatac.utilities.session import configure_session
 
 
 def run_prediction(args):

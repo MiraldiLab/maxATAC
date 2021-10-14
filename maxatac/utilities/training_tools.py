@@ -12,8 +12,6 @@ import os
 import glob
 
 from maxatac.architectures.dcnn import get_dilated_cnn
-from maxatac.architectures.multi_modal_models import MM_DCNN_V2
-from maxatac.architectures.res_dcnn import get_res_dcnn
 from maxatac.utilities.constants import BP_RESOLUTION, BATCH_SIZE, CHR_POOL_SIZE, INPUT_LENGTH, INPUT_CHANNELS, \
     BP_ORDER, TRAIN_SCALE_SIGNAL, BLACKLISTED_REGIONS, DEFAULT_CHROM_SIZES
 from maxatac.utilities.genome_tools import load_bigwig, load_2bit, get_one_hot_encoded, build_chrom_sizes_dict
