@@ -1,3 +1,5 @@
+![maxATAC_logo](https://user-images.githubusercontent.com/47329147/137503708-86d000ef-d6d4-4f75-99aa-39f8aab6dec5.png)
+
 # maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq
 
 ## Introduction
