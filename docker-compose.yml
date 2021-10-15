@@ -1,0 +1,8 @@
+version: '3.4'
+
+services:
+  maxatac:
+    image: maxatac
+    build:
+      context: .
+      dockerfile: ./Dockerfile
