@@ -11,7 +11,7 @@ The maxATAC package is a collection of tools used for learning to predict TF bin
 
 ## Requirements
 
-This version requires python 3.6 and BEDTools.
+This version requires python 3.9 and BEDTools.
 
 ## Installation
 
