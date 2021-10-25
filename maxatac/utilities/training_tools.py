@@ -104,29 +104,6 @@ class MaxATACModel(object):
                                    dense_b=self.dense,
                                    weights=self.weights
                                    )
-
-        elif self.arch == "RES_DCNN_V2":
-            return get_res_dcnn(output_activation=self.output_activation,
-                                weights=self.weights,
-                                target_scale_factor=self.target_scale_factor,
-                                dense_b=self.dense
-                                )
-
-        elif self.arch == "MM_DCNN_V2":
-            return MM_DCNN_V2(output_activation=self.output_activation,
-                              weights=self.weights,
-                              res_conn=False,
-                              target_scale_factor=self.target_scale_factor,
-                              dense_b=self.dense
-                              )
-
-        elif self.arch == "MM_Res_DCNN_V2":
-            return MM_DCNN_V2(output_activation=self.output_activation,
-                              weights=self.weights,
-                              res_conn=True,
-                              target_scale_factor=self.target_scale_factor,
-                              dense_b=self.dense
-                              )
         else:
             sys.exit("Model Architecture not specified correctly. Please check")
 
