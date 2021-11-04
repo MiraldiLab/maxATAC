@@ -17,7 +17,7 @@ maxATAC can be run using an environment or using docker. To install using an env
 
 activate your environment and install maxatac:
 
-4. pip3 install -r requirements.txt
+4. pip3 install -r requirements.txt #try to do --constraint instead of -r
 
 5. pip3 install -e . # pip3 install . does not work # TO DO
 
