@@ -66,8 +66,8 @@ setup(
     version=get_version(),
     url="https://github.com/MiraldiLab/maxATAC",
     download_url="https://github.com/MiraldiLab/maxATAC",
-    author="",                                                   # TODO: put here authors list
-    author_email="",                                             # TODO: put here emails to contact developers
+    author="Tareian",                                                   # TODO: put here authors list
+    author_email="tacazares@gmail.com",                                             # TODO: put here emails to contact developers
     license="Apache-2.0",
     include_package_data=True,
     packages=find_packages(
