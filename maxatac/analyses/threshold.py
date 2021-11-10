@@ -20,7 +20,7 @@ def run_thresholding(args):
 
     meta_DF = pd.read_table(args.meta_file)
 
-    training_data_dict = pd.Series(meta_DF["Gold_Standard"].values,index=meta_DF["Prediction"]).to_dict()
+    training_data_dict = pd.Series(meta_DF["Binding_File"].values,index=meta_DF["Prediction"]).to_dict()
 
     results_filename = os.path.join(output_dir,
                                     args.prefix + "_" + args.chromosomes[0] + "_" + str(args.bin_size) + "bp_PRC.tsv")
