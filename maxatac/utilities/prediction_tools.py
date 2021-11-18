@@ -32,7 +32,6 @@ def write_predictions_to_bigwig(df,
     :return: Writes a bigwig file
     """
     if agg_mean:
-        # Sort dataframe to make sure that all intervals are in order
         bedgraph_df = df.groupby(["chr", "start", "stop"],
                                  as_index=False).mean()
     else:
@@ -51,8 +50,8 @@ def write_predictions_to_bigwig(df,
             tmp_chrom_df = bedgraph_df[bedgraph_df["chr"] == chromosome].copy()
 
             # Bigwig files need sorted intervals as input
-            tmp_chrom_df.sort_values(by=["chr", "start", "stop"], inplace=True)
-
+            tmp_chrom_df = tmp_chrom_df.sort_values(by=["chr", "start"])
+            
             # Write all entries for the chromosome
             data_stream.addEntries(chroms=tmp_chrom_df["chr"].tolist(),
                                    starts=tmp_chrom_df["start"].tolist(),
@@ -128,7 +127,6 @@ def import_prediction_regions(bed_file,
 
     return df
 
-
 def create_prediction_regions(region_length,
                               chromosomes,
                               chrom_sizes,
@@ -145,6 +143,9 @@ def create_prediction_regions(region_length,
 
     :return: A dataframe of regions that are compatible with the model for making predictions
     """
+    # Create a temp chrom.sizes file for the chromosomes of interest only
+
+    
     # Create a bedtools object that is a windowed genome
     BED_df_bedtool = pybedtools.BedTool().window_maker(g=chrom_sizes, w=region_length, s=step_size)
 
@@ -254,10 +255,7 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
                 row = roi_pool.loc[row_idx, :]
 
                 # Get the matric of values for the entry
-                input_matrix = get_input_matrix(rows=self.input_channels,
-                                                cols=self.input_length,
-                                                bp_order=["A", "C", "G", "T"],
-                                                signal_stream=signal_stream,
+                input_matrix = get_input_matrix(signal_stream=signal_stream,
                                                 sequence_stream=sequence_stream,
                                                 chromosome=row[0],
                                                 start=int(row[1]),
