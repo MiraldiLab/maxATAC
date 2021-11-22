@@ -39,7 +39,7 @@ def run_call_peaks(args):
                   f"\n Output directory: {output_dir}" +
                   f"\n Output filename: {results_filename}")
 
-    with Pool(int(multiprocessing.cpu_count()/2)) as p:
+    with Pool(int(multiprocessing.cpu_count())) as p:
         results_list = p.starmap(call_peaks_per_chromosome,
                                 [(args.input_bigwig, chromosome, args.threshold, args.BIN_SIZE) for chromosome in args.chromosomes]
                                 )
