@@ -40,7 +40,7 @@ def get_version():
         version = get_git_tag()                             # try to get version info from the closest tag
     except Exception:
         try:
-            version = "1.0." + get_git_timestamp() + str('1115')          # try to get version info from commit date
+            version = "1.0." + get_git_timestamp() + str('1112')          # try to get version info from commit date
         except Exception:
             pass
 
