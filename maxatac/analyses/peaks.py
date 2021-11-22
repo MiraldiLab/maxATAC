@@ -8,6 +8,19 @@ from multiprocessing import Pool, Manager
 import pybedtools
 
 def run_call_peaks(args):
+    """Call peaks on a maxATAC signal track
+
+    Args:
+        input_bigwig: The path to the maxATAC bigwig file
+        chromosomes: The list of chromosomes to call peaks for
+        BIN_SIZE: The size of the bin to use for peak calling
+        prefix: The prefix for the output filename
+        threshold: The minimum threshold to use for peak calling
+        OUT_DIR: The output directory to write the bed file
+    
+    Return:
+        Write BED file
+    """
     if args.prefix:
         prefix = args.prefix
 
@@ -21,13 +34,14 @@ def run_call_peaks(args):
     logging.error(f"Input filename: {args.input_bigwig}" +
                   f"Target chroms: {args.chromosomes}" +
                   f"Bin size: {args.BIN_SIZE}" +
+                  f"Threshold for peak calling: {args.threshold}" +
                   f"\n Filename prefix: {prefix}" +
                   f"\n Output directory: {output_dir}" +
                   f"\n Output filename: {results_filename}")
 
     with Pool(int(multiprocessing.cpu_count()/2)) as p:
         results_list = p.starmap(call_peaks_per_chromosome,
-                                [(args.input_bigwig, chromosome, .75, args.BIN_SIZE) for chromosome in args.chromosomes]
+                                [(args.input_bigwig, chromosome, args.threshold, args.BIN_SIZE) for chromosome in args.chromosomes]
                                 )
         
     # Concatenate results lists into a dataframe
