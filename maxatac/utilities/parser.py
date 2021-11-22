@@ -837,10 +837,20 @@ def get_parser():
                               type=str,
                               help="Input bigwig")
 
-    peaks_parser.add_argument("-threshold", "--threshold",
-                              dest="threshold",
+    peaks_parser.add_argument("-cutoff_type", "--cutoff_type",
+                              dest="cutoff_type",
+                              type=str,
+                              help="Cutoff type (i.e. Precision)")
+
+    peaks_parser.add_argument("-cutoff_value", "--cutoff_value",
+                              dest="cutoff_value",
                               type=float,
-                              help="Minimum threshold value to use for peak calling")
+                              help="Cutoff value for the cutoff type provided")
+
+    peaks_parser.add_argument("-cutoff_file", "--cutoff_file",
+                              dest="cutoff_file",
+                              type=str,
+                              help="Cutoff file provided in /data/models")
 
     peaks_parser.add_argument("--chromosomes",
                             dest="chromosomes",

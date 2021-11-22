@@ -31,17 +31,35 @@ def run_call_peaks(args):
 
     results_filename = os.path.join(output_dir, prefix + "_" + str(args.BIN_SIZE) + "bp.bed")
 
+    # Find Threshold for specified cutoff values
+    df = pd.read_csv(args.cutoff_file, sep='\t')
+
+    # Get correct label
+    dict = {"Precision": "Monotonic_Avg_Precision",
+            "Recall": "Monotonic_Avg_Recall",
+            "log2FC": "Monotonic_Avg_log2FC",
+            "F1": "Monotonic_Avg_F1"
+            }
+
+    cutoff_type=dict[args.cutoff_type]
+    cutoff_val=args.cutoff_value
+
+    # Find correct threshold
+    thresh = df.query(f"{cutoff_type} >= @cutoff_val").Standard_Thresh.tolist()[0]
+
     logging.error(f"Input filename: {args.input_bigwig}" +
-                  f"Target chroms: {args.chromosomes}" +
-                  f"Bin size: {args.BIN_SIZE}" +
-                  f"Threshold for peak calling: {args.threshold}" +
+                  f"\n Target chroms: {args.chromosomes}" +
+                  f"\n Bin size: {args.BIN_SIZE}" +
+                  f"\n Cutoff type for Threshold: {args.cutoff_type}" +
+                  f"\n Cutoff value: {args.cutoff_value}" +
+                  f"\n Corresponding Threshold for Cutoff Type and Value discovered: {thresh}" +
                   f"\n Filename prefix: {prefix}" +
                   f"\n Output directory: {output_dir}" +
                   f"\n Output filename: {results_filename}")
 
     with Pool(int(multiprocessing.cpu_count()/2)) as p:
         results_list = p.starmap(call_peaks_per_chromosome,
-                                [(args.input_bigwig, chromosome, args.threshold, args.BIN_SIZE) for chromosome in args.chromosomes]
+                                [(args.input_bigwig, chromosome,thresh, args.BIN_SIZE) for chromosome in args.chromosomes]
                                 )
         
     # Concatenate results lists into a dataframe
