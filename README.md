@@ -51,5 +51,4 @@ Steps in training and assessing a maxATAC model. Relevant functions are listed b
    * [`benchmark`](./docs/readme/benchmark.md#Benchmark)
 
 ### 5. Call "peaks" on maxATAC signal tracks
-
    * [`peaks`](./docs/readme/peaks.md#Peaks)
