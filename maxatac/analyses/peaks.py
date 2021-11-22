@@ -1,35 +1,52 @@
-from maxatac.utilities.genome_tools import build_chrom_sizes_dict, load_bigwig
-import numpy as np
 import pandas as pd
 import os
-from maxatac.utilities.peak_tools import get_genomic_locations
+from maxatac.utilities.peak_tools import call_peaks_per_chromosome
 from maxatac.utilities.system_tools import get_dir
+import logging
+import multiprocessing
+from multiprocessing import Pool, Manager
+import pybedtools
 
+def run_call_peaks(args):
+    if args.prefix:
+        prefix = args.prefix
 
-def call_peaks(args):
-    interval_list = []
-    output_dir = get_dir(args.output_dir)
+    else:
+        prefix = os.path.basename(args.input_bigwig).replace(".bw", "")
 
-    results_filename = os.path.join(output_dir,
-                                    args.prefix + "_" + str(args.bin_size) + "bp.bed")
+    output_dir = get_dir(args.OUT_DIR)
 
-    # Loop through the chromosomes and average the values across files
-    with load_bigwig(args.input_bigwig) as signal_stream:
-        chrom_dict = signal_stream.chroms()
-        for chrom_name, chrom_length in chrom_dict.items():
-            bin_count = int(int(chrom_length) / int(args.bin_size))  # need to floor the number
+    results_filename = os.path.join(output_dir, prefix + "_" + str(args.BIN_SIZE) + "bp.bed")
 
-            chrom_vals = np.nan_to_num(np.array(signal_stream.stats(chrom_name,
-                                                                    0,
-                                                                    chrom_length,
-                                                                    type="max",
-                                                                    nBins=bin_count,
-                                                                    exact=True),
-                                                dtype=float  # need it to have NaN instead of None
-                                                ))
+    logging.error(f"Input filename: {args.input_bigwig}" +
+                  f"Target chroms: {args.chromosomes}" +
+                  f"Bin size: {args.BIN_SIZE}" +
+                  f"\n Filename prefix: {prefix}" +
+                  f"\n Output directory: {output_dir}" +
+                  f"\n Output filename: {results_filename}")
 
-            interval_list.append(get_genomic_locations(chrom_vals, args.threshold, chrom_name, args.bin_size))
+    with Pool(int(multiprocessing.cpu_count()/2)) as p:
+        results_list = p.starmap(call_peaks_per_chromosome,
+                                [(args.input_bigwig, chromosome, .75, args.BIN_SIZE) for chromosome in args.chromosomes]
+                                )
+        
+    # Concatenate results lists into a dataframe
+    results_df = pd.concat(results_list)
 
-    BED_DF = pd.concat(interval_list)
+    # Convert the dataframe to a bedtools object
+    peaks_bedtool = pybedtools.BedTool.from_dataframe(results_df)
 
-    BED_DF.to_csv(results_filename, sep="\t", index=False, header=False)
+    # Sort the bed intervals
+    sorted_peaks = peaks_bedtool.sort()
+
+    # Merge overlapping intervals
+    merged_peaks = sorted_peaks.merge(c=4, o="max")
+
+    # Convert bedtool object to dataframe
+    BED_df = merged_peaks.to_dataframe()
+
+    # Write dataframe to a bed format file
+    BED_df.to_csv(results_filename, 
+                sep="\t", 
+                index=False, 
+                header=False)
