@@ -40,7 +40,7 @@ def get_version():
         version = get_git_tag()                             # try to get version info from the closest tag
     except Exception:
         try:
-            version = "1.0." + get_git_timestamp()          # try to get version info from commit date
+            version = "1.0." + get_git_timestamp() + str('1112')          # try to get version info from commit date
         except Exception:
             pass
 
@@ -66,8 +66,8 @@ setup(
     version=get_version(),
     url="https://github.com/MiraldiLab/maxATAC",
     download_url="https://github.com/MiraldiLab/maxATAC",
-    author="",                                                   # TODO: put here authors list
-    author_email="",                                             # TODO: put here emails to contact developers
+    author="Tareian",                                                   # TODO: put here authors list
+    author_email="tacazares@gmail.com",                                             # TODO: put here emails to contact developers
     license="Apache-2.0",
     include_package_data=True,
     packages=find_packages(
@@ -81,12 +81,11 @@ setup(
         ]
     ),
     install_requires=[
-        "tensorflow==2.5.0",
+        "tensorflow",
         "tensorboard",
         "biopython",
         "py2bit",
-        "pyBigWig==0.3.18",
-        "scikit-allel",
+        "pyBigWig",
         "pydot",
         "matplotlib",
         "scikit-learn",

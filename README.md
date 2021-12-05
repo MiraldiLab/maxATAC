@@ -15,7 +15,7 @@ This version requires python 3.9 and BEDTools.
 
 ## Installation
 
-It is best to install maxATAC into a dedicated virtual environment. 
+It is best to install maxATAC into a dedicated virtual environment.
 
 First, clone the repository with `git clone https://github.com/MiraldiLab/maxATAC.git` into your `repo` directory of choice.
 
@@ -38,14 +38,17 @@ First, clone the repository with `git clone https://github.com/MiraldiLab/maxATA
 Steps in training and assessing a maxATAC model. Relevant functions are listed below each step.
 
 ### 1. Prepare Input Data
-   * [`average`](./docs/average.md#Average)
-   * [`normalize`](./docs/normalize.md#Normalize)
+   * [`average`](./docs/readme/average.md#Average)
+   * [`normalize`](./docs/readme/normalize.md#Normalize)
    
 ### 2. Train a model
-   * [`train`](./docs/train.md#Train)
+   * [`train`](./docs/readme/train.md#Train)
     
 ### 3. Predict in new cell type
-   * [`predict`](./docs/predict.md#Predict)
+   * [`predict`](./docs/readme/predict.md#Predict)
    
 ### 4. Benchmark models against experimental data
-   * [`benchmark`](./docs/benchmark.md#Benchmark)
+   * [`benchmark`](./docs/readme/benchmark.md#Benchmark)
+
+### 5. Call "peaks" on maxATAC signal tracks
+   * [`peaks`](./docs/readme/peaks.md#Peaks)

@@ -18,7 +18,7 @@ with Mute():
     from maxatac.analyses.benchmark import run_benchmarking
     from maxatac.analyses.prediction_signal import run_prediction_signal
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
-    from maxatac.analyses.peaks import call_peaks
+    from maxatac.analyses.peaks import run_call_peaks
 
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
@@ -353,6 +353,26 @@ def get_parser():
                                 help="Chromosomes from --chromosomes fixed for prediction. \
                                       Default: 1, 8"
                                 )
+    predict_parser.add_argument("-bin", "--bin_size",
+                              dest="BIN_SIZE",
+                              type=int,
+                              default=DEFAULT_BENCHMARKING_BIN_SIZE,
+                              help="Bin size to use for peak calling")
+
+    predict_parser.add_argument("-cutoff_type", "--cutoff_type",
+                              dest="cutoff_type",
+                              type=str,
+                              help="Cutoff type (i.e. Precision)")
+
+    predict_parser.add_argument("-cutoff_value", "--cutoff_value",
+                              dest="cutoff_value",
+                              type=float,
+                              help="Cutoff value for the cutoff type provided")
+
+    predict_parser.add_argument("-cutoff_file", "--cutoff_file",
+                              dest="cutoff_file",
+                              type=str,
+                              help="Cutoff file provided in /data/models")
 
     # Train parser
     train_parser = subparsers.add_parser("train",
@@ -810,37 +830,58 @@ def get_parser():
                                          )
 
     # Set the default function to run averaging
-    peaks_parser.set_defaults(func=call_peaks)
+    peaks_parser.set_defaults(func=run_call_peaks)
 
-    peaks_parser.add_argument("--prefix",
+    peaks_parser.add_argument("-prefix", "--prefix",
                               dest="prefix",
                               type=str,
-                              required=True,
-                              help="Output prefix."
+                              required=False,
+                              help="Output prefix filename. Defaults: remove .bw extension."
                               )
 
-    peaks_parser.add_argument("--bin_size",
-                              dest="bin_size",
+    peaks_parser.add_argument("-bin", "--bin_size",
+                              dest="BIN_SIZE",
                               type=int,
                               default=DEFAULT_BENCHMARKING_BIN_SIZE,
-                              help="Chromosomes for averaging")
+                              help="Bin size to use for peak calling")
 
-    peaks_parser.add_argument("--output",
-                              dest="output_dir",
+    peaks_parser.add_argument("-o", "--output",
+                              dest="output",
                               type=str,
                               default="./peaks",
                               help="Output directory."
                               )
 
-    peaks_parser.add_argument("--input_bigwig",
+    peaks_parser.add_argument("-i", "--input_bigwig",
                               dest="input_bigwig",
                               type=str,
+                              required=True,
                               help="Input bigwig")
 
-    peaks_parser.add_argument("--threshold",
-                              dest="threshold",
+    peaks_parser.add_argument("-cutoff_type", "--cutoff_type",
+                              dest="cutoff_type",
+                              type=str,
+                              help="Cutoff type (i.e. Precision)")
+
+    peaks_parser.add_argument("-cutoff_value", "--cutoff_value",
+                              dest="cutoff_value",
                               type=float,
-                              help="Input bigwig")
+                              help="Cutoff value for the cutoff type provided")
+
+    peaks_parser.add_argument("-cutoff_file", "--cutoff_file",
+                              dest="cutoff_file",
+                              type=str,
+                              help="Cutoff file provided in /data/models")
+
+    peaks_parser.add_argument("--chromosomes",
+                            dest="chromosomes",
+                            type=str,
+                            nargs="+",
+                            default=AUTOSOMAL_CHRS,
+                            help="Chromosomes list for analysis. \
+                            Optionally with regions in a form of chrN:start-end. \
+                            Default: main human chromosomes, whole length"
+                            )
 
     peaks_parser.add_argument("--loglevel",
                               dest="loglevel",

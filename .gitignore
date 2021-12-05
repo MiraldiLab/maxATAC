@@ -104,3 +104,6 @@ gen
 
 # MacOS hidden Files
 .DS_Store
+
+#maxATAC_data dir
+data/
