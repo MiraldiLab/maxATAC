@@ -12,27 +12,31 @@ with Mute():
     from tensorflow.keras.models import load_model
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig
     from maxatac.utilities.training_tools import get_input_matrix
+ 
 
-
-def write_predictions_to_bigwig(df,
-                                output_filename,
-                                chrom_sizes_dictionary,
-                                chromosomes,
-                                agg_mean=True
+def write_predictions_to_bigwig(df: pd.DataFrame,
+                                output_filename: str,
+                                chrom_sizes_dictionary: dict,
+                                chromosomes: list,
+                                agg_mean: bool = True
                                 ) -> object:
-    """
-    Write the predictions dataframe into a bigwig file
+    """Write the predictions dataframe into a bigwig file
 
-    :param df: The dataframe of BED regions with prediction scores
-    :param output_filename: The output bigwig filename
-    :param chrom_sizes_dictionary: A dictionary of chromosome sizes used to form the bigwig file
-    :param chromosomes: A list of chromosomes that you are predicting in
-    :param agg_mean: use aggregation method of mean
+    Args:
+        df (pd.DataFrame): The dataframe of BED regions with prediction scores
+        output_filename (str): The output bigwig filename
+        chrom_sizes_dictionary (dict): A dictionary of chromosome sizes used to form the bigwig file
+        chromosomes (list): A list of chromosomes that you are predicting in
+        agg_mean (bool, optional): use aggregation method of mean. Defaults to True.
 
-    :return: Writes a bigwig file
+    Returns:
+        object: Writes a bigwig file
+        
+    Example:
+    
+    >>> write_predictions_to_bigwig(preds_df, "GM12878_CTCF.bw", chrom_sizes_dict, "chr20")
     """
     if agg_mean:
-        # Sort dataframe to make sure that all intervals are in order
         bedgraph_df = df.groupby(["chr", "start", "stop"],
                                  as_index=False).mean()
     else:
@@ -51,8 +55,8 @@ def write_predictions_to_bigwig(df,
             tmp_chrom_df = bedgraph_df[bedgraph_df["chr"] == chromosome].copy()
 
             # Bigwig files need sorted intervals as input
-            tmp_chrom_df.sort_values(by=["chr", "start", "stop"], inplace=True)
-
+            tmp_chrom_df = tmp_chrom_df.sort_values(by=["chr", "start"])
+            
             # Write all entries for the chromosome
             data_stream.addEntries(chroms=tmp_chrom_df["chr"].tolist(),
                                    starts=tmp_chrom_df["start"].tolist(),
@@ -128,7 +132,6 @@ def import_prediction_regions(bed_file,
 
     return df
 
-
 def create_prediction_regions(region_length,
                               chromosomes,
                               chrom_sizes,
@@ -145,6 +148,9 @@ def create_prediction_regions(region_length,
 
     :return: A dataframe of regions that are compatible with the model for making predictions
     """
+    # Create a temp chrom.sizes file for the chromosomes of interest only
+
+    
     # Create a bedtools object that is a windowed genome
     BED_df_bedtool = pybedtools.BedTool().window_maker(g=chrom_sizes, w=region_length, s=step_size)
 
@@ -254,10 +260,7 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
                 row = roi_pool.loc[row_idx, :]
 
                 # Get the matric of values for the entry
-                input_matrix = get_input_matrix(rows=self.input_channels,
-                                                cols=self.input_length,
-                                                bp_order=["A", "C", "G", "T"],
-                                                signal_stream=signal_stream,
+                input_matrix = get_input_matrix(signal_stream=signal_stream,
                                                 sequence_stream=sequence_stream,
                                                 chromosome=row[0],
                                                 start=int(row[1]),

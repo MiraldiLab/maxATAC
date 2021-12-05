@@ -71,7 +71,7 @@ DEFAULT_VALIDATE_RAND_RATIO = .7
 # Can be changed without problems
 BATCH_SIZE = 1000
 VAL_BATCH_SIZE = 1000
-
+BP_DICT = {"A":0, "C":1, "G":2, "T":3}
 CHR_POOL_SIZE = 1000
 BP_ORDER = ["A", "C", "G", "T"]
 INPUT_FILTERS = 15

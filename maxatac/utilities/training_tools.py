@@ -206,14 +206,14 @@ def DataGenerator(
         yield inputs_batch, targets_batch  # change to yield
 
 
-def get_input_matrix(rows,
-                     cols,
-                     signal_stream,
+def get_input_matrix(signal_stream,
                      sequence_stream,
-                     bp_order,
                      chromosome,
                      start,  # end - start = cols
                      end,
+                     rows=INPUT_CHANNELS,
+                     cols=INPUT_LENGTH,
+                     bp_order=BP_ORDER,
                      use_complement=False,
                      reverse_matrix=False
                      ):
@@ -330,10 +330,7 @@ def create_roi_batch(sequence,
                     load_bigwig(binding) as binding_stream:
 
                 # Get the input matrix of values and one-hot encoded sequence
-                input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
-                                                cols=INPUT_LENGTH,
-                                                bp_order=BP_ORDER,
-                                                signal_stream=signal_stream,
+                input_matrix = get_input_matrix(signal_stream=signal_stream,
                                                 sequence_stream=sequence_stream,
                                                 chromosome=chrom_name,
                                                 start=start,
@@ -418,10 +415,7 @@ def create_random_batch(
                 else:
                     rev_comp = False
 
-                input_matrix = get_input_matrix(rows=INPUT_CHANNELS,
-                                                cols=INPUT_LENGTH,
-                                                bp_order=BP_ORDER,
-                                                signal_stream=signal_stream,
+                input_matrix = get_input_matrix(signal_stream=signal_stream,
                                                 sequence_stream=sequence_stream,
                                                 chromosome=chrom_name,
                                                 start=seq_start,
