@@ -10,6 +10,8 @@ with Mute():
     from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, \
         import_prediction_regions, create_prediction_regions, PredictionDataGenerator, make_stranded_predictions
 
+    from maxatac.analyses.peaks import run_call_peaks
+
 
 def run_prediction(args):
     """
@@ -150,14 +152,18 @@ def run_prediction(args):
     else:
         logging.error("Write predictions to a bigwig file")
 
-        # Write the predictions to a bigwig file
+        # Write the predictions to a bigwig file and add name to args
+        args.input_bigwig = outfile_name_bigwig
+
         write_predictions_to_bigwig(forward_strand_predictions,
-                                    output_filename=os.path.join(output_directory, args.prefix + ".bw"),
+                                    output_filename=outfile_name_bigwig,
                                     chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
                                                                                   args.chromosome_sizes
                                                                                   ),
                                     chromosomes=args.chromosomes
                                     )
+        # Call Peaks using specified cutoffs 
+        run_call_peaks(args)
 
     # Measure End Time of Training
     stopTime = timeit.default_timer()

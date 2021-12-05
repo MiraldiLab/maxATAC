@@ -19,7 +19,7 @@ def write_predictions_to_bigwig(df,
                                 chrom_sizes_dictionary,
                                 chromosomes,
                                 agg_mean=True
-                                ):
+                                ) -> object:
     """
     Write the predictions dataframe into a bigwig file
 

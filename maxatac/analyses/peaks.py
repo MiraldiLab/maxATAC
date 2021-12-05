@@ -15,8 +15,10 @@ def run_call_peaks(args):
         chromosomes: The list of chromosomes to call peaks for
         BIN_SIZE: The size of the bin to use for peak calling
         prefix: The prefix for the output filename
-        threshold: The minimum threshold to use for peak calling
-        OUT_DIR: The output directory to write the bed file
+        cutoff_type: Choose between Precision, Recall, log2FC, and F1 to choose your cutoffs
+        cutoff_value: The value associated to cutoff type, i.e. Precision 0.75
+        cutoff_file: Chr2 cutoff file found in /maxATAC/data/models/YOUR_TF_MODEL/YOUR_TF_MODEL_validationPerformance_vs_thresholdCalibration.tsv
+        output: The output directory to write the bed file
     
     Return:
         Write BED file
@@ -27,7 +29,7 @@ def run_call_peaks(args):
     else:
         prefix = os.path.basename(args.input_bigwig).replace(".bw", "")
 
-    output_dir = get_dir(args.OUT_DIR)
+    output_dir = get_dir(args.output)
 
     results_filename = os.path.join(output_dir, prefix + "_" + str(args.BIN_SIZE) + "bp.bed")
 
