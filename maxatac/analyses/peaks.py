@@ -44,10 +44,16 @@ def run_call_peaks(args):
             }
 
     cutoff_type=dict[args.cutoff_type]
-    cutoff_val=args.cutoff_value
 
-    # Find correct threshold
-    thresh = df.query(f"{cutoff_type} >= @cutoff_val").Standard_Thresh.tolist()[0]
+    if cutoff_type == "Monotonic_Avg_F1":
+
+        # Find correct threshold for maximum F1 Score
+        thresh = df.loc[df['Monotonic_Avg_F1'].idxmax()].Standard_Thresh
+    else:
+        cutoff_val=args.cutoff_value
+
+        # Find correct threshold
+        thresh = df.query(f"{cutoff_type} >= @cutoff_val").Standard_Thresh.tolist()[0]
 
     logging.error(f"Input filename: {args.input_bigwig}" +
                   f"\n Target chroms: {args.chromosomes}" +
