@@ -835,6 +835,7 @@ def get_parser():
     peaks_parser.add_argument("-i", "--input_bigwig",
                               dest="input_bigwig",
                               type=str,
+                              required=True,
                               help="Input bigwig")
 
     peaks_parser.add_argument("-threshold", "--threshold",

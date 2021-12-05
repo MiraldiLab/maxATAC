@@ -15,7 +15,7 @@ This version requires python 3.9 and BEDTools.
 
 ## Installation
 
-It is best to install maxATAC into a dedicated virtual environment. 
+It is best to install maxATAC into a dedicated virtual environment.
 
 First, clone the repository with `git clone https://github.com/MiraldiLab/maxATAC.git` into your `repo` directory of choice.
 
