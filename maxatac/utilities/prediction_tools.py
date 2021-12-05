@@ -12,24 +12,29 @@ with Mute():
     from tensorflow.keras.models import load_model
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig
     from maxatac.utilities.training_tools import get_input_matrix
+ 
 
-
-def write_predictions_to_bigwig(df,
-                                output_filename,
-                                chrom_sizes_dictionary,
-                                chromosomes,
-                                agg_mean=True
+def write_predictions_to_bigwig(df: pd.DataFrame,
+                                output_filename: str,
+                                chrom_sizes_dictionary: dict,
+                                chromosomes: list,
+                                agg_mean: bool = True
                                 ) -> object:
-    """
-    Write the predictions dataframe into a bigwig file
+    """Write the predictions dataframe into a bigwig file
 
-    :param df: The dataframe of BED regions with prediction scores
-    :param output_filename: The output bigwig filename
-    :param chrom_sizes_dictionary: A dictionary of chromosome sizes used to form the bigwig file
-    :param chromosomes: A list of chromosomes that you are predicting in
-    :param agg_mean: use aggregation method of mean
+    Args:
+        df (pd.DataFrame): The dataframe of BED regions with prediction scores
+        output_filename (str): The output bigwig filename
+        chrom_sizes_dictionary (dict): A dictionary of chromosome sizes used to form the bigwig file
+        chromosomes (list): A list of chromosomes that you are predicting in
+        agg_mean (bool, optional): use aggregation method of mean. Defaults to True.
 
-    :return: Writes a bigwig file
+    Returns:
+        object: Writes a bigwig file
+        
+    Example:
+    
+    >>> write_predictions_to_bigwig(preds_df, "GM12878_CTCF.bw", chrom_sizes_dict, "chr20")
     """
     if agg_mean:
         bedgraph_df = df.groupby(["chr", "start", "stop"],

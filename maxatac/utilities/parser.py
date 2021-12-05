@@ -1,6 +1,7 @@
 import argparse
 import random
 from os import getcwd
+from pkg_resources import require
 
 from yaml import dump
 
@@ -19,6 +20,7 @@ with Mute():
     from maxatac.analyses.prediction_signal import run_prediction_signal
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.peaks import run_call_peaks
+    from maxatac.analyses.variants import run_variants
 
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
@@ -823,7 +825,7 @@ def get_parser():
                                           help="The blacklisted regions to exclude"
                                           )
 
-    # threshold_parser
+    # peaks_parser
     peaks_parser = subparsers.add_parser("peaks",
                                          parents=[parent_parser],
                                          help="Run maxATAC peaks"
@@ -884,6 +886,80 @@ def get_parser():
                             )
 
     peaks_parser.add_argument("--loglevel",
+                              dest="loglevel",
+                              type=str,
+                              default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                              choices=LOG_LEVELS.keys(),
+                              help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                              )
+
+    # peaks_parser
+    variants_parser = subparsers.add_parser("variants",
+                                         parents=[parent_parser],
+                                         help="Run maxATAC variants"
+                                         )
+
+    # Set the default function to run variants
+    variants_parser.set_defaults(func=run_variants)
+
+    variants_parser.add_argument("-m", "--model",
+                              dest="model",
+                              type=str,
+                              required=True,
+                              help="maxATAC model"
+                              )
+
+    variants_parser.add_argument("-signal", "--signal",
+                              dest="input_bigwig",
+                              type=str,
+                              required=True,
+                              help="Input ATAC-seq signal")
+
+    variants_parser.add_argument("-o", "--output",
+                              dest="output",
+                              type=str,
+                              default="./variants",
+                              help="Output directory."
+                              )
+
+    variants_parser.add_argument("-n", "--name",
+                              dest="name",
+                              type=str,
+                              required=True,
+                              help="Output filename without extension. Example: Tcell_chr1_rs1234_CTCF"
+                              )
+    
+    variants_parser.add_argument("-s", "--sequence",
+                              dest="sequence",
+                              required=True,
+                              type=str,
+                              help="Input 2bit DNA sequence")
+
+    variants_parser.add_argument("-chrom", "--chromosome",
+                              dest="chromosome",
+                              required=True,
+                              help="Chromosome name")
+
+    variants_parser.add_argument("-p", "--position",
+                              dest="variant_start_pos",
+                              type=int,
+                              required=True,
+                              help="The variant start position. This is the position where the variant is located in 0-based coordinates"
+                              )
+
+    variants_parser.add_argument("-nuc", "--target_nucleotide",
+                              dest="nucleotide",
+                              type=str,
+                              required=True,
+                              help="The nucldeotide to use at the variant start position. Example: A")
+    
+    variants_parser.add_argument("-overhang",
+                              dest="overhang",
+                              type=int,
+                              default=0,
+                              help="The amount of overhang around the 1,024 bp prediction window. Must be in intervals of 256 base pairs. Example: 512")
+
+    variants_parser.add_argument("--loglevel",
                               dest="loglevel",
                               type=str,
                               default=LOG_LEVELS[DEFAULT_LOG_LEVEL],

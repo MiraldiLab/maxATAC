@@ -1,177 +1,268 @@
 import logging
 import numpy as np
+from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH, BP_ORDER
+from maxatac.utilities.genome_tools import load_bigwig, load_2bit, get_one_hot_encoded
+from tensorflow.keras.models import load_model
+from Bio.Seq import Seq
 import pandas as pd
 import pybedtools
-import allel
-from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH
-from maxatac.utilities.training_tools import get_input_matrix
-from maxatac.utilities.genome_tools import load_bigwig, load_2bit, get_one_hot_encoded
 
-def import_bed(bed_file,
-               blacklist):
-    """Import a bed file and exclude regions overlapping blacklist
-
-    Args:
-        bed_file: Path to target regions BED file
-        blacklist: Path to blacklist BED file
-
-    Example Usage:
-    >>> targets_df = import_bed("targets.bed", "blacklist.bed")
+class SequenceSpecificPrediction(object):
     """
-    df = pd.read_csv(bed_file,
-                     sep="\t",
-                     usecols=[0, 1, 2],
-                     header=None,
-                     names=["chr", "start", "stop"],
-                     low_memory=False)
+    Make sequence specific preditions with maxATAC.
     
-    # Create a bedtool object from dataframe
-    BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
-
-    # Create a blacklist object form the blacklist bed file
-    blacklist_bedtool = pybedtools.BedTool(blacklist)
-
-    # Create an object that has the blacklisted regions removed
-    blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
-
-    # Create a dataframe from the bedtools object
-    df = blacklisted_df.to_dataframe()
-
-    # Rename columns
-    df.columns = ["chr", "start", "stop"]
-
-    return df
-
-def intersect_bins_targets(windowed_genome,
-                           target_regions,
-                           blacklist,
-                           window=1024
-                           ):
-    """Intersect target regions with bins for prediction
-
     Args:
-        windowed_genome (dataframe): The windowed genome dataframe
-        target_regions (dataframe): The target regions dataframe
-        window (int, optional): The window around the target regions to expand the predictions to. Defaults to 768.
-    
+        signal (str): Path to ATAC-seq signal bigwig
+        sequence (str): Path to 2bit DNA sequence
+        rows (int, optional): Number of rows == channels. Defaults to INPUT_CHANNELS.
+        cols (int, optional): Number of cols == region length. Defaults to INPUT_LENGTH.
+        BP_ORDER (list, optional): Nucleotide order of one-hot encoding. Defaults to BP_ORDER.
+          
     Example Usage:
-    >>> prediction_regions = intersect_bins_targets(windows_df, targets_df, "hg38_blacklist.bed")
+    
+    >>> AD4 = SequenceSpecificPrediction(model = CTCF.h5, signal = AD4_ATACseq.bigwig, sequence = hg38.2bit)
+    >>> AD_A_predictions = AD4.predict(chromosome='chr1', variant_start=2565435, target_nucleotide="A")
     """
-        # Create a bedtool object from dataframe
-    windowed_genome_bedtool = pybedtools.BedTool.from_dataframe(windowed_genome)
-    target_regions_bedtools = pybedtools.BedTool.from_dataframe(target_regions)
-
-    overlap_bedtools = windowed_genome_bedtool.window(target_regions_bedtools, w=window, u=True)
-    
-    # Create a blacklist object form the blacklist bed file
-    blacklist_bedtool = pybedtools.BedTool(blacklist)
-
-    # Create an object that has the blacklisted regions removed
-    blacklisted_df = overlap_bedtools.intersect(blacklist_bedtool, v=True)
-
-    # Create a dataframe from the bedtools object
-    df = blacklisted_df.to_dataframe()
-
-    df.drop_duplicates(subset=["chrom", "start", "end"], inplace=True)
-    
-    df.columns = ["chr", "start", "stop"]
-    
-    return df
-
-class VariantsDataGenerator(tf.keras.utils.Sequence):
     def __init__(self,
-                 signal,
-                 sequence,
-                 input_channels,
-                 input_length,
-                 predict_roi_df,
-                 batch_size=32,
-                 use_complement=False
+                 signal: str,
+                 sequence : str,
+                 rows: int = INPUT_CHANNELS,
+                 cols : int = INPUT_LENGTH,
+                 BP_ORDER:list = BP_ORDER
                  ):
-        """
-        Initialize the variants generator. This is a keras sequence class object. It is used
-        to make sure each batch is unique and sequentially generated.
+        """Initialize parameters
 
-        :param signal: ATAC-seq signal track
-        :param sequence: 2Bit DNA sequence track
-        :param input_channels: How many channels there are
-        :param input_length: length of receptive field
-        :param predict_roi_df: Dataframe that contains the BED intervals to predict on
-        :param batch_size: Size of each training batch or # of examples per batch
-        :param use_complement: Whether to use the forward or reverse (complement) strand
+        Args:
+            signal (str): Path to ATAC-seq signal bigwig
+            sequence (str): Path to 2bit DNA sequence
+            rows (int, optional): Number of rows == channels. Defaults to INPUT_CHANNELS.
+            cols (int, optional): Number of cols == region length. Defaults to INPUT_LENGTH.
+            BP_ORDER (list, optional): Nucleotide order of one-hot encoding. Defaults to BP_ORDER.
         """
-        self.batch_size = batch_size
-        self.predict_roi_df = predict_roi_df
-        self.indexes = np.arange(self.predict_roi_df.shape[0])
         self.signal = signal
         self.sequence = sequence
-        self.input_channels = input_channels
-        self.input_length = input_length
-        self.use_complement = use_complement
+        self.rows = rows
+        self.cols = cols
+        self.bp_order = BP_ORDER
+        self.window = int(INPUT_LENGTH/2)
+        self.BP_DICT = {"A":0, "C":1, "G":2, "T":3}
 
-    def __len__(self):
+    def __str__(self):
+        return f"Input bigwig: {self.signal} \n" + f"Input reference: {self.sequence} \n" 
+    
+    def __repr__(self):
+        return f"Input bigwig: {self.signal} \n" + f"Input reference: {self.sequence} \n"
+                
+    def _create_sliding_windows_(self,
+                                 chromosome: str, 
+                                 variant_start_pos: int, 
+                                 overhang: int = 256, 
+                                 step_size: int = 256):
+        """Create sliding windows around the variant position
+        
+        This function will create sliding windows around the variant psoition. This is a naive appoach that does not enforce
+        chromosome boundaries. Use the overhang parameter to set the number of base pairs on each side to to predict in. This
+        also assumes that the values will be in multiples of the window step.    
+                
+        Args:
+            variant_start_pos (int): Start position of the variant
+            overhang (int): Number of base pairs around the 1,024 bp region to include in prediction. Defaults to 256.
+            step_size (int): Number of base pairs to slide the prediction window when an overhang is included. Use multiples of 32. Defaults to 256.
+            
+        Returns:
+            list, dataframe: list of regions, dataframe of regions
         """
-        Denotes the number of batches per epoch
+        logging.error(f"The predictions will be centered on position: {chromosome} {variant_start_pos} \n" + 
+                      f"The central 1,024 bp window will have an overhang of {overhang} bp \n" + 
+                      f"The windows will slide every {step_size} bp")
+        
+        # Use the overhang to calculate how many intervals will be created
+        num_regions = int(((overhang / step_size) * 2) + 1)
+        
+        logging.error(f"There are {num_regions} total 1,024 bp windows that will make up the prediction.")
+                     
+        # Find the first windows center point
+        window_center_index = variant_start_pos - overhang
+        
+        regions_list = []
+        
+        # create intervals 
+        for _ in range(0 , num_regions):
+            window_start = window_center_index - 512
+            window_stop = window_center_index + 512
+        
+            regions_list.append([window_start, window_stop])
+            
+            window_center_index += step_size
+        
+        # Create a dataframe from the list
+        windows_df = pd.DataFrame(regions_list, columns=["start", "stop"])
+
+        windows_df["chr"] = chromosome
+        
+        return regions_list, windows_df[["chr", "start", "stop"]]
+
+    def _get_seq_specific_input_matrix_(self, 
+                                        chromosome: str, 
+                                        window_start: int, 
+                                        window_stop: int, 
+                                        variant_index: int, 
+                                        target_nucleotide:str):
+        """Generate a variant specific input matrix for maxATAC
+
+        Args:
+            chromosome (str): The window chromosome
+            window_start (int): The window start
+            window_stop (int): The window stop
+            variant_index (int): The index position in the array that corresponds to the variant position
+            target_nucleotide (str): The target nucleotide that you want in the index position
+
+        Returns:
+            array: An np.array with dimensions 1024 x 5
         """
-        return int(self.predict_roi_df.shape[0] / self.batch_size)
+        # The nucleotide positions are 0-4
+        signal_stream = load_bigwig(self.signal)
+        sequence_stream  = load_2bit(self.sequence)
+        
+        input_matrix = np.zeros((self.rows, self.cols))
+        
+        for n, bp in enumerate(self.bp_order):
+            # Get the sequence from the interval of interest
+            target_sequence = Seq(sequence_stream.sequence(chromosome, window_start, window_stop))
 
-    def __getitem__(self, index):
+            # Get the one hot encoded sequence
+            input_matrix[n, :] = get_one_hot_encoded(target_sequence, bp)
+
+        signal_array = np.array(signal_stream.values(chromosome, window_start, window_stop))
+
+        input_matrix[4, :] = signal_array
+
+        input_matrix = input_matrix.T
+                
+        if variant_index >= 0 and variant_index < 1024:
+            # Get the nucleotide index
+            nucleotide_index = self.BP_DICT[target_nucleotide]
+        
+            input_matrix[variant_index, nucleotide_index] = 1
+
+            other_nucleotides = [item for item in [0,1,2,3] if item not in [nucleotide_index]]
+            
+            input_matrix[variant_index, other_nucleotides[0]] = 0
+            input_matrix[variant_index, other_nucleotides[1]] = 0
+            input_matrix[variant_index, other_nucleotides[2]] = 0
+        else:
+            pass
+        
+        return np.array([input_matrix])
+
+    def _convert_predictions_to_bedgraph_(self, 
+                                          predictions, 
+                                          predict_roi_df, 
+                                          chromosome):
+        """Convert a arrays of maxATAC predictions to a bedgraph formatted dataframe
+
+        Args:
+            predictions ([type]): [description]
+            predict_roi_df ([type]): [description]
+            chromosome ([type]): [description]
+
+        Returns:
+            [type]: [description]
         """
-        Generate one batch of data
+        predictions_df = pd.DataFrame(data=predictions, index=None)
+        
+        predictions_df["chr"] = chromosome
+        predictions_df["start"] = predict_roi_df["start"]
+        predictions_df["stop"] = predict_roi_df["stop"]
 
-        :param index: current index of batch that we are on
+        # Create BedTool object from the dataframe
+        coordinates_dataframe = pybedtools.BedTool.from_dataframe(predictions_df[['chr', 'start', 'stop']])
+
+        # Window the intervals into 32 bins
+        windowed_coordinates = coordinates_dataframe.window_maker(b=coordinates_dataframe, n=32)
+
+        # Create a dataframe from the BedTool object
+        windowed_coordinates_dataframe = windowed_coordinates.to_dataframe()
+
+        # Drop all columns except those that have scores in them
+        scores_dataframe = predictions_df.drop(['chr', 'start', 'stop'], axis=1)
+
+        # Take the scores and reshape them into a column of the pandas dataframe
+        windowed_coordinates_dataframe['score'] = scores_dataframe.to_numpy().flatten()
+
+        # Rename the columns of the dataframe
+        windowed_coordinates_dataframe.columns = ['chr', 'start', 'stop', 'score']
+
+        # Get the mean of all sliding window predicitons
+        windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"], as_index=False).mean()
+
+        return windowed_coordinates_dataframe
+    
+    def _get_atac_signal_(self, chromosome):
+        signal_stream = load_bigwig(self.signal)
+        
+        self.atac_min_coordinate = self.windows_df["start"].min()
+        
+        self.atac_max_coordinate = self.windows_df["stop"].max()
+        
+        self.atac_signal = np.array(signal_stream.values(chromosome, self.atac_min_coordinate, self.atac_max_coordinate))
+
+    def predict(self, 
+                model:str, 
+                chromosome: str, 
+                variant_start: int, 
+                target_nucleotide: str, 
+                overhang: int = 256, 
+                step_size: int = 256):
+        """Make a prediction around a specific genetic loci
+
+        Args:
+            model (str): Path to the maxATAC model
+            chromosome (str): The chromosome to make predictions on
+            variant_start (int): The position of the variant in 0-based coordinates
+            target_nucleotide (str): The target nucleotide you which to have at the variant position
+            overhang (int): The number of basepairs that you want to predict beyond the 1,024 bp prediction windows: similar to slop
+            step_size (int): The number of base pairs that you want to slide each prediction window
+
+        Returns:
+            dataframe: A dataframe with bedgraph format
         """
-        # Generate indexes of the batch
-        batch_indexes = self.indexes[index * self.batch_size:(index + 1) * self.batch_size]
-
-        # Generate data
-        X = self.__data_generation__(batch_indexes)
-
-        return X
-
-    def __data_generation__(self, batch_indexes):
-        """
-        Generates data containing batch_size samples
-
-        :param batch_indexes: list of indexes of to use for batch
-        """
-        # Store sample
-        batch_roi_df = self.predict_roi_df.loc[batch_indexes, :]
-
-        batch_roi_df.reset_index(drop=True, inplace=True)
-
-        batch = self.__get_region_values__(roi_pool=batch_roi_df)
-
-        return batch
-
-    def __get_region_values__(self, roi_pool):
-        """
-        Get the bigwig values for each ROI in the ROI pool
-
-        :param roi_pool: Pool of regions to make predictions on
-        """
-        # Create the lists to hold the batch data
-        inputs_batch = []
-
-        # Calculate the size of the predictions pool
-        roi_size = roi_pool.shape[0]
-
-        # With the files loaded get the data
-        with load_bigwig(self.signal) as signal_stream, load_2bit(self.sequence) as sequence_stream:
-            for row_idx in range(roi_size):
-                # Get the single row
-                row = roi_pool.loc[row_idx, :]
-
-                # Get the matric of values for the entry
-                input_matrix = get_input_matrix(signal_stream=signal_stream,
-                                                sequence_stream=sequence_stream,
-                                                chromosome=row[0],
-                                                start=int(row[1]),
-                                                end=int(row[2]),
-                                                use_complement=self.use_complement,
-                                                reverse_matrix=self.use_complement)
-
-                # Append the matrix of values to the batch list
-                inputs_batch.append(input_matrix)
-
-        return np.array(input_matrix)
+        # Load the maxATAC model
+        nn_model = load_model(model, compile=False)
+  
+        # Create the prediction windows
+        self.prediction_windows, self.windows_df = self._create_sliding_windows_(chromosome=chromosome,
+                                                                                 variant_start_pos=variant_start,
+                                                                                 overhang=overhang,
+                                                                                 step_size=step_size)
+        
+        prediction_list = []
+        
+        # We loop through the list of regions. The list of regions starts from the left most position.
+        # We do not need exact genomic position, but the 
+        # relative position of the variant compared to the 1,024 bp array that we are inputting into our model. 
+        variant_index = 512 + overhang
+        
+        for window in self.prediction_windows:
+            # Get the sequence specific input matrix for the genomic region of interest
+            seq_specific_array = self._get_seq_specific_input_matrix_(chromosome=chromosome, 
+                                                                      window_start=window[0], 
+                                                                      window_stop=window[1], 
+                                                                      variant_index=variant_index, 
+                                                                      target_nucleotide=target_nucleotide)
+            
+            # Append the batch of predictions from the model
+            prediction_list.append(nn_model.predict_on_batch(seq_specific_array).flatten())
+            
+            # subtract the set size from the variant index for the next windows calculation
+            variant_index -= step_size
+        
+        # convert all predictions to a bedgraph format dataframe
+        bedgraph_df = self._convert_predictions_to_bedgraph_(predictions=prediction_list, 
+                                                             predict_roi_df = self.windows_df, 
+                                                             chromosome=chromosome)
+  
+        self._get_atac_signal_(chromosome)
+        
+        return bedgraph_df
+        

@@ -52,3 +52,6 @@ Steps in training and assessing a maxATAC model. Relevant functions are listed b
 
 ### 5. Call "peaks" on maxATAC signal tracks
    * [`peaks`](./docs/readme/peaks.md#Peaks)
+
+### 6. Predict sequence specific TF binding
+   * [`variants`]('./docs/readme/variants.md#Variants)
