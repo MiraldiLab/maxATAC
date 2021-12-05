@@ -18,7 +18,7 @@ with Mute():
     from maxatac.analyses.benchmark import run_benchmarking
     from maxatac.analyses.prediction_signal import run_prediction_signal
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit
-    from maxatac.analyses.peaks import call_peaks
+    from maxatac.analyses.peaks import run_call_peaks
 
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
@@ -810,37 +810,48 @@ def get_parser():
                                          )
 
     # Set the default function to run averaging
-    peaks_parser.set_defaults(func=call_peaks)
+    peaks_parser.set_defaults(func=run_call_peaks)
 
-    peaks_parser.add_argument("--prefix",
+    peaks_parser.add_argument("-prefix", "--prefix",
                               dest="prefix",
                               type=str,
-                              required=True,
-                              help="Output prefix."
+                              required=False,
+                              help="Output prefix filename. Defaults: remove .bw extension."
                               )
 
-    peaks_parser.add_argument("--bin_size",
-                              dest="bin_size",
+    peaks_parser.add_argument("-bin", "--bin_size",
+                              dest="BIN_SIZE",
                               type=int,
                               default=DEFAULT_BENCHMARKING_BIN_SIZE,
-                              help="Chromosomes for averaging")
+                              help="Bin size to use for peak calling")
 
-    peaks_parser.add_argument("--output",
-                              dest="output_dir",
+    peaks_parser.add_argument("-o", "--output",
+                              dest="OUT_DIR",
                               type=str,
                               default="./peaks",
                               help="Output directory."
                               )
 
-    peaks_parser.add_argument("--input_bigwig",
+    peaks_parser.add_argument("-i", "--input_bigwig",
                               dest="input_bigwig",
                               type=str,
+                              required=True,
                               help="Input bigwig")
 
-    peaks_parser.add_argument("--threshold",
+    peaks_parser.add_argument("-threshold", "--threshold",
                               dest="threshold",
                               type=float,
-                              help="Input bigwig")
+                              help="Minimum threshold value to use for peak calling")
+
+    peaks_parser.add_argument("--chromosomes",
+                            dest="chromosomes",
+                            type=str,
+                            nargs="+",
+                            default=AUTOSOMAL_CHRS,
+                            help="Chromosomes list for analysis. \
+                            Optionally with regions in a form of chrN:start-end. \
+                            Default: main human chromosomes, whole length"
+                            )
 
     peaks_parser.add_argument("--loglevel",
                               dest="loglevel",
