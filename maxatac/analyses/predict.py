@@ -162,7 +162,7 @@ def run_prediction(args):
                                                                                   ),
                                     chromosomes=args.chromosomes
                                     )
-        # Call Peaks using specified cutoffs 
+        # Call Peaks using specified cutoffs
         run_call_peaks(args)
 
     # Measure End Time of Training
