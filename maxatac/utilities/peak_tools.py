@@ -16,7 +16,7 @@ def call_peaks_per_chromosome(bigwig_path, chrom_name, threshold, bin_size=200):
         Dataframe: A dataframe of genomic regions that above the given threshold
         
     Example:
-    >>> bed_regions_df = call_peaks(signal_stream, "chr19", .75)
+    bed_regions_df = call_peaks(signal_stream, "chr19", .75)
     """
     with load_bigwig(bigwig_path) as signal_stream:
         # Get the chromosome lenghs

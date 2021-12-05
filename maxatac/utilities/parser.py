@@ -353,6 +353,26 @@ def get_parser():
                                 help="Chromosomes from --chromosomes fixed for prediction. \
                                       Default: 1, 8"
                                 )
+    predict_parser.add_argument("-bin", "--bin_size",
+                              dest="BIN_SIZE",
+                              type=int,
+                              default=DEFAULT_BENCHMARKING_BIN_SIZE,
+                              help="Bin size to use for peak calling")
+
+    predict_parser.add_argument("-cutoff_type", "--cutoff_type",
+                              dest="cutoff_type",
+                              type=str,
+                              help="Cutoff type (i.e. Precision)")
+
+    predict_parser.add_argument("-cutoff_value", "--cutoff_value",
+                              dest="cutoff_value",
+                              type=float,
+                              help="Cutoff value for the cutoff type provided")
+
+    predict_parser.add_argument("-cutoff_file", "--cutoff_file",
+                              dest="cutoff_file",
+                              type=str,
+                              help="Cutoff file provided in /data/models")
 
     # Train parser
     train_parser = subparsers.add_parser("train",
@@ -826,7 +846,7 @@ def get_parser():
                               help="Bin size to use for peak calling")
 
     peaks_parser.add_argument("-o", "--output",
-                              dest="OUT_DIR",
+                              dest="output",
                               type=str,
                               default="./peaks",
                               help="Output directory."
@@ -838,10 +858,20 @@ def get_parser():
                               required=True,
                               help="Input bigwig")
 
-    peaks_parser.add_argument("-threshold", "--threshold",
-                              dest="threshold",
+    peaks_parser.add_argument("-cutoff_type", "--cutoff_type",
+                              dest="cutoff_type",
+                              type=str,
+                              help="Cutoff type (i.e. Precision)")
+
+    peaks_parser.add_argument("-cutoff_value", "--cutoff_value",
+                              dest="cutoff_value",
                               type=float,
-                              help="Minimum threshold value to use for peak calling")
+                              help="Cutoff value for the cutoff type provided")
+
+    peaks_parser.add_argument("-cutoff_file", "--cutoff_file",
+                              dest="cutoff_file",
+                              type=str,
+                              help="Cutoff file provided in /data/models")
 
     peaks_parser.add_argument("--chromosomes",
                             dest="chromosomes",
