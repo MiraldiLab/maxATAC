@@ -38,6 +38,7 @@ First, clone the repository with `git clone https://github.com/MiraldiLab/maxATA
 Steps in training and assessing a maxATAC model. Relevant functions are listed below each step.
 
 ### 1. Prepare Input Data
+   * [`prepare`](./docs/readme/prepare.md#Prepare)
    * [`average`](./docs/readme/average.md#Average)
    * [`normalize`](./docs/readme/normalize.md#Normalize)
    
