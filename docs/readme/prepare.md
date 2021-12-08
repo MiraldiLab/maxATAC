@@ -1,6 +1,7 @@
 # Prepare
 
-The `prepare` function will convert a BAM file to Tn5 cut sites that are smoothed with a specific slop size. The files are converted to bigwig signal tracks and then min-max normalized. 
+The `prepare` function will convert a BAM file to Tn5 cut sites that are smoothed with a specific slop size. The files are converted to bigwig signal tracks and then min-max normalized.
+
 ## Example
 
 ```bash
@@ -12,7 +13,7 @@ maxatac prepare -i SRX2717911.bam -o ./output -prefix SRX2717911
 
 ### `-i, --input`
 
-The input BAM file that has been PCR de-duplicated and filtered for high quality reads. 
+The input BAM file that has been PCR de-duplicated and filtered for high quality reads.
 
 ### `-o, --output`
 
