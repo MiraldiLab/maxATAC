@@ -26,7 +26,7 @@ def run_prepare(args):
     logging.error("Generate the normalized signal tracks.")
 
     if args.input.endswith(".bam"):
-        logging.error("Getting the number of reads in the BAM file")
+        logging.error("Working on a bulk ATAC-seq BAM file \n" + "Getting the number of reads in the BAM file")
         
         # Get the read count using pysam
         read_counts = int(pysam.view("-c", "-F", "260", args.input))
@@ -38,22 +38,46 @@ def run_prepare(args):
         # Number of counts normalized for sequencing depth of 20,000,000 reads.
         scale_factor = (1/read_counts) * args.rpm_factor
 
-        logging.error("Converting BAM file to Tn5 sites, shifting reads, slopping, and generating bigwig")
+        logging.error("Checking whether deduplication is necessary")
         
-        # Use subprocess to run bedtools and bedgraphtobigwig
-        subprocess.run(["bash", 
-                        os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/shift_reads.sh"), 
-                        args.input, 
-                        args.prefix,
-                        output_dir,
-                        str(args.threads),
-                        args.blacklist_bed,
-                        args.chrom_sizes,
-                        str(args.slop), 
-                        str(scale_factor)])
+        # Get the flagstats from the input BAM
+        flagstats = pysam.flagstat(args.input)
 
+        # Get the number of duplicate counts
+        dup_counts = flagstats.split("\n")[3].replace(" duplicates", "").split(" + ")
+
+        if int(dup_counts[0]) > 0:
+            logging.error("PCR duplicates found")
+            logging.error("Filtering BAM file to Tn5 sites, shifting reads, slopping, and generating bigwig")
+ 
+            # Use subprocess to run bedtools and bedgraphtobigwig
+            subprocess.run(["bash", 
+                            os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/ATAC_bowtie2_pipeline.sh"), 
+                            args.input, 
+                            args.prefix,
+                            output_dir,
+                            str(args.threads),
+                            args.blacklist_bed,
+                            args.chrom_sizes,
+                            str(args.slop), 
+                            str(scale_factor)], check=True)
+        else:
+            logging.error("No PCR duplicates found")
+            logging.error("Converting BAM file to Tn5 sites, shifting reads, slopping, and generating bigwig")
+
+            subprocess.run(["bash", 
+                            os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/ATAC_bowtie2_nodedup_pipeline.sh"), 
+                            args.input, 
+                            args.prefix,
+                            output_dir,
+                            str(args.threads),
+                            args.blacklist_bed,
+                            args.chrom_sizes,
+                            str(args.slop), 
+                            str(scale_factor)], check=True)
+                        
     elif args.input.endswith((".tsv", ".tsv.gz")):
-        logging.error("Converting fragment files to Tn5 sites")
+        logging.error("Working on 10X scATAC fragments file \n " + "Converting fragment files to Tn5 sites")
 
         # Convert a 10X fragments file to Tn5 cut sites
         bed_df = convert_fragments_to_tn5_bed(args.input, ALL_CHRS)
@@ -84,7 +108,7 @@ def run_prepare(args):
                         args.blacklist_bed,
                         args.prefix,
                         output_dir,
-                        str(scale_factor)])
+                        str(scale_factor)], check=True)
                                 
     else:
         print("You have not specific a correct input file type. Options: bulk or scatac")
