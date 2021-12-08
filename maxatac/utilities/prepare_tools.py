@@ -1,5 +1,33 @@
+import subprocess
 import pandas as pd
+import subprocess
+import sys
 
+def raise_exception(e, package, install_link):
+    print("command '{}' return with error (code {}): {}. Make sure {} is installed in your path {}.".format(e.cmd, e.returncode, e.output, package, install_link))
+    sys.exit()
+    
+def check_packages_installed():
+    try:
+        subprocess.run(["which", "samtools"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "samtools", "http://www.htslib.org/")
+        
+    try:
+        subprocess.run(["which", "bedtools"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "bedtools", "https://bedtools.readthedocs.io/")
+        
+    try:
+        subprocess.run(["which", "pigz"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "pigz", "https://zlib.net/pigz/")
+        
+    try:
+        subprocess.run(["which", "bedGraphToBigWig"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "bedGraphToBigWig", "https://anaconda.org/bioconda/ucsc-bedgraphtobigwig")
+        
 def convert_fragments_to_tn5_bed(fragments_tsv: str, chroms: list):
     """Convert 10X scATAC fragments file to Tn5 insertion sites bed
 

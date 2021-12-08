@@ -1,22 +1,25 @@
 import logging
 from maxatac.utilities.system_tools import get_dir, Mute
-from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed
+from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed, check_packages_installed
 from maxatac.utilities.constants import ALL_CHRS
 import sys
 import subprocess
 import pysam
 from maxatac.analyses.normalize import run_normalization
 import os
-import pybedtools
 
 def run_prepare(args):
+    # Check if samtools, bedtools, bedgraphtobigwig, and pigz are installed
+    check_packages_installed()
+    
     logging.error(f"Input file: {args.input} \n" +
                   f"Input chromosome sizes file: {args.chrom_sizes} \n" +
                   f"Tn5 cut sites will be slopped {args.slop} bps on each side \n" +
                   f"Input blacklist file: {args.blacklist} \n" +
                   f"Output filename: {args.prefix} \n" +
                   f"Output directory: {args.output} \n" +
-                  f"Using a millions factor of: {args.rpm_factor}")
+                  f"Using a millions factor of: {args.rpm_factor} \n" +
+                  f"Using {args.threads} threads to run job.")
     
     output_dir = get_dir(args.output)
     
@@ -39,13 +42,14 @@ def run_prepare(args):
         
         # Use subprocess to run bedtools and bedgraphtobigwig
         subprocess.run(["bash", 
-                        os.path.join(os.path.dirname(__file__), "../../scripts/shift_reads.sh"), 
+                        os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/shift_reads.sh"), 
                         args.input, 
-                        args.chrom_sizes, 
-                        str(args.slop), 
-                        args.blacklist_bed,
                         args.prefix,
                         output_dir,
+                        str(args.threads),
+                        args.blacklist_bed,
+                        args.chrom_sizes,
+                        str(args.slop), 
                         str(scale_factor)])
 
     elif args.input.endswith((".tsv", ".tsv.gz")):
@@ -73,7 +77,7 @@ def run_prepare(args):
         
         # Use subprocess to run bedtools and bedgraphtobigwig
         subprocess.run(["bash", 
-                        os.path.join(os.path.dirname(__file__), "../../scripts/scatac_generate_bigwig.sh"), 
+                        os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/scatac_generate_bigwig.sh"), 
                         tmp_file_path, 
                         args.chrom_sizes, 
                         str(args.slop), 
@@ -100,4 +104,5 @@ def run_prepare(args):
     args.max_percentile = 99
     args.clip = False
     
+    # Minmax normalize signal tracks
     run_normalization(args)

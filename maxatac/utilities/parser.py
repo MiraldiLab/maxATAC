@@ -942,11 +942,16 @@ def get_parser():
                                         type=str,
                                         nargs="+",
                                         default=AUTOSOMAL_CHRS,
-                                        help="Chromosomes list for analysis. \
-                                        Optionally with regions in a form of chrN:start-end. \
-                                        Default: main human chromosomes, whole length"
+                                        help="Chromosomes list for analysis."
                                         )
 
+    prepare_parser.add_argument("-threads", "--threads",
+                                        dest="threads",
+                                        type=int,
+                                        default=get_cpu_count(),
+                                        help="The number of threads to use"
+                                        )
+    
     prepare_parser.add_argument("--loglevel",
                               dest="loglevel",
                               type=str,
