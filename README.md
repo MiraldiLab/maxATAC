@@ -11,7 +11,7 @@ The maxATAC package is a collection of tools used for learning to predict TF bin
 
 ## Requirements
 
-This version requires python 3.9 and BEDTools.
+This version requires python 3.9, `bedtools`, `samtools`, `pigz`, and `bedGraphToBigWig` in order to run all functions.
 
 ## Installation
 
@@ -23,15 +23,11 @@ First, clone the repository with `git clone https://github.com/MiraldiLab/maxATA
 
 1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9`
 
-2. Activate the conda environment for maxATAC with `conda activate maxatac` or `source activate maxatac` if you have an error using a HPC.
+2. Install `bedtools`, `samtools`, `bedGraphToBigWig`, and `pigz` or make sure it is found in your `PATH`. I prefer to use the `conda install` method for installing these packages.
 
-3. Install bedtools or make sure it is found in your `PATH` with `conda install bedtools`
+3. Change into the maxATAC git repository with `cd maxATAC` and use `pip install -e .` to install maxATAC into the conda environment.
 
-4. Install pysam with `conda install pysam`
-
-5. Change into the maxATAC git repository with `cd maxATAC` and use `pip install -e .` to install maxATAC into the conda environment.
-
-6. Test installation with `maxatac -h`
+4. Test installation with `maxatac -h`
 
 ## maxATAC Workflow Overview
 

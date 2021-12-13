@@ -83,17 +83,6 @@ def get_genomic_stats(bigwig_path: str, chrom_sizes_dict: dict, blacklist_path: 
 
         return min_value, max_value, median_value, median_absolute_deviation, mean_value, std_value
 
-    """
-    MinMax normalize the numpy array based on the genomic min and max
-
-    :param max_value:
-    :param min_value:
-    :param array: Input array of bigwig values
-    :param clip: (Boolean) clip array
-
-    :return: MinMax normalized array
-    """
-    
 def minmax_normalize_array(array: np.array, min_value: int, max_value: int, clip: bool=False):
     """MinMax normalize the numpy array based on the genomic min and max
 

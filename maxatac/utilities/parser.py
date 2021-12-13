@@ -951,7 +951,14 @@ def get_parser():
                                         default=get_cpu_count(),
                                         help="The number of threads to use"
                                         )
-    
+
+    prepare_parser.add_argument("-dedup", "--deduplicate",
+                                        dest="dedup",
+                                        default=False,
+                                        action="store_true",
+                                        help="Whether to perform deduplication"
+                                )
+        
     prepare_parser.add_argument("--loglevel",
                               dest="loglevel",
                               type=str,

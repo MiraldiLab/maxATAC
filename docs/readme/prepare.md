@@ -1,6 +1,6 @@
 # Prepare
 
-The `prepare` function will convert a BAM file to Tn5 cut sites that are smoothed with a specific slop size. The files are converted to bigwig signal tracks and then min-max normalized.
+The `prepare` function will convert a BAM file to Tn5 cut sites that are smoothed with a specific slop size. The files are converted to bigwig signal tracks and then min-max normalized. You must have `samtools`, `bedtools`, `pigz`, and `bedGraphToBigWig` installed to run this function. 
 
 ## Example
 
@@ -10,10 +10,12 @@ maxatac prepare -i SRX2717911.bam -o ./output -prefix SRX2717911
 
 ## Required Arguments
 
-
 ### `-i, --input`
 
-The input BAM file that has been PCR de-duplicated and filtered for high quality reads.
+The input file to be processed. The input file can be either:
+
+* `.bam`: Bulk ATAC-seq BAM file. We will do a simple check to see if duplicates are reported.
+* `.tsv`: 10X scATAC fragments file. Must end in `.tsv` or `.tsv.gz`.
 
 ### `-o, --output`
 
@@ -48,6 +50,10 @@ The chromosome sizes file.
 ### `-chroms, --chromosomes`
 
 The chromosomes to use for the final output.
+
+### `-threads`
+
+The number of threads to use.
 
 ### `--loglevel`
 

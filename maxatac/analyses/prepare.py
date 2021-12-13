@@ -9,6 +9,21 @@ from maxatac.analyses.normalize import run_normalization
 import os
 
 def run_prepare(args):
+    """Run maxatac prepare for generating normalized signal tracks for prediction
+    
+    This function will :
+    1) Check whether the file is a .tsv/.tsv.gz or .bam file. 
+    
+        tsv file: 10x scATACseq fragments file
+        bam file: bulk ATACseq BAM file
+            If the file is a bam file, a flagstat check for duplicate reads will be performed.
+        
+    2) Convert reads or fragments to Tn5 cut sites and sequencing depth normalize.
+    3) Minmax normalize the RPM normalized bigwig files for maxATAC    
+    
+    Args:
+        args (argslist)): The argsparse object with input parameters as attributes.
+    """
     # Check if samtools, bedtools, bedgraphtobigwig, and pigz are installed
     check_packages_installed()
     
@@ -37,18 +52,9 @@ def run_prepare(args):
         # Then we want to multiply by 20,000,000. This will give you the 
         # Number of counts normalized for sequencing depth of 20,000,000 reads.
         scale_factor = (1/read_counts) * args.rpm_factor
-
-        logging.error("Checking whether deduplication is necessary")
         
-        # Get the flagstats from the input BAM
-        flagstats = pysam.flagstat(args.input)
-
-        # Get the number of duplicate counts
-        dup_counts = flagstats.split("\n")[3].replace(" duplicates", "").split(" + ")
-
-        if int(dup_counts[0]) > 0:
-            logging.error("PCR duplicates found")
-            logging.error("Filtering BAM file to Tn5 sites, shifting reads, slopping, and generating bigwig")
+        if args.dedup:
+            logging.error("Processing BAM to bigwig. Running deduplication")
  
             # Use subprocess to run bedtools and bedgraphtobigwig
             subprocess.run(["bash", 
@@ -60,13 +66,13 @@ def run_prepare(args):
                             args.blacklist_bed,
                             args.chrom_sizes,
                             str(args.slop), 
-                            str(scale_factor)], check=True)
+                            str(scale_factor),
+                            "deduplicate"], check=True)
         else:
-            logging.error("No PCR duplicates found")
-            logging.error("Converting BAM file to Tn5 sites, shifting reads, slopping, and generating bigwig")
+            logging.error("Processing BAM to bigwig. Skipping eduplication")
 
             subprocess.run(["bash", 
-                            os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/ATAC_bowtie2_nodedup_pipeline.sh"), 
+                            os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/ATAC_bowtie2_pipeline.sh"),
                             args.input, 
                             args.prefix,
                             output_dir,
@@ -74,7 +80,8 @@ def run_prepare(args):
                             args.blacklist_bed,
                             args.chrom_sizes,
                             str(args.slop), 
-                            str(scale_factor)], check=True)
+                            str(scale_factor),
+                            "skip"], check=True)
                         
     elif args.input.endswith((".tsv", ".tsv.gz")):
         logging.error("Working on 10X scATAC fragments file \n " + "Converting fragment files to Tn5 sites")
