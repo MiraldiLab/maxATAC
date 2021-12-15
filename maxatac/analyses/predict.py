@@ -2,6 +2,8 @@ import logging
 import os
 import timeit
 import pandas as pd
+import multiprocessing
+from multiprocessing import Pool, Manager
 from maxatac.utilities.system_tools import get_dir, Mute
 
 with Mute():
@@ -65,46 +67,43 @@ def run_prediction(args):
 
     # Import the regions for prediction.
     # The function build_chrom_sizes_dict is used to make sure regions fall within chromosome bounds.
-    if args.roi:
-        logging.error("Import prediction regions")
-
-        regions_pool = import_prediction_regions(bed_file=args.roi,
-                                                 region_length=INPUT_LENGTH,
-                                                 chromosomes=args.chromosomes,
-                                                 chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
-                                                                                               args.chromosome_sizes
-                                                                                               ),
-                                                 blacklist=args.blacklist
-                                                 )
-
-    else:
-        logging.error("Create prediction regions")
-
-        regions_pool = create_prediction_regions(region_length=INPUT_LENGTH,
-                                                 chromosomes=args.chromosomes,
-                                                 chrom_sizes=args.chromosome_sizes,
-                                                 blacklist=args.blacklist,
-                                                 step_size=args.step_size
-                                                 )
 
     logging.error("Make prediction on forward strand")
 
-    forward_strand_predictions = make_stranded_predictions(signal=args.signal,
-                                                           sequence=args.sequence,
-                                                           models=args.models[0],
-                                                           predict_roi_df=regions_pool,
-                                                           batch_size=args.batch_size,
-                                                           use_complement=False)
+    with Pool(int(multiprocessing.cpu_count())) as p:
+        forward_strand_predictions = p.starmap(make_stranded_predictions,
+                                               [(args.roi,
+                                                 INPUT_LENGTH,
+                                                 args.chromosomes,
+                                                 args.chromosome_sizes,
+                                                 args.blacklist,
+                                                 args.step_size,
+                                                 args.signal,
+                                                 args.sequence,
+                                                 args.models[0],
+                                                 args.batch_size,
+                                                 False) for chromosome in args.chromosomes])
+
+    forward_strand_predictions = forward_strand_predictions[0]
 
     if args.stranded:
         logging.error("Make prediction on reverse strand")
 
-        reverse_strand_prediction = make_stranded_predictions(signal=args.signal,
-                                                              sequence=args.sequence,
-                                                              models=args.models[0],
-                                                              predict_roi_df=regions_pool,
-                                                              batch_size=args.batch_size,
-                                                              use_complement=True)
+        with Pool(int(multiprocessing.cpu_count())) as p:
+            reverse_strand_prediction = p.starmap(make_stranded_predictions,
+                                                   [(args.roi,
+                                                     INPUT_LENGTH,
+                                                     args.chromosomes,
+                                                     args.chromosome_sizes,
+                                                     args.blacklist,
+                                                     args.step_size,
+                                                     args.signal,
+                                                     args.sequence,
+                                                     args.models[0],
+                                                     args.batch_size,
+                                                     True) for chromosome in args.chromosomes])
+
+        reverse_strand_prediction = reverse_strand_prediction[0]
 
         logging.error("Write predictions to a bigwig file")
 
@@ -129,25 +128,36 @@ def run_prediction(args):
         # Merge both strand predictions
         merged_predictions = pd.concat([forward_strand_predictions, reverse_strand_prediction])
 
+        outfile_name_bigwig_max = os.path.join(output_directory, args.prefix + "_max.bw")
+        args.input_bigwig = outfile_name_bigwig_max
+
         # Write the predictions to a bigwig file
         write_predictions_to_bigwig(merged_predictions,
-                                    output_filename=os.path.join(output_directory, args.prefix + "_max.bw"),
+                                    output_filename=outfile_name_bigwig_max,
                                     chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
                                                                                   args.chromosome_sizes
                                                                                   ),
                                     chromosomes=args.chromosomes,
                                     agg_mean=False
                                     )
+        # Call Peaks using specified cutoffs
+        run_call_peaks(args)
+
+
+        outfile_name_bigwig_mean = os.path.join(output_directory, args.prefix + "_mean.bw")
+        args.input_bigwig = outfile_name_bigwig_mean
 
         # Write the predictions to a bigwig file
         write_predictions_to_bigwig(merged_predictions,
-                                    output_filename=os.path.join(output_directory, args.prefix + "_mean.bw"),
+                                    output_filename=outfile_name_bigwig_mean,
                                     chrom_sizes_dictionary=build_chrom_sizes_dict(args.chromosomes,
                                                                                   args.chromosome_sizes
                                                                                   ),
                                     chromosomes=args.chromosomes,
                                     agg_mean=True
                                     )
+        # Call Peaks using specified cutoffs
+        run_call_peaks(args)
 
     else:
         logging.error("Write predictions to a bigwig file")
