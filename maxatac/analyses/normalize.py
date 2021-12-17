@@ -36,7 +36,6 @@ def run_normalization(args):
 
     :return: A minmax normalized bigwig file
     """
-    # if log transforming the file, change filename
     OUTPUT_FILENAME = os.path.join(args.output, args.prefix + ".bw")
 
     # Set up the output directoryz

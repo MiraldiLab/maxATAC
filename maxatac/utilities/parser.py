@@ -18,10 +18,10 @@ with Mute():
     from maxatac.analyses.normalize import run_normalization
     from maxatac.analyses.benchmark import run_benchmarking
     from maxatac.analyses.prediction_signal import run_prediction_signal
-    from maxatac.utilities.genome_tools import load_bigwig, load_2bit
     from maxatac.analyses.peaks import run_call_peaks
     from maxatac.analyses.variants import run_variants
-
+    from maxatac.analyses.prepare import run_prepare
+    
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
                                          DEFAULT_LOG_LEVEL,
@@ -67,118 +67,6 @@ def normalize_args(args, skip_list=[], cwd_abs_path=None):
     return argparse.Namespace(**normalized_args)
 
 
-def get_synced_chroms(chroms, files, ignore_regions=None):
-    """
-    If ignore_regions is True, set regions to the whole chromosome length
-    Returns something like this
-        {
-            "chr2": {"length": 243199373, "region": [0, 243199373]},
-            "chr3": {"length": 198022430, "region": [0, 198022430]}
-        }
-    """
-
-    chroms_and_regions = {}
-    for chrom in chroms:
-        chrom_name, *region = chrom.replace(",", "").split(":")  # region is either [] or ["start-end", ...]
-        chroms_and_regions[chrom_name] = None
-        if not ignore_regions:
-            try:
-                chroms_and_regions[chrom_name] = [int(i) for i in region[0].split("-")]
-            except (IndexError, ValueError):
-                pass
-
-    loaded_chroms = set()
-
-    for file in [f for f in files if f is not None]:
-        try:
-            with load_2bit(file) as data_stream:
-                avail_chroms = set([(k, v) for k, v in data_stream.chroms().items()])
-        except RuntimeError:
-            with load_bigwig(file) as data_stream:
-                avail_chroms = set([(k, v) for k, v in data_stream.chroms().items()])
-        loaded_chroms = loaded_chroms.intersection(
-            avail_chroms) if loaded_chroms else avail_chroms  # checks both chrom_name and chrom_length are the same
-
-    synced_chroms = {}
-    for chrom_name, chrom_length in loaded_chroms:
-        if chrom_name not in chroms_and_regions: continue
-        region = chroms_and_regions[chrom_name]
-        if not region or \
-                region[0] < 0 or \
-                region[1] <= 0 or \
-                region[0] >= region[1] or \
-                region[1] > chrom_length:
-            region = [0, chrom_length]
-        synced_chroms[chrom_name] = {
-            "length": chrom_length,
-            "region": region
-        }
-
-    return synced_chroms
-
-
-def assert_and_fix_args_for_training(args):
-    setattr(args, "preferences", None)
-    setattr(args, "signal", None)
-    setattr(args, "tsites", None)
-    synced_tchroms = get_synced_chroms(
-        args.tchroms,
-        [
-            args.sequence,
-        ],
-        True
-    )
-    synced_vchroms = get_synced_chroms(
-        args.vchroms,
-        [
-            args.sequence,
-        ],
-        True
-    )
-
-    assert set(synced_tchroms).isdisjoint(set(synced_vchroms)), \
-        "--tchroms and --vchroms shouldn't intersect. Exiting"
-
-    synced_chroms = get_synced_chroms(  # call it just to take --chroms without possible regions
-        args.chroms,
-        [
-            args.sequence,
-        ],
-        True
-    )
-
-    assert set(synced_tchroms).union(set(synced_vchroms)).issubset(set(synced_chroms)), \
-        "--tchroms and --vchroms should be subset of --chroms. Exiting"
-
-    synced_chroms = get_synced_chroms(
-        set(synced_chroms) - set(synced_tchroms) - set(synced_vchroms),
-        [
-            args.sequence,
-        ],
-        True
-    )
-
-    synced_chroms.update(synced_tchroms)
-    synced_chroms.update(synced_vchroms)
-
-    assert len(synced_chroms) > 0, \
-        "--chroms, --tchroms or --vchroms failed to sync with the provided files. Exiting"
-
-    setattr(args, "tchroms", synced_tchroms)
-    setattr(args, "vchroms", synced_vchroms)
-    setattr(args, "chroms", synced_chroms)
-
-    if args.threads is None:
-        args.threads = 1
-
-
-def assert_and_fix_args(args):
-    if args.func == run_training:
-        assert_and_fix_args_for_training(args)
-    else:
-        pass
-
-
 def get_parser():
     # Parent (general) parser
     parent_parser = argparse.ArgumentParser(add_help=False)
@@ -191,6 +79,8 @@ def get_parser():
                                 version=get_version(),
                                 help="Print version information and exit"
                                 )
+
+    #############################################
 
     # Average parser
     average_parser = subparsers.add_parser("average",
@@ -246,6 +136,8 @@ def get_parser():
                                 choices=LOG_LEVELS.keys(),
                                 help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                 )
+
+    #############################################
 
     # Predict parser
     predict_parser = subparsers.add_parser("predict",
@@ -375,6 +267,8 @@ def get_parser():
                               dest="cutoff_file",
                               type=str,
                               help="Cutoff file provided in /data/models")
+
+    #############################################
 
     # Train parser
     train_parser = subparsers.add_parser("train",
@@ -567,6 +461,8 @@ def get_parser():
                               help="If rev_comp, then use the reverse complement in training"
                               )
 
+    #############################################
+
     # Normalize parser
     normalize_parser = subparsers.add_parser("normalize",
                                              parents=[parent_parser],
@@ -657,6 +553,8 @@ def get_parser():
                                   help="The blacklisted regions to exclude"
                                   )
 
+    #############################################
+
     # Benchmark parser
     benchmark_parser = subparsers.add_parser("benchmark",
                                              parents=[parent_parser],
@@ -740,6 +638,8 @@ def get_parser():
                                   default=BLACKLISTED_REGIONS_BIGWIG,
                                   help="The blacklisted regions to exclude"
                                   )
+
+    #############################################
 
     # Prediction_signal parser
     prediction_signal_parser = subparsers.add_parser("prediction_signal",
@@ -825,6 +725,8 @@ def get_parser():
                                           help="The blacklisted regions to exclude"
                                           )
 
+    #############################################
+
     # peaks_parser
     peaks_parser = subparsers.add_parser("peaks",
                                          parents=[parent_parser],
@@ -893,7 +795,9 @@ def get_parser():
                               help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                               )
 
-    # peaks_parser
+    #############################################
+
+    # variants_parser
     variants_parser = subparsers.add_parser("variants",
                                          parents=[parent_parser],
                                          help="Run maxATAC variants"
@@ -967,6 +871,101 @@ def get_parser():
                               help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                               )
 
+    #############################################
+    
+    # prepare_parser
+    prepare_parser = subparsers.add_parser("prepare",
+                                         parents=[parent_parser],
+                                         help="Run maxATAC prepare"
+                                         )
+
+    # Set the default function to run variants
+    prepare_parser.set_defaults(func=run_prepare)
+
+    prepare_parser.add_argument("-i", "--input",
+                              dest="input",
+                              type=str,
+                              required=True,
+                              help="Input BAM or scATAC fragments file"
+                              )
+
+    prepare_parser.add_argument("-o", "--output",
+                              dest="output",
+                              type=str,
+                              required=True,
+                              help="Output directory path"
+                              )
+
+    prepare_parser.add_argument("-prefix", "--prefix",
+                              dest="prefix",
+                              type=str,
+                              required=True,
+                              help="Filename prefix to use as the basename"
+                              )
+    
+    prepare_parser.add_argument("--chrom_sizes",
+                                  dest="chrom_sizes",
+                                  type=str,
+                                  default=DEFAULT_CHROM_SIZES,
+                                  help="Chrom sizes file")
+
+    prepare_parser.add_argument("-slop", "--slop",
+                              dest="slop",
+                              type=int,
+                              default=20,
+                              help="Slop size to use with cut sites"
+                              )
+    
+    prepare_parser.add_argument("-rpm", "--rpm_factor",
+                            dest="rpm_factor",
+                            type=int,
+                            default=20000000,
+                            help="What millions value to scale data to"
+                            )
+    
+    prepare_parser.add_argument("--blacklist_bed",
+                                dest="blacklist_bed",
+                                type=str,
+                                default=BLACKLISTED_REGIONS,
+                                help="The blacklisted regions to exclude"
+                                )
+
+    prepare_parser.add_argument("--blacklist",
+                                dest="blacklist",
+                                type=str,
+                                default=BLACKLISTED_REGIONS_BIGWIG,
+                                help="The blacklisted regions to exclude"
+                                )
+    
+    prepare_parser.add_argument("-chroms", "--chromosomes",
+                                        dest="chroms",
+                                        type=str,
+                                        nargs="+",
+                                        default=AUTOSOMAL_CHRS,
+                                        help="Chromosomes list for analysis."
+                                        )
+
+    prepare_parser.add_argument("-threads", "--threads",
+                                        dest="threads",
+                                        type=int,
+                                        default=get_cpu_count(),
+                                        help="The number of threads to use"
+                                        )
+
+    prepare_parser.add_argument("-dedup", "--deduplicate",
+                                        dest="dedup",
+                                        default=False,
+                                        action="store_true",
+                                        help="Whether to perform deduplication"
+                                )
+        
+    prepare_parser.add_argument("--loglevel",
+                              dest="loglevel",
+                              type=str,
+                              default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                              choices=LOG_LEVELS.keys(),
+                              help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                              )
     return general_parser
 
 
@@ -1000,7 +999,5 @@ def parse_arguments(argsl, cwd_abs_path=None):
             ],
             cwd_abs_path
         )
-
-    assert_and_fix_args(args)
 
     return args
