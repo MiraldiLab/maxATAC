@@ -9,7 +9,7 @@ cd maxATAC
 After moving into the cloned directory, please run the following command:
 
 2. git clone --recurse-submodules # this will clone all the recursive directories that are needed to run maxATAC
-(to update /data/ dir run: git submodule update --recursive --remote)
+(to update /data/ dir run: git submodule update --recursive --remote or try git submodule update --init --recursive)
 maxATAC can be run using an environment or using docker. To install using an environment, begin by creating an environment on your computer
 
 # Create your env
