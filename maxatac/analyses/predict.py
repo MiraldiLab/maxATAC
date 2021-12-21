@@ -48,11 +48,6 @@ def run_prediction(args):
     # Start Timer
     startTime = timeit.default_timer()
 
-    # predict on all chromosomes
-    if args.chromosomes[0] == 'all':
-        from maxatac.utilities.constants import AUTOSOMAL_CHRS as all_chr
-        args.chromosomes = all_chr
-
     # Create the output directory set by the parser
     output_directory = get_dir(args.output)
 
