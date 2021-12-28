@@ -5,7 +5,7 @@ import pandas as pd
 import pybedtools
 import tensorflow as tf
 
-from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH
+from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH, ALL_CHRS
 from maxatac.utilities.system_tools import Mute
 
 with Mute():
@@ -13,6 +13,17 @@ with Mute():
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig
     from maxatac.utilities.training_tools import get_input_matrix
  
+def sortChroms(chrom):
+    """Sort a list of chromosomes based on a specific order
+
+    Args:
+        chrom (str): Chromosome name
+
+    Returns:
+        int: Position in list based on predefined order
+    """
+    order = dict(zip(ALL_CHRS, range(0, len(ALL_CHRS))))
+    return order[chrom] 
 
 def write_predictions_to_bigwig(df: pd.DataFrame,
                                 output_filename: str,
@@ -43,6 +54,8 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
         bedgraph_df = df.groupby(["chr", "start", "stop"],
                                  as_index=False).max()
 
+    chromosomes.sort(key=sortChroms)
+    
     with dump_bigwig(output_filename) as data_stream:
         # Make the bigwig header using the chrom sizes dictionary
         header = [(x, chrom_sizes_dictionary[x]) for x in chromosomes]
@@ -65,21 +78,26 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
                                    )
 
 
-def import_prediction_regions(bed_file,
-                              region_length,
-                              chromosomes,
-                              chrom_sizes_dictionary,
-                              blacklist):
-    """
-    Import a BED file and format the regions to be compatible with our maxATAC models
+def import_prediction_regions(bed_file: str,
+                              chromosomes: list,
+                              chrom_sizes_dictionary: dict,
+                              blacklist: str,
+                              region_length: int = INPUT_LENGTH):
+    """Import BED file of regions of interest and format for maxATAC
 
-    :param bed_file: Input BED file to format
-    :param region_length: Length of the regions to resize BED intervals to
-    :param chromosomes: Chromosomes to filter the BED file for
-    :param chrom_sizes_dictionary: A dictionary of chromosome sizes to make sure intervals fall in bounds
-    :param blacklist: A BED file of regions to exclude from our analysis
+    Args:
+        bed_file (str): Path to the ROI BED file
+        region_length (int): Prediction region length (1,024 bp)
+        chromosomes (list): List of chromosomes for prediction
+        chrom_sizes_dictionary (dict): Dictionary of chromosome sizes
+        blacklist (str): Path to the blacklist BED file
 
-    :return: A dataframe of BED regions compatible with our model
+    Returns:
+        pd.DataFrame: A BED formatted dataframe of maxATAC compatible intevals
+    
+    Example:
+    
+    >>> roi_df = import_prediction_regions("test.bed", 1024, ["chr1"], chrom_sizes_dict, "hg38.blacklist.bed")
     """
     df = pd.read_csv(bed_file,
                      sep="\t",
@@ -90,6 +108,27 @@ def import_prediction_regions(bed_file,
 
     # Filter for chroms in the desired set
     df = df[df["chr"].isin(chromosomes)]
+    
+    # Create a bedtool object from dataframe for merging
+    df_bedtool = pybedtools.BedTool.from_dataframe(df)
+
+    # Sort the bedtools object
+    sorted_bedtool = df_bedtool.sort()
+
+    # Merge the bedtool object if they are half the region length away or less
+    merged_bedtool = sorted_bedtool.merge(d=int(region_length/2))
+    
+    # Create a blacklist object form the blacklist bed file
+    blacklist_bedtool = pybedtools.BedTool(blacklist)
+
+    # Create an object that has the blacklisted regions removed
+    blacklisted_df = merged_bedtool.intersect(blacklist_bedtool, v=True)
+
+    # Create a dataframe from the bedtools object
+    df = blacklisted_df.to_dataframe()
+
+    # Rename columns
+    df.columns = ["chr", "start", "stop"]
 
     # Find the length of the regions
     df["length"] = df["stop"] - df["start"]
@@ -112,41 +151,29 @@ def import_prediction_regions(bed_file,
     # Make sure none of the starts are out of bounds
     df = df[df["start"].apply(int) > 0]
 
-    # Subset to 3-col BED format
-    df = df[["chr", "start", "stop"]]
+    return df[["chr", "start", "stop"]]
 
-    # Create a bedtool object from dataframe
-    BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
+    
+def create_prediction_regions(chromosomes: list,
+                              chrom_sizes: dict,
+                              blacklist: str,
+                              step_size: int = 256,
+                              region_length: int = INPUT_LENGTH):
+    """Create whole genome or chromosome prediction regions
 
-    # Create a blacklist object form the blacklist bed file
-    blacklist_bedtool = pybedtools.BedTool(blacklist)
+    Args:
+        chromosomes (list): List of chromosomes to create prediction regions for
+        chrom_sizes (dict): A dictionary of chromosome sizes
+        blacklist (str): Path to the blacklist BED file
+        step_size (int, optional): The step size to use for sliding windows. Defaults to 256.
+        region_length (int, optional): The region length for prediction. Defaults to INPUT_LENGTH.
 
-    # Create an object that has the blacklisted regions removed
-    blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
-
-    # Create a dataframe from the bedtools object
-    df = blacklisted_df.to_dataframe()
-
-    # Rename columns
-    df.columns = ["chr", "start", "stop"]
-
-    return df
-
-def create_prediction_regions(region_length,
-                              chromosomes,
-                              chrom_sizes,
-                              blacklist,
-                              step_size):
-    """
-    Window the genome into regions compatible with the model input sizes
-
-    :param region_length: Length of the region in basepairs
-    :param chromosomes: The chromosomes to limit prediction to
-    :param chrom_sizes: The chomosomes sizes file for use with pybedtools
-    :param blacklist: The blacklist regions to remove from the analysis
-    :param step_size: The step size of the window to use.
-
-    :return: A dataframe of regions that are compatible with the model for making predictions
+    Returns:
+        pd.DataFrame : A dataframe of regions that are compatible with the model for making predictions
+    
+    Example:
+    
+    >>> roi_df = create_prediction_regions(["chr1"], "hg38.chrom.sizes", "hg38.blacklist.bed")
     """
     # Create a temp chrom.sizes file for the chromosomes of interest only
 
@@ -179,9 +206,9 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
     def __init__(self,
                  signal,
                  sequence,
-                 input_channels,
-                 input_length,
                  predict_roi_df,
+                 input_channels: int = INPUT_CHANNELS,
+                 input_length: int = INPUT_LENGTH,
                  batch_size=32,
                  use_complement=False
                  ):
@@ -206,12 +233,20 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
         self.input_length = input_length
         self.use_complement = use_complement
 
+        self.predict_roi_df.reset_index(inplace=True, drop=True)
+
     def __len__(self):
         """
         Denotes the number of batches per epoch
         """
-        return int(self.predict_roi_df.shape[0] / self.batch_size)
-
+        if self.predict_roi_df.shape[0] < self.batch_size:
+            num_batches = 1  
+            
+        else:
+            num_batches = int(self.predict_roi_df.shape[0] / self.batch_size)
+        
+        return num_batches
+    
     def __getitem__(self, index):
         """
         Generate one batch of data
@@ -246,7 +281,7 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
         Get the bigwig values for each ROI in the ROI pool
 
         :param roi_pool: Pool of regions to make predictions on
-        """
+        """        
         # Create the lists to hold the batch data
         inputs_batch = []
 
@@ -274,150 +309,22 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
         return np.array(inputs_batch)
 
 
-def make_stranded_predictions(bed_file,
-                              region_length,
-                              chromosomes,
-                              chrom_sizes,
-                              blacklist,
-                              step_size,
-                              signal,
-                              sequence,
-                              models,
-                              batch_size,
-                              use_complement,
-                              number_intervals=32,
-                              input_channels=INPUT_CHANNELS,
-                              input_length=INPUT_LENGTH):
-    """
-        ### PART 1 :
-        args.roi == TRUE
-        Import a BED file and format the regions to be compatible with our maxATAC models
+def make_stranded_predictions(roi_pool: pd.DataFrame,
+                              signal: str,
+                              sequence: str,
+                              model: str,
+                              batch_size: int,
+                              use_complement: bool,
+                              chromosome: str,
+                              number_intervals: int =32,
+                              input_channels: int =INPUT_CHANNELS,
+                              input_length: int =INPUT_LENGTH):
 
-        :param bed_file: Input BED file to format
-        :param region_length: Length of the regions to resize BED intervals to
-        :param chromosomes: Chromosomes to filter the BED file for
-        :param chrom_sizes_dictionary: A dictionary of chromosome sizes to make sure intervals fall in bounds
-        :param blacklist: A BED file of regions to exclude from our analysis
+    chr_roi_pool = roi_pool[roi_pool["chr"] == chromosome].copy()
 
-        :return: A dataframe of BED regions compatible with our model
-        """
-
-    if bed_file != False:
-
-        df = pd.read_csv(bed_file,
-                         sep="\t",
-                         usecols=[0, 1, 2],
-                         header=None,
-                         names=["chr", "start", "stop"],
-                         low_memory=False)
-
-        # Filter for chroms in the desired set
-        df = df[df["chr"].isin(chromosomes)]
-
-        # Find the length of the regions
-        df["length"] = df["stop"] - df["start"]
-
-        # Find the center of the regions
-        df["center"] = np.floor(df["start"] + (df["length"] / 2)).apply(int)
-
-        # Find the start coordinates based on center
-        df["start"] = np.floor(df["center"] - (region_length / 2)).apply(int)
-
-        # Find the stop coordinates based on center
-        df["stop"] = np.floor(df["center"] + (region_length / 2)).apply(int)
-
-        # Map chrom end
-        df["END"] = df["chr"].map(chrom_sizes_dictionary)
-
-        # Make sure none of the stops are out of bounds
-        df = df[df["stop"].apply(int) < df["END"].apply(int)]
-
-        # Make sure none of the starts are out of bounds
-        df = df[df["start"].apply(int) > 0]
-
-        # Subset to 3-col BED format
-        df = df[["chr", "start", "stop"]]
-
-        # Create a bedtool object from dataframe
-        BED_df_bedtool = pybedtools.BedTool.from_dataframe(df)
-
-        # Create a blacklist object form the blacklist bed file
-        blacklist_bedtool = pybedtools.BedTool(blacklist)
-
-        # Create an object that has the blacklisted regions removed
-        blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
-
-        # Create a dataframe from the bedtools object
-        df = blacklisted_df.to_dataframe()
-
-        # Rename columns
-        df.columns = ["chr", "start", "stop"]
-
-        predict_roi_df = df
-
-
-    """
-        ### PART 1 : 
-        args.roi == FALSE
-        Window the genome into regions compatible with the model input sizes
-
-        :param region_length: Length of the region in basepairs
-        :param chromosomes: The chromosomes to limit prediction to
-        :param chrom_sizes: The chromosomes sizes file for use with pybedtools
-        :param blacklist: The blacklist regions to remove from the analysis
-        :param step_size: The step size of the window to use.
-
-        :return: A dataframe of regions that are compatible with the model for making predictions
-        """
-
-    if bed_file == False:
-
-        # Create a temp chrom.sizes file for the chromosomes of interest only
-
-        # Create a bedtools object that is a windowed genome
-        BED_df_bedtool = pybedtools.BedTool().window_maker(g=chrom_sizes, w=region_length, s=step_size)
-
-        # Create a blacklist object form the blacklist bed
-        blacklist_bedtool = pybedtools.BedTool(blacklist)
-
-        # Remove the blacklisted regions from the windowed genome object
-        blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
-
-        # Create a dataframe from the BedTools object
-        df = blacklisted_df.to_dataframe()
-
-        # Rename the columns
-        df.columns = ["chr", "start", "stop"]
-
-        # Filter for specific chroms
-        df = df[df["chr"].isin(chromosomes)]
-
-        # Reset index so that it goes from 0-end in order
-        predict_roi_df = df.reset_index(drop=True)
-
-
-    """
-    ### PART 2:
-    - prerequisite is the df generated from part 1: 
-    predict_roi_df: DataFrame of BED intervals to predict on
-    
-    
-    This function will make prediction based on the forward or reverse strand sequence.
-
-    :param number_intervals: Number of intervals to split array into
-    :param signal: Input ATAC-seq signal
-    :param sequence: Input 2bit DNA sequence
-    :param models: Input pre-trained model
-    :param batch_size: The number of example per batch to predict on
-    :param use_complement: Whether to use complement sequence or reference
-    :param input_channels: Number of input channels to use
-    :param input_length: Length of input region to use for training
-
-    :return: A dataframe of predictions for the strand of choice
-    """
     logging.error("Load pre-trained model")
 
-    nn_model = load_model(models, compile=False)
+    nn_model = load_model(model, compile=False)
 
     logging.error("Start Prediction Generator")
 
@@ -425,25 +332,25 @@ def make_stranded_predictions(bed_file,
                                              sequence=sequence,
                                              input_channels=input_channels,
                                              input_length=input_length,
-                                             predict_roi_df=predict_roi_df,
+                                             predict_roi_df=chr_roi_pool,
                                              batch_size=batch_size,
                                              use_complement=use_complement)
-
+    
     logging.error("Making predictions")
 
     predictions = nn_model.predict(data_generator)
-
+  
     logging.error("Parsing results into pandas dataframe")
 
     predictions_df = pd.DataFrame(data=predictions, index=None, columns=None)
-
+    
     if use_complement:
         # If reverse + complement used, reverse the columns of the pandas df in order to
         predictions_df = predictions_df[predictions_df.columns[::-1]]
 
-    predictions_df["chr"] = predict_roi_df["chr"]
-    predictions_df["start"] = predict_roi_df["start"]
-    predictions_df["stop"] = predict_roi_df["stop"]
+    predictions_df["chr"] = chr_roi_pool["chr"]
+    predictions_df["start"] = chr_roi_pool["start"]
+    predictions_df["stop"] = chr_roi_pool["stop"]
 
     # Create BedTool object from the dataframe
     coordinates_dataframe = pybedtools.BedTool.from_dataframe(predictions_df[['chr', 'start', 'stop']])
