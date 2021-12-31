@@ -1,8 +1,8 @@
 import numpy as np
 import pandas as pd
 import os
-import multiprocessing as m
-from multiprocessing import Pool
+import multiprocessing
+from multiprocessing import Pool, Manager
 import time
 from maxatac.utilities.genome_tools import build_chrom_sizes_dict, get_bigwig_stats
 from maxatac.utilities.system_tools import get_dir
@@ -10,6 +10,7 @@ from maxatac.utilities.threshold_tools import import_blacklist_mask, import_Gold
 from sklearn.metrics import precision_recall_curve
 from sklearn import metrics
 import pybedtools
+import logging
 
 
 def extract_pred_gs_bw(bigwig_file, training_data_dict, chrom_name, chrom_length, bin_count):
@@ -21,7 +22,6 @@ def extract_pred_gs_bw(bigwig_file, training_data_dict, chrom_name, chrom_length
     
     predictions = np.empty(1, dtype=np.float64)
     gold_standard = np.empty(1, dtype=np.float64)
- 
     goldstandard_array = import_GoldStandard_array(training_data_dict[bigwig_file], chrom_name, chrom_length, bin_count)
     
     tot_gs_bins = len(np.argwhere(goldstandard_array == True))
@@ -48,13 +48,10 @@ def run_thresholding(args):
 
     training_data_dict = pd.Series(meta_DF["Binding_File"].values,index=meta_DF["Prediction"]).to_dict()
 
-    results_filename = os.path.join(output_dir,
-                                    args.prefix + "_" + args.chromosomes[0] + "_" + str(args.bin_size) + "bp_PRC.tsv")
+    results_filename = os.path.join(output_dir, args.prefix + ".tsv")
 
     # Loop through the chromosomes and average the values across files
     OUT=[]
-    import pdb; pdb.set_trace()
-
     for chrom_name, chrom_length in chromosome_sizes_dictionary.items():
         bin_count = int(int(chrom_length) / int(args.bin_size))  # need to floor the number
         
@@ -63,49 +60,49 @@ def run_thresholding(args):
         blacklist = np.repeat(blacklist_mask, len(training_data_dict.keys()))
         
         lst_of_bws=list(training_data_dict.keys())
-
-        pool = Pool(8) 
+        
+        pool = Pool(int(multiprocessing.cpu_count())) 
         output = pool.starmap(
             extract_pred_gs_bw,
             [(bigwig, training_data_dict, chrom_name, chrom_length, bin_count) for bigwig in lst_of_bws]
                             )
         OUT.append(output)
-        #if __name__ == '__main__':
-        
-        '''pool = Pool(8)                         
-        output = pool.map(extract_pred_gs_bw, lst)
-        OUT.append(output)'''
- 
+
     
     DF=pd.DataFrame([])
     total_gs_bins = []
     for i in range(len(OUT[0])):
         df = pd.DataFrame([])
+
         df['Prediction'] = OUT[0][i][0][:bin_count].tolist()
         df['GoldStandard'] = OUT[0][i][1][:bin_count].tolist()
+
         gs_bins = OUT[0][i][2]
-        #df = pd.DataFrame(OUT[0][i]).transpose()
         DF = DF.append(df)
         total_gs_bins.append(gs_bins)
     
     
     DF.loc[DF['GoldStandard'] != 1, 'GoldStandard'] = 0
-    #DF.columns = ['Prediction', 'GoldStandard']
     precision, recall, thresholds = precision_recall_curve(DF['GoldStandard'][blacklist], DF['Prediction'][blacklist])
     
     
     # Create a dataframe from the results
-    PR_CURVE_DF = pd.DataFrame({'Precision': precision, 'Recall': recall, "Threshold": np.insert(thresholds, 0, 0)})
+    df = pd.DataFrame({'Precision': precision, 'Recall': recall, "Threshold": np.insert(thresholds, 0, 0)})
     
-    # Calculate AUPRc
-    AUPRC = metrics.auc(y=precision[:-1], x=recall[:-1])
-
-    PR_CURVE_DF["AUC"] = AUPRC
+    
+    P = np.maximum.accumulate((np.array(df.Precision)))
+    R = np.minimum.accumulate((np.array(df.Recall)))
+    
+    PR_CURVE_DF = pd.DataFrame({'Precision': P, 'Recall': R, "Threshold": np.insert(thresholds, 0, 0)})
+    
+    #Extend last row of entries to threshold of 1
+    new_row = PR_CURVE_DF.tail(n=1)
+    new_row.Threshold = 1
+    PR_CURVE_DF = PR_CURVE_DF.append(new_row)
     
     # total_gs_bins: Total GS bins across for each CT
     PR_CURVE_DF["Total_Avg_GoldStandard_Bins"] = int(np.mean(total_gs_bins))
     
-    import pdb; pdb.set_trace()
     # Create a bedtools object that is a windowed genome
     BED_df_bedtool = pybedtools.BedTool().window_maker(g=args.chrom_sizes, w=args.bin_size)
     
@@ -128,16 +125,21 @@ def run_thresholding(args):
     # Random Precision
     PR_CURVE_DF['Random_Precision'] = PR_CURVE_DF['Total_Avg_GoldStandard_Bins']/rand_bins
     
+    logging.error("Calculate log2FC for each threshold")   
+    
     # Log2FC
     PR_CURVE_DF['log2FC_Precision_Random_Precision'] = np.log2(PR_CURVE_DF["Precision"]/PR_CURVE_DF["Random_Precision"])
     
-    print("Calculate F1 Score for each threshold")
-    
+    logging.error("Calculate F1 Score for each threshold")
+
     # F1 Score
     PR_CURVE_DF['F1_Score'] = 2 * (PR_CURVE_DF["Precision"] * PR_CURVE_DF["Recall"]) / (PR_CURVE_DF["Precision"] + PR_CURVE_DF["Recall"])
-    #remove all rows with a 0
-    #DF_new = DF[(DF != 0).all(1)]
-    import pdb; pdb.set_trace()
+    
+    del PR_CURVE_DF['Total_Avg_GoldStandard_Bins']
+    del PR_CURVE_DF['Random_Precision']
+    
+
+    PR_CURVE_DF.columns = 	['Monotonic_Precision', 'Monotonic_Recall', 'Threshold', 'Monotonic_log2FC', 'Monotonic_F1']
     PR_CURVE_DF.to_csv(results_filename, sep="\t", header=True, index=False)
     
     
