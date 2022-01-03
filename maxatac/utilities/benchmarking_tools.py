@@ -8,6 +8,9 @@ from sklearn import metrics
 from sklearn.metrics import precision_recall_curve
 from scipy import stats
 from maxatac.utilities.system_tools import remove_tags
+import pybedtools
+from maxatac.utilities.constants import DEFAULT_CHROM_SIZES as chrom_sizes
+from maxatac.utilities.constants import BLACKLISTED_REGIONS  as blacklist_bed_location
 
 
 class ChromosomeAUPRC(object):
@@ -201,6 +204,30 @@ class ChromosomeAUPRC(object):
         logging.error("Calculate Total GoldStandard Bins")
 
         self.PR_CURVE_DF["Total_GoldStandard_Bins"] = len(np.argwhere(self.goldstandard_array == True))
+
+        # Create a bedtools object that is a windowed genome
+        BED_df_bedtool = pybedtools.BedTool().window_maker(g=chrom_sizes, w=self.bin_size)
+
+        # Create a blacklist object form the blacklist bed
+        blacklist_bedtool = pybedtools.BedTool(blacklist_bed_location)
+
+        # Remove the blacklisted regions from the windowed genome object
+        blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
+
+        # Create a dataframe from the BedTools object
+        df = blacklisted_df.to_dataframe()
+
+        # Rename the columns
+        df.columns = ["chr", "start", "stop"]
+
+        # Find the number of non-blacklisted bins in chr of interest
+        rand_bins = df.query('chr == @self.chromosome').shape[0]
+
+        # Random Precision
+        self.PR_CURVE_DF['Random_AUPRC'] = self.PR_CURVE_DF['Total_GoldStandard_Bins'] / rand_bins
+
+        # Log2FC
+        self.PR_CURVE_DF['log2FC_AUPRC_Random_AUPRC'] = np.log2(self.PR_CURVE_DF["AUPRC"] / self.PR_CURVE_DF["Random_AUPRC"])
 
         logging.error("Write results for " + self.chromosome)
 

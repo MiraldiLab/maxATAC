@@ -29,6 +29,11 @@ def run_call_peaks(args):
     else:
         prefix = os.path.basename(args.input_bigwig).replace(".bw", "")
 
+    # call peaks on all chromosomes
+    if args.chromosomes[0] == 'all':
+        from maxatac.utilities.constants import AUTOSOMAL_CHRS as all_chr
+        args.chromosomes = all_chr
+
     output_dir = get_dir(args.output)
 
     results_filename = os.path.join(output_dir, prefix + "_" + str(args.BIN_SIZE) + "bp.bed")

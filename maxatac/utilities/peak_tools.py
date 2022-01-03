@@ -19,7 +19,7 @@ def call_peaks_per_chromosome(bigwig_path, chrom_name, threshold, bin_size=200):
     bed_regions_df = call_peaks(signal_stream, "chr19", .75)
     """
     with load_bigwig(bigwig_path) as signal_stream:
-        # Get the chromosome lenghs
+        # Get the chromosome lengths
         chrom_length = signal_stream.chroms(chrom_name)
         
         # Get the number of bins per chromosome

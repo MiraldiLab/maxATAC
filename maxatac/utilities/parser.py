@@ -147,9 +147,9 @@ def get_parser():
 
     predict_parser.set_defaults(func=run_prediction)
 
-    predict_parser.add_argument("--models", dest="models", type=str, nargs="+",
+    predict_parser.add_argument("--model", dest="model", type=str,
                                 required=True,
-                                help="Trained model file(s)"
+                                help="Trained model file"
                                 )
 
     predict_parser.add_argument("--sequence",
