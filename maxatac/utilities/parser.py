@@ -21,7 +21,8 @@ with Mute():
     from maxatac.analyses.peaks import run_call_peaks
     from maxatac.analyses.variants import run_variants
     from maxatac.analyses.prepare import run_prepare
-    
+    from maxatac.analyses.threshold import run_thresholding
+
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
                                          DEFAULT_LOG_LEVEL,
@@ -966,6 +967,73 @@ def get_parser():
                               choices=LOG_LEVELS.keys(),
                               help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                               )
+    # threshold_parser
+    threshold_parser = subparsers.add_parser("threshold",
+                                             parents=[parent_parser],
+                                             help="Run maxATAC threshold"
+                                             )
+
+    # Set the default function to run averaging
+    threshold_parser.set_defaults(func=run_thresholding)
+
+    threshold_parser.add_argument("--prefix",
+                                  dest="prefix",
+                                  type=str,
+                                  required=True,
+                                  help="Output prefix."
+                                  )
+
+    threshold_parser.add_argument("--chrom_sizes",
+                                  dest="chrom_sizes",
+                                  type=str,
+                                  default=DEFAULT_CHROM_SIZES,
+                                  help="Input chromosome sizes file. Default is hg38."
+                                  )
+
+    threshold_parser.add_argument("--chromosomes",
+                                  dest="chromosomes",
+                                  type=str,
+                                  nargs="+",
+                                  default=DEFAULT_VALIDATE_CHRS,
+                                  help="Chromosomes for thresholding predictions. \
+                                      Default: 1-22,X,Y"
+                                  )
+
+    threshold_parser.add_argument("--bin_size",
+                                  dest="bin_size",
+                                  type=int,
+                                  default=DEFAULT_BENCHMARKING_BIN_SIZE,
+                                  help="Chromosomes for averaging")
+
+    threshold_parser.add_argument("--output",
+                                  dest="output_dir",
+                                  type=str,
+                                  default="./threshold",
+                                  help="Output directory."
+                                  )
+
+    threshold_parser.add_argument("--loglevel",
+                                  dest="loglevel",
+                                  type=str,
+                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                  choices=LOG_LEVELS.keys(),
+                                  help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                                  )
+
+    threshold_parser.add_argument("--blacklist",
+                                  dest="blacklist",
+                                  type=str,
+                                  default=BLACKLISTED_REGIONS_BIGWIG,
+                                  help="The blacklisted regions to exclude"
+                                  )
+
+    threshold_parser.add_argument("--meta_file",
+                                  dest="meta_file",
+                                  type=str,
+                                  required=True,
+                                  help="Meta file containing Prediction signal and GS path for all cell lines (.tsv format)"
+                                  )
+
     return general_parser
 
 
