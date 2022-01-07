@@ -107,3 +107,8 @@ gen
 
 #maxATAC_data dir
 data/
+*.h5
+snakemake/dag.svg
+.idea/misc.xml
+.idea/maxATAC.iml
+.DS_Store
