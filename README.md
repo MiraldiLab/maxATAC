@@ -52,3 +52,11 @@ Steps in training and assessing a maxATAC model. Relevant functions are listed b
 
 ### 6. Predict sequence specific TF binding
    * [`variants`](./docs/readme/variants.md#Variants)
+
+## maxATAC Tutorials and Walkthroughs
+
+### [Code to generate most of our figures](https://github.com/MiraldiLab/maxATAC_docs/tree/main/figure_code)
+
+### [Introduction and Walkthrough](https://github.com/MiraldiLab/maxATAC_docs/blob/main/walkthrough/prediction_walkthrough.md)
+
+### [Code and snakemake workflow for ChIP-seq data processing/curation](https://github.com/MiraldiLab/maxATAC_dataScraping)

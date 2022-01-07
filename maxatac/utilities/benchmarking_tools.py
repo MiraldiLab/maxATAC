@@ -205,23 +205,8 @@ class ChromosomeAUPRC(object):
 
         self.PR_CURVE_DF["Total_GoldStandard_Bins"] = len(np.argwhere(self.goldstandard_array == True))
 
-        # Create a bedtools object that is a windowed genome
-        BED_df_bedtool = pybedtools.BedTool().window_maker(g=chrom_sizes, w=self.bin_size)
-
-        # Create a blacklist object form the blacklist bed
-        blacklist_bedtool = pybedtools.BedTool(blacklist_bed_location)
-
-        # Remove the blacklisted regions from the windowed genome object
-        blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
-
-        # Create a dataframe from the BedTools object
-        df = blacklisted_df.to_dataframe()
-
-        # Rename the columns
-        df.columns = ["chr", "start", "stop"]
-
         # Find the number of non-blacklisted bins in chr of interest
-        rand_bins = df.query('chr == @self.chromosome').shape[0]
+        rand_bins = len(np.argwhere(self.blacklist_mask == True))
 
         # Random Precision
         self.PR_CURVE_DF['Random_AUPRC'] = self.PR_CURVE_DF['Total_GoldStandard_Bins'] / rand_bins

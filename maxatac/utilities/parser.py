@@ -765,8 +765,9 @@ def get_parser():
 
     peaks_parser.add_argument("-cutoff_type", "--cutoff_type",
                               dest="cutoff_type",
+                              default="F1",
                               type=str,
-                              help="Cutoff type (i.e. Precision)")
+                              help="Cutoff type (i.e. Precision). Default: F1")
 
     peaks_parser.add_argument("-cutoff_value", "--cutoff_value",
                               dest="cutoff_value",
@@ -774,11 +775,12 @@ def get_parser():
                               help="Cutoff value for the cutoff type provided")
 
     peaks_parser.add_argument("-cutoff_file", "--cutoff_file",
+                              required=True,
                               dest="cutoff_file",
                               type=str,
                               help="Cutoff file provided in /data/models")
 
-    peaks_parser.add_argument("--chromosomes",
+    peaks_parser.add_argument("-chromosomes",
                             dest="chromosomes",
                             type=str,
                             nargs="+",
