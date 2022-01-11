@@ -1,3 +1,5 @@
+![maxATAC_logo](https://user-images.githubusercontent.com/47329147/137503708-86d000ef-d6d4-4f75-99aa-39f8aab6dec5.png)
+
 # maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq
 
 ## Introduction
@@ -9,34 +11,52 @@ The maxATAC package is a collection of tools used for learning to predict TF bin
 
 ## Requirements
 
-This version requires python 3.6 and BEDTools.
+This version requires python 3.9, `bedtools`, `samtools`, `pigz`, and `bedGraphToBigWig` in order to run all functions.
 
 ## Installation
 
-It is best to install maxATAC into a dedicated virtual environment. Clone the repository with `git clone` into your `repo` directory of choice. 
+It is best to install maxATAC into a dedicated virtual environment.
 
-Change into the maxATAC repository with `cd maxATAC` and use `pip3 install -e .` to install the package.
+First, clone the repository with `git clone https://github.com/MiraldiLab/maxATAC.git` into your `repo` directory of choice.
 
-You will also need to have BEDtools installed or loaded on your PATH.
+### Installing with Conda
 
-*Note: sometimes SHAP will produce an error when installing with `pip3 install -e .` due to conflicts with numpy. In this case, you will need to install numpy into your virtual env BEFORE installing maxATAC*
+1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9`
+
+2. Install `bedtools`, `samtools`, `bedGraphToBigWig`, and `pigz` or make sure it is found in your `PATH`. I prefer to use the `conda install` method for installing these packages.
+
+3. Change into the maxATAC git repository with `cd maxATAC` and use `pip install -e .` to install maxATAC into the conda environment.
+
+4. Test installation with `maxatac -h`
 
 ## maxATAC Workflow Overview
 
 Steps in training and assessing a maxATAC model. Relevant functions are listed below each step.
 
 ### 1. Prepare Input Data
-   * [`average`](./docs/average.md#Average)
-   * [`normalize`](./docs/normalize.md#Normalize)
+   * [`prepare`](./docs/readme/prepare.md#Prepare)
+   * [`average`](./docs/readme/average.md#Average)
+   * [`normalize`](./docs/readme/normalize.md#Normalize)
    
 ### 2. Train a model
-   * [`train`](./docs/train.md#Train)
+   * [`train`](./docs/readme/train.md#Train)
     
 ### 3. Predict in new cell type
-   * [`predict`](./docs/predict.md#Predict)
+   * [`predict`](./docs/readme/predict.md#Predict)
    
 ### 4. Benchmark models against experimental data
-   * [`benchmark`](./docs/benchmark.md#Benchmark)
-    
-### 5. Learn features import to predict TF binding with a neural network
-   * `interpret`
+   * [`benchmark`](./docs/readme/benchmark.md#Benchmark)
+
+### 5. Call "peaks" on maxATAC signal tracks
+   * [`peaks`](./docs/readme/peaks.md#Peaks)
+
+### 6. Predict sequence specific TF binding
+   * [`variants`](./docs/readme/variants.md#Variants)
+
+## maxATAC Tutorials and Walkthroughs
+
+### [Code to generate most of our figures](https://github.com/MiraldiLab/maxATAC_docs/tree/main/figure_code)
+
+### [Introduction and Walkthrough](https://github.com/MiraldiLab/maxATAC_docs/blob/main/walkthrough/prediction_walkthrough.md)
+
+### [Code and snakemake workflow for ChIP-seq data processing/curation](https://github.com/MiraldiLab/maxATAC_dataScraping)

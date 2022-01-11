@@ -9,7 +9,7 @@ import os
 with Mute():
     from maxatac.utilities.genome_tools import build_chrom_sizes_dict, chromosome_blacklist_mask
     from maxatac.utilities.normalization_tools import minmax_normalize_array, \
-        median_mad_normalize_array, zscore_normalize_array, get_genomic_stats
+        median_mad_normalize_array, zscore_normalize_array, get_genomic_stats, arcsinh_normalize_array
 
 
 def run_normalization(args):
@@ -36,7 +36,6 @@ def run_normalization(args):
 
     :return: A minmax normalized bigwig file
     """
-    # if log transforming the file, change filename
     OUTPUT_FILENAME = os.path.join(args.output, args.prefix + ".bw")
 
     # Set up the output directoryz
@@ -97,6 +96,9 @@ def run_normalization(args):
 
             elif args.method == "zscore":
                 normalized_signal = zscore_normalize_array(chr_vals, median, mad)
+
+            elif args.method == "arcsinh":
+                normalized_signal = arcsinh_normalize_array(chr_vals)
 
             else:
                 raise NameError('Wrong normalization')

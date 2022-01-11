@@ -7,8 +7,8 @@ from keras.utils.data_utils import OrderedEnqueuer
 from maxatac.utilities.constants import TRAIN_MONITOR
 from maxatac.utilities.system_tools import Mute
 
-with Mute():  # hide stdout from loading the modules
-    from maxatac.utilities.model_tools import get_callbacks
+with Mute():
+    from maxatac.utilities.callbacks import get_callbacks
     from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, SeqDataGenerator, model_selection
     from maxatac.utilities.plot import export_binary_metrics, export_loss_mse_coeff, export_model_structure
 
@@ -25,6 +25,8 @@ def run_training(args):
 
     TF | Cell_Type | ATAC_Signal_File | Binding_File | ATAC_Peaks | ChIP_peaks
 
+    ## An example meta file is included in our repo
+
     _________________
     Workflow Overview
 
@@ -34,7 +36,7 @@ def run_training(args):
     4) Initialize the training and validation generators
     5) Fit the models with the specific parameters
 
-    :params args: arch, seed, output, prefix, output_activation, lrate, decay, weights, quant, target_scale_factor,
+    :params args: arch, seed, output, prefix, output_activation, lrate, decay, weights,
     dense, batch_size, val_batch_size, train roi, validate roi, meta_file, sequence, average, threads, epochs, batches,
     tchroms, vchroms, shuffle_cell_type, rev_comp
 
@@ -52,9 +54,7 @@ def run_training(args):
                                  prefix=args.prefix,
                                  threads=args.threads,
                                  meta_path=args.meta_file,
-                                 quant=args.quant,
                                  output_activation=args.output_activation,
-                                 target_scale_factor=args.target_scale_factor,
                                  dense=args.dense,
                                  weights=args.weights
                                  )
@@ -88,22 +88,19 @@ def run_training(args):
                               cell_type_list=maxatac_model.cell_types,
                               rand_ratio=args.rand_ratio,
                               chroms=args.tchroms,
-                              quant=args.quant,
                               batch_size=args.batch_size,
-                              target_scale_factor=args.target_scale_factor,
                               shuffle_cell_type=args.shuffle_cell_type,
                               rev_comp_train=args.rev_comp
                               )
-
-    # Make Train Gen thread safe
-    # train_safe_gen = threadsafe_iter(train_gen)
 
     # Create keras.utils.sequence object from training generator
     seq_train_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
 
     # Builds a Enqueuer from a Sequence.
-    train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
-    train_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
+    '''train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
+    train_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)'''
+    train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=False)
+    train_gen_enq.start(workers=1, max_queue_size=args.threads * 2)
     enq_train_gen = train_gen_enq.get()
 
     # Initialize the validation generator
@@ -113,9 +110,7 @@ def run_training(args):
                             cell_type_list=maxatac_model.cell_types,
                             rand_ratio=args.rand_ratio,
                             chroms=args.vchroms,
-                            quant=args.quant,
                             batch_size=args.batch_size,
-                            target_scale_factor=args.target_scale_factor,
                             shuffle_cell_type=args.shuffle_cell_type,
                             rev_comp_train=args.rev_comp
                             )
@@ -124,9 +119,10 @@ def run_training(args):
     seq_validate_gen = SeqDataGenerator(batches=args.batches, generator=val_gen)
 
     # Builds a Enqueuer from a Sequence.
-    val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
-    val_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
-
+    '''val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
+    val_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)'''
+    val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=False)
+    val_gen_enq.start(workers=1, max_queue_size=args.threads * 2)
     enq_val_gen = val_gen_enq.get()
 
 
@@ -143,8 +139,8 @@ def run_training(args):
                                                     monitor=TRAIN_MONITOR
                                                     ),
                                                 max_queue_size=10,
-                                                use_multiprocessing=False, #args.threads > 1,
-                                                workers=1, #args.threads,
+                                                use_multiprocessing=False,
+                                                workers=1,
                                                 verbose=1
                                                 )
 
@@ -152,12 +148,10 @@ def run_training(args):
 
     # Select best model
     best_epoch = model_selection(training_history=training_history,
-                                 quant=args.quant,
                                  output_dir=maxatac_model.output_directory)
 
     # If plot then plot the model structure and training metrics
     if args.plot:
-        quant = args.quant
         tf = maxatac_model.train_tf
         TCL = '_'.join(maxatac_model.cell_types)
         ARC = args.arch
@@ -165,11 +159,7 @@ def run_training(args):
 
         export_model_structure(maxatac_model.nn_model, maxatac_model.results_location)
 
-        if quant:
-            export_loss_mse_coeff(training_history, tf, TCL, RR, ARC, maxatac_model.results_location)
-
-        else:
-            export_binary_metrics(training_history, tf, RR, ARC, maxatac_model.results_location, best_epoch)
+        export_binary_metrics(training_history, tf, RR, ARC, maxatac_model.results_location, best_epoch)
 
     logging.error("Results are saved to: " + maxatac_model.results_location)
     
@@ -184,5 +174,3 @@ def run_training(args):
     logging.error("Total training time: %d:%d:%d.\n" % (hours, mins, secs))
 
     sys.exit()
-
-# TODO write code to output model training statistics. Time to run and resources would be nice

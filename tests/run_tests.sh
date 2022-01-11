@@ -2,11 +2,11 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
-pip3 install -r $DIR/../test_requirements.txt
+pip3 install -r $DIR/test_requirements.txt --use-feature=2020-resolver
 
 cd $DIR
-mkdir -p data
-cd data
+mkdir -p temp
+cd temp
 
 if [ ! -f "hg19.2bit" ] ; then
     echo "Downloading hg19.2bit"
