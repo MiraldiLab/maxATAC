@@ -29,7 +29,7 @@ First, clone the repository with `git clone https://github.com/MiraldiLab/maxATA
 
 4. Test installation with `maxatac -h`
 
-## maxATAC Workflow Overview
+## maxATAC Function List
 
 Steps in training and assessing a maxATAC model. Relevant functions are listed below each step.
 
