@@ -6,6 +6,10 @@
 
 MaxATAC is a python package for predicting transcription factor (TF) binding using ATAC-seq signal and DNA-sequence in humans. You can use both bulk and pseudo-bulk scATAC-seq with maxATAC. MaxATAC takes as input a 1,024 base pair regions of DNA paired with an ATAC-seq signal to make predictions at 32 bp resolution. Our method requires three inputs:
 
+* DNA sequence: A [`.2bit`](https://genome.ucsc.edu/goldenPath/help/twoBit.html) DNA sequence file.
+* ATAC-seq signal: Cell-type specific ATACseq signal.
+* Trained Model: A trained maxATAC model [`.h5`](https://www.tensorflow.org/tutorials/keras/save_and_load) file.
+
 ## Requirements
 
 This version requires python 3.9, `bedtools`, `samtools`, `pigz`, and `bedGraphToBigWig` in order to run all functions.
