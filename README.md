@@ -1,13 +1,10 @@
 ![maxATAC_logo](https://user-images.githubusercontent.com/47329147/137503708-86d000ef-d6d4-4f75-99aa-39f8aab6dec5.png)
 
-# maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq
+# maxATAC: transcription factor binding from ATAC-seq with deep neural networks
 
 ## Introduction
 
-Cellular behavior is the result of complex genomic regulation partially controlled by the activity of DNA binding proteins called transcription factors (TFs). TFs bind DNA in a sequence specific manner to regulate gene transcription. TFs, other DNA binding proteins, nucleosomes, and structural proteins are all involved in the regulation of gene expression. The physical interaction of protein with DNA molecules results in changes in the accessibility of the underlying DNA sequence. The assay for transposase accessible chromatin (ATAC-seq) uses a hyperactive Tn5 transposase to probe for genomic regions that are accessible to cleavage, and in turn, accessible to TF binding. It has been shown that distinct patterns in genomic Tn5 cleavage signal can be used to identify TF binding positions that are partially protected from Tn5 cleavage, known as TF footprints. ATAC-seq can also be used to identify regions of the genome that are generally accessible. Here we present a method to predict TF binding by learning from ATAC-seq accessibility signal and the underlying DNA sequence of TF binding locations identified by ChIP-seq. 
-
-
-The maxATAC package is a collection of tools used for learning to predict TF binding from ATAC-seq and ChIP-seq data. MaxATAC also provides functions for interpreting trained models and preparing the input data.
+MaxATAC is a python package for predicting transcription factor (TF) binding using ATAC-seq signal and DNA-sequence in humans. You can use both bulk and pseudo-bulk scATAC-seq with maxATAC. MaxATAC takes as input a 1,024 base pair regions of DNA paired with an ATAC-seq signal to make predictions at 32 bp resolution. Our method requires three inputs:
 
 ## Requirements
 
@@ -29,34 +26,94 @@ First, clone the repository with `git clone https://github.com/MiraldiLab/maxATA
 
 4. Test installation with `maxatac -h`
 
-## maxATAC Workflow Overview
+## maxATAC Quick Start Overview
 
-Steps in training and assessing a maxATAC model. Relevant functions are listed below each step.
+![maxATAC Predict Overview](./docs/readme/maxatac_predict_overview.svg)
 
-### 1. Prepare Input Data
-   * [`prepare`](./docs/readme/prepare.md#Prepare)
-   * [`average`](./docs/readme/average.md#Average)
-   * [`normalize`](./docs/readme/normalize.md#Normalize)
-   
-### 2. Train a model
-   * [`train`](./docs/readme/train.md#Train)
-    
-### 3. Predict in new cell type
-   * [`predict`](./docs/readme/predict.md#Predict)
-   
-### 4. Benchmark models against experimental data
-   * [`benchmark`](./docs/readme/benchmark.md#Benchmark)
+### Inputs
 
-### 5. Call "peaks" on maxATAC signal tracks
-   * [`peaks`](./docs/readme/peaks.md#Peaks)
+* DNA sequence: A [`.2bit`](https://genome.ucsc.edu/goldenPath/help/twoBit.html) DNA sequence file.
+* ATAC-seq signal: Cell-type specific ATACseq signal.
+* Trained Model: A trained maxATAC model [`.h5`](https://www.tensorflow.org/tutorials/keras/save_and_load) file.
 
-### 6. Predict sequence specific TF binding
-   * [`variants`](./docs/readme/variants.md#Variants)
+### Outputs
 
-## maxATAC Tutorials and Walkthroughs
+* Prediction [`.bw`](https://genome.ucsc.edu/FAQ/FAQformat.html#format6.1) file: A raw prediction signal track.
+* Prediction [`.bed`](https://genome.ucsc.edu/FAQ/FAQformat.html#format1) file: A bed format file containing TF binding sites, thresholded according to a user-supplied confidence cut off (e.g., corresponding to max F1-score, estimated precision).
+
+## Data Requirements
+
+In our publication, we found that it was important to process the data to cut sites and min-max normalize the ATACseq signal tracks.
+
+### Preparing your ATAC-seq signal
+
+The current `maxatac predict` function requires a normalized ATACseq signal in a bigwig format. You can use `maxatac prepare` to generate a normalized signal track from a `.bam` file of aligned reads.
+
+#### Converting a BAM file to bigwig file
+
+The function `maxatac prepare` was designed to take an input BAM file quality filter the alignments and perform PCR de-duplication. The inputs to `maxatac prepare` are:
+
+1) `-i` : the input bam file
+2) `-o` : the output directory
+3) `-prefix` : the filename prefix.
+
+```bash
+maxatac prepare -i SRX2717911.bam -o ./output -prefix SRX2717911
+```
+
+This function took 38 minutes for a sample with 52,657,164 reads in the BAM file. This was tested on a 2019 Macbook Pro with a 2.6 GHz 6-Core Intel Core i7 and 16 GB of memory.
+
+## Predicting TF binding in bulk ATAC-seq
+
+You first need to prepare the input ATAC-seq data. Then you can use the `maxatac predict` function to predict TF binding with a maxATAC model.
+
+You can predict TF binding in a single chromosome, or you can predict across the entire genome. The user can also provide a `.bed` file of regions where predictions will be made.
+
+You will need to make sure that you have downloaded and installed the reference `.2bit`, `chrom.sizes`, and blacklist files.
+
+### Whole genome prediction
+
+You can predict TF binding across the whole genome with the following command:
+
+```bash
+maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig
+```
+
+### Prediction in a specific genomic region(s)
+
+You can also predict TF binding across a specific region of the genome if you provide a BED file to the `roi` (regions of interest) argument.
+
+```bash
+maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig --roi ROI.bed
+```
+
+### Prediction on a specific chromosome(s)
+
+You can make a prediction on a single chromosome or a subset of chromosomes by providing the chromosome names to the `--chromosomes` argument. 
+
+```bash
+maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig --chromosomes chr3 chr5
+```
+
+## Predicting TF binding in scATAC data
+
+You will first need to convert your fragments file into pseudo-bulk specific fragment files before you can use maxATAC. You will then need to use `maxatac prepare` with each of the fragment files in order to generate a normalized bigwig file for input into `maxatac predict`. The prediction parameters and steps are the same for scATACseq data after normalization.
+
+
+## maxATAC Exended Documentation
 
 ### [Code to generate most of our figures](https://github.com/MiraldiLab/maxATAC_docs/tree/main/figure_code)
 
-### [Introduction and Walkthrough](https://github.com/MiraldiLab/maxATAC_docs/blob/main/walkthrough/prediction_walkthrough.md)
-
 ### [Code and snakemake workflow for ChIP-seq data processing/curation](https://github.com/MiraldiLab/maxATAC_dataScraping)
+
+## maxATAC functions
+| Subcommand                                          | Description                                    |
+|-----------------------------------------------------|------------------------------------------------|
+| [`prepare`](./docs/readme/prepare.md#Prepare)       | Prepare input data                             |
+| [`average`](./docs/readme/average.md#Average)       | Average ATAC-seq signal tracks                 |
+| [`normalize`](./docs/readme/normalize.md#Normalize) | Minmax normalize ATAC-seq signal tracks        |
+| [`train`](./docs/readme/train.md#Train)             | Train a model                                  |
+| [`predict`](./docs/readme/predict.md#Predict)       | Predict TF binding                             |
+| [`benchmark`](./docs/readme/benchmark.md#Benchmark) | Benchmark maxATAC predictions against ChIP-seq |
+| [`peaks`](./docs/readme/peaks.md#Peaks)             | Call "peaks" on maxATAC signal tracks          |
+| [`variants`](./docs/readme/variants.md#Variants)    | Predict sequence specific TF binding           |
