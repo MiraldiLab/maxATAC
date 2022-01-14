@@ -48,17 +48,17 @@ Schematic: maxATAC prediction of CTCF bindings sites for processed GM12878 ATAC-
 
 ## ATAC-seq Data Requirements
 
-As described in Cazares et al., **maxATAC processing of ATAC-seq signal is critical to maxATAC prediction**. Key maxATAC processing steps, summarized in a single command [`maxATAC prepare`](./docs/readme/prepare.md#Prepare), include identification of Tn5 cut sites from ATAC-seq fragments, ATAC-seq signal smoothing, filtering with an extended blacklist, and robust, min-max-like normalization. 
+As described in Cazares et al., **maxATAC processing of ATAC-seq signal is critical to maxATAC prediction**. Key maxATAC processing steps, summarized in a single command [`maxatac prepare`](./docs/readme/prepare.md#Prepare), include identification of Tn5 cut sites from ATAC-seq fragments, ATAC-seq signal smoothing, filtering with an extended blacklist, and robust, min-max-like normalization. 
 
-The maxATAC models were trained on paired-end ATAC-seq data in human. For this reason, we recommend  paired-end sequencing with with sufficient sequencing depth (e.g., ~20M reads for bulk ATAC-seq). Until these models are benchmarked in other species, we recommend limiting their use to human ATAC-seq datasets.
+The maxATAC models were trained on paired-end ATAC-seq data in human. For this reason, we recommend  paired-end sequencing with sufficient sequencing depth (e.g., ~20M reads for bulk ATAC-seq). Until these models are benchmarked in other species, we recommend limiting their use to human ATAC-seq datasets.
 
 ### Preparing your ATAC-seq signal
 
-maxATAC prediction requires maxATAC-normalized ATAC-seq signal in a bigwig format. You can use [`maxATAC prepare`](./docs/readme/prepare.md#Prepare) to generate a maxATAC-normalized signal track from a `.bam` file of aligned reads.
+maxATAC prediction requires maxATAC-normalized ATAC-seq signal in a bigwig format. You can use [`maxatac prepare`](./docs/readme/prepare.md#Prepare) to generate a maxATAC-normalized signal track from a `.bam` file of aligned reads.
 
 #### Converting a BAM file to bigwig file
 
-[`maxATAC prepare`](./docs/readme/prepare.md#Prepare) processes an aligned ATAC-seq reads (.bam for bulk ATAC-seq or .tsv or tsv.gz for scATAC-seq) into smoothed, normalized Tn5 cut sites. Below is an example using `maxatac prepare` for bulk ATAC-seq. Inputs are:
+[`maxatac prepare`](./docs/readme/prepare.md#Prepare) processes aligned ATAC-seq reads (`.bam` for bulk ATAC-seq or `.tsv` or `tsv.gz` for scATAC-seq) into smoothed, normalized Tn5 cut sites. Below is an example using `maxatac prepare` for bulk ATAC-seq. Inputs are:
 
 1) `-i` : the input bam file
 2) `-o` : the output directory
@@ -104,7 +104,7 @@ maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig --
 
 ## Predicting TF binding in scATAC data
 
-maxATAC prediction on scATAC-seq occurs at the level of pseudobulk ATAC-seq signal inputs, processed using [`maxATAC prepare`](./docs/readme/prepare.md#Prepare). Thus, prediction commands with pseudobulk scATAC-seq are identical to prediction the prediction commands with bulk ATAC-seq using [`predict`](./docs/readme/predict.md#Predict) described above.
+maxATAC prediction on scATAC-seq occurs at the level of pseudobulk ATAC-seq signal inputs, processed using [`maxatac prepare`](./docs/readme/prepare.md#Prepare). Thus, prediction commands with pseudobulk scATAC-seq are identical to prediction the prediction commands with bulk ATAC-seq using [`maxatac predict`](./docs/readme/predict.md#Predict) described above.
 
 
 ## maxATAC Exended Documentation
