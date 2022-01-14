@@ -53,7 +53,7 @@ As described in Cazares et al., **maxATAC processing of ATAC-seq signal is criti
 
 The maxATAC models were trained on paired-end ATAC-seq data in human. For this reason, we recommend  paired-end sequencing with sufficient sequencing depth (e.g., ~20M reads for bulk ATAC-seq). Until these models are benchmarked in other species, we recommend limiting their use to human ATAC-seq datasets.
 
-### Preparing your ATAC-seq signal
+### Preparing ATAC-seq signal for maxATAC
 
 maxATAC prediction requires maxATAC-normalized ATAC-seq signal in a bigwig format. You can use [`maxatac prepare`](./docs/readme/prepare.md#Prepare) to generate a maxATAC-normalized signal track from a `.bam` file of aligned reads.
 
@@ -71,7 +71,7 @@ maxatac prepare -i SRX2717911.bam -o ./output -prefix SRX2717911
 
 This function took 38 minutes for a sample with 52,657,164 reads in the BAM file. This was tested on a 2019 Macbook Pro with a 2.6 GHz 6-Core Intel Core i7 and 16 GB of memory.
 
-## Predicting TF binding in bulk ATAC-seq
+## Predicting TF binding from ATAC-seq
 
 Following maxATAC-specific processing of ATAC-seq signal inputs, use the [`maxatac predict`](./docs/readme/predict.md#Predict) function to predict TF binding with a maxATAC model.
 
@@ -103,7 +103,7 @@ For TFBS predictions on a single chromosome or subset of chromosomes, these can 
 maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig --chromosomes chr3 chr5
 ```
 
-## Predicting TF binding in scATAC data
+## Predicting TF binding from scATAC-seq
 
 maxATAC prediction on scATAC-seq occurs at the level of pseudobulk ATAC-seq signal inputs, processed using [`maxatac prepare`](./docs/readme/prepare.md#Prepare). Thus, prediction commands with pseudobulk scATAC-seq are identical to prediction the prediction commands with bulk ATAC-seq using [`maxatac predict`](./docs/readme/predict.md#Predict) described above.
 
