@@ -4,7 +4,7 @@
 
 ## Introduction
 
-maxATAC is a Python package for transcription factor (TF) binding prediction from ATAC-seq signal and DNA sequence in *human* cell types. You can use either population-level (bulk) ATAC-seq or pseudobulk derived from single-cell (sc)ATAC-seq with maxATAC. maxATAC makes TF binding site (TFBS) predictions at 32 bp resolution. Our method requires three inputs:
+maxATAC is a Python package for transcription factor (TF) binding prediction from ATAC-seq signal and DNA sequence in *human* cell types. maxATAC works with both population-level (bulk) ATAC-seq and pseudobulk ATAC-seq profiles derived from single-cell (sc)ATAC-seq. maxATAC makes TF binding site (TFBS) predictions at 32 bp resolution. Our method requires three inputs:
 
 * DNA sequence, in [`.2bit`](https://genome.ucsc.edu/goldenPath/help/twoBit.html) file format.
 * ATAC-seq signal, processed as described [below](#Preparing-your-ATAC-seq-signal).
@@ -33,6 +33,7 @@ First, clone the repository with `git clone https://github.com/MiraldiLab/maxATA
 ## maxATAC Quick Start Overview
 
 ![maxATAC Predict Overview](./docs/readme/maxatac_predict_overview.svg)
+
 Schematic: maxATAC prediction of CTCF bindings sites for processed GM12878 ATAC-seq signal
 
 ### Inputs
@@ -44,7 +45,7 @@ Schematic: maxATAC prediction of CTCF bindings sites for processed GM12878 ATAC-
 ### Outputs
 
 * Raw maxATAC TFBS scores tracks in [`.bw`](https://genome.ucsc.edu/FAQ/FAQformat.html#format6.1) file format.
-* [`.bed`](https://genome.ucsc.edu/FAQ/FAQformat.html#format1) file of TF binding sites, thresholded according to a user-supplied confidence cut off (e.g., corresponding to an estimated precision, recall value or max F1-score) or default (log_2(precision:precision_{random} > 7).
+* [`.bed`](https://genome.ucsc.edu/FAQ/FAQformat.html#format1) file of TF binding sites, thresholded according to a user-supplied confidence cut off (e.g., corresponding to an estimated precision, recall value or max F1-score) or default ($$log_2(precision:precision_{random} > 7$$).
 
 ## ATAC-seq Data Requirements
 
@@ -74,13 +75,13 @@ This function took 38 minutes for a sample with 52,657,164 reads in the BAM file
 
 Following maxATAC-specific processing of ATAC-seq signal inputs, use the [`maxatac predict`](./docs/readme/predict.md#Predict) function to predict TF binding with a maxATAC model.
 
-You can predict TF binding in a single chromosome, or you can predict across the entire genome. Alternatively, the user can provide a `.bed` file of genomic intervals for maxATAC predictions to be made.
+TF binding predictions can be made genome-wide, for a single chromosome, or, alternatively, the user can provide a `.bed` file of genomic intervals for maxATAC predictions to be made.
 
 The reference `.2bit`, `chrom.sizes`, and blacklist files should be downloaded and installed.
 
 ### Whole genome prediction
 
-You can predict TF binding across the whole genome with the following command:
+Example command for TFBS prediction across the whole genome:
 
 ```bash
 maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig
@@ -88,7 +89,7 @@ maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig
 
 ### Prediction in a specific genomic region(s)
 
-You can also predict TF binding across a specific region of the genome if you provide a BED file to the `roi` (regions of interest) argument.
+For TFBS predictions within specific regions of the genome, a `BED` file of genomic intervals, `roi` (regions of interest) are supplied:
 
 ```bash
 maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig --roi ROI.bed
@@ -96,7 +97,7 @@ maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig --
 
 ### Prediction on a specific chromosome(s)
 
-You can make a prediction on a single chromosome or a subset of chromosomes by providing the chromosome names to the `--chromosomes` argument. 
+For TFBS predictions on a single chromosome or subset of chromosomes, these can be provided using the `--chromosomes` argument:
 
 ```bash
 maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig --chromosomes chr3 chr5
