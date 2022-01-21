@@ -45,7 +45,7 @@ def run_call_peaks(args):
     dict = {"Precision": "Monotonic_Avg_Precision",
             "Recall": "Monotonic_Avg_Recall",
             "log2FC": "Monotonic_Avg_log2FC",
-            "F1": "Monotonic_Avg_F1"
+            "F1": "Avg_F1"
             }
 
     cutoff_type=dict[args.cutoff_type]
