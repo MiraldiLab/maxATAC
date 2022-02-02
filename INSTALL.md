@@ -12,6 +12,8 @@ After moving into the cloned directory, please run the following command:
 (to update /data/ dir run: git submodule update --recursive --remote or try git submodule update --init --recursive)
 maxATAC can be run using an environment or using docker. To install using an environment, begin by creating an environment on your computer
 
+Will need to run the script hg38_download.sh
+
 # Create your env
 3. conda create -n my_env python=3.9 or python3.9 -m venv env_name
 
