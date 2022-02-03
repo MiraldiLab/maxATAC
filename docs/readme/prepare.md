@@ -29,7 +29,7 @@ This argument is used to set the logging level. Currently, the only working logg
 
 The default values for the optional arguments are based on the testing performed in the maxATAC publication. See the [Methods](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1.article-metrics) of our publication for a detailed explanation of each parameter choice.
 
-### "-dedup", "--deduplicate"
+### '-dedup, --deduplicate'
 
 It is important to remove PCR duplicates from your ATAC-seq data if you have not done so already. Include this flag to perform PCR deduplication of the input BAM file if you know that it has not been deduplicated. Skipping this step will speed up data processing.
 
