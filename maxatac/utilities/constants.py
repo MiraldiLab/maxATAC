@@ -20,9 +20,9 @@ CPP_LOG_LEVEL = {
 }
 
 # Genomic resource constants
-blacklist_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_maxatac_blacklist.bed")
-blacklist_bigwig_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_maxatac_blacklist.bw")
-chrom_sizes_path = os.path.join(os.path.dirname(__file__), "../../data/hg38.chrom.sizes")
+blacklist_path = "/opt/maxatac/data/hg38/hg38_maxatac_blacklist.bed"
+blacklist_bigwig_path = "/opt/maxatac/data/hg38/hg38_maxatac_blacklist.bw"
+chrom_sizes_path = "/opt/maxatac/data/hg38/hg38.chrom.sizes"
 
 BLACKLISTED_REGIONS = os.path.normpath(blacklist_path)
 BLACKLISTED_REGIONS_BIGWIG = os.path.normpath(blacklist_bigwig_path)
