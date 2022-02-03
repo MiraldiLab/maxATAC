@@ -1,14 +1,14 @@
 import pytest
 import os
 
-from maxatac.utilities.helpers import get_files
+from maxatac.utilities.system_tools import get_files
 from maxatac.utilities.parser import (
     get_synced_chroms,
     parse_arguments
 )
 
 
-DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
+DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "temp"))
 
 
 @pytest.mark.parametrize(

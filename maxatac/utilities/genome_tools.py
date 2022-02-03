@@ -7,21 +7,24 @@ import random
 from maxatac.utilities.system_tools import get_absolute_path
 
 
-def build_chrom_sizes_dict(chromosome_list, chrom_sizes_filename):
-    """
-    Build a dictionary of chromosome sizes filtered for chromosomes in the input chromosome_list. 
+def build_chrom_sizes_dict(chromosome_list: list, 
+                           chrom_sizes_filename: str):
+    """Build a dictionary of chromosome sizes filtered for chromosomes in the input chromosome_list.
     
     The dictionary takes the form of: 
     
-        {
-         "chr1": 248956422,
-         "chr2": 242193529
-        }
+        {"chr1": 248956422, "chr2": 242193529}
 
-    :param chromosome_list: list of chromosome to filter dictionary by
-    :param chrom_sizes_filename: path to the chromosome sizes file
+    Args:
+        chromosome_list (list): A list of chromosome to filter dictionary by
+        chrom_sizes_filename (str): A path to the chromosome sizes file
 
-    :return: A dictionary of chromosome sizes filtered by chromosome list.
+    Returns:
+        dict: A dictionary of chromosome sizes filtered by chromosome list.
+        
+    Example:
+    
+    >>> chrom_dict = build_chrom_sizes_dict(["chr1", "chr2"], "hg38.chrom.sizes")
     """
     # Import the data as pandas dataframe
     chrom_sizes_df = pd.read_csv(chrom_sizes_filename, header=None, names=["chr", "len"], sep="\t")
@@ -31,26 +34,28 @@ def build_chrom_sizes_dict(chromosome_list, chrom_sizes_filename):
 
     return pd.Series(chrom_sizes_df.len.values, index=chrom_sizes_df.chr).to_dict()
 
+    
+def dump_bigwig(location : str):
+    """Write a bigwig file to the location
 
-def dump_bigwig(location):
-    """
-    Write a bigwig file to the location
+    Args:
+        location (str): The path to desired file location
 
-    :param location: the path to desired file location
-
-    :return: an opened bigwig for writing
+    Returns:
+        bigwig stream: An opened bigwig for writing
     """
     return pyBigWig.open(get_absolute_path(location), "w")
 
 
 def get_one_hot_encoded(sequence, target_bp):
-    """
-    Convert a 2bit DNA sequence to a one-hot encoded sequence.
+    """Convert a 2bit DNA sequence to a one-hot encoded sequence.
 
-    :param sequence: path to the 2bit DNA sequence
-    :param target_bp: resolution of the bp sequence
+    Args:
+        sequence ([type]): path to the 2bit DNA sequence
+        target_bp ([type]): resolution of the bp sequence
 
-    :return: one-hot encoded DNA sequence
+    Returns:
+        array: one-hot encoded DNA sequence
     """
     one_hot_encoded = []
     for s in sequence:
@@ -148,6 +153,7 @@ def get_target_matrix(binding,
     bin_sums = np.sum(split_targets, axis=1)
 
     return np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+    # TODO play with this parameter of 0.5
 
 
 def get_synced_chroms(chroms, ignore_regions=None):
@@ -231,3 +237,12 @@ def chromosome_blacklist_mask(blacklist, chromosome, chromosome_length, nBins=Fa
                                                   0,
                                                   chromosome_length,
                                                   numpy=True) != 1  # Convert to boolean array, select areas that are not 1
+
+def filter_chrom_sizes(chrom_sizes_path, chromosomes, target_chrom_sizes_file):
+    df = pd.read_table(chrom_sizes_path, header=None, names=["chr", "length"])
+    
+    df = df[df['chr'].isin(chromosomes)]
+    
+    df.to_csv(target_chrom_sizes_file, sep="\t", header=False, index=False)
+    
+    return target_chrom_sizes_file

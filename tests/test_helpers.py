@@ -1,10 +1,10 @@
 import pytest
 import os
 
-from maxatac.utilities.helpers import get_files
+from maxatac.utilities.system_tools import get_files
 
 
-DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
+DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "temp"))
 
 
 control_empty = []

@@ -5,7 +5,7 @@ import random
 from maxatac.utilities.prepare import get_splitted_chromosomes
 from maxatac.utilities.training_tools import RandomRegionsPool
 
-DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "data"))
+DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "temp"))
 
 
 @pytest.mark.parametrize(

@@ -20,9 +20,9 @@ CPP_LOG_LEVEL = {
 }
 
 # Genomic resource constants
-blacklist_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_maxatac_blacklist.bed")
-blacklist_bigwig_path = os.path.join(os.path.dirname(__file__), "../../data/hg38_maxatac_blacklist.bw")
-chrom_sizes_path = os.path.join(os.path.dirname(__file__), "../../data/hg38.chrom.sizes")
+blacklist_path = "/opt/maxatac/data/hg38/hg38_maxatac_blacklist.bed"
+blacklist_bigwig_path = "/opt/maxatac/data/hg38/hg38_maxatac_blacklist.bw"
+chrom_sizes_path = "/opt/maxatac/data/hg38/hg38.chrom.sizes"
 
 BLACKLISTED_REGIONS = os.path.normpath(blacklist_path)
 BLACKLISTED_REGIONS_BIGWIG = os.path.normpath(blacklist_bigwig_path)
@@ -71,7 +71,7 @@ DEFAULT_VALIDATE_RAND_RATIO = .7
 # Can be changed without problems
 BATCH_SIZE = 1000
 VAL_BATCH_SIZE = 1000
-
+BP_DICT = {"A":0, "C":1, "G":2, "T":3}
 CHR_POOL_SIZE = 1000
 BP_ORDER = ["A", "C", "G", "T"]
 INPUT_FILTERS = 15
@@ -85,7 +85,6 @@ FILTERS_SCALING_FACTOR = 1.5
 PURE_CONV_LAYERS = 4
 CONV_BLOCKS = 6
 DNA_INPUT_CHANNELS = 4
-ATAC_INPUT_CHANNELS = 2
 DILATION_RATE = [1, 1, 2, 4, 8, 16]
 BP_RESOLUTION = 32
 OUTPUT_FILTERS = 1
@@ -104,9 +103,6 @@ OUTPUT_ACTIVATION = "sigmoid"
 # Benchmarking Constants
 DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION = "max"
 DEFAULT_BENCHMARKING_BIN_SIZE = 32
-
-# Factor for scaling Targets for quant models.
-QUANT_TARGET_SCALE_FACTOR = 10
 
 INPUT_CHANNELS = 5
 TRAIN_MONITOR = "val_loss"

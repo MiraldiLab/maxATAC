@@ -18,7 +18,21 @@ def get_cpu_count(reserved=0.25):  # reserved is [0, 1)
     return 1 if avail_cpus == 0 else avail_cpus
 
 
-def get_dir(dir, permissions=0o0775, exist_ok=True):
+def get_dir(dir: str, permissions=0o0775, exist_ok : bool=True):
+    """Makes a directory at the given location
+
+    Args:
+        dir (str): Path of the directory
+        permissions ([type], optional): Permissions of directory. Defaults to 0o0775.
+        exist_ok (bool, optional): If True, program will continue if directory exists. Defaults to True.
+
+    Returns:
+        str: Absolute path to the created directory
+        
+    Example:
+    
+    >>> output_dir = get_dir("./output/")
+    """
     abs_dir = get_absolute_path(dir)
     try:
         makedirs(abs_dir, mode=permissions)

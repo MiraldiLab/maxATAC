@@ -7,16 +7,19 @@ from scipy import stats
 
 from maxatac.utilities.genome_tools import chromosome_blacklist_mask
 
+def get_genomic_stats(bigwig_path: str, chrom_sizes_dict: dict, blacklist_path: str, max_percentile: int, prefix: str):
+    """Find the genomic minimum and maximum values in the chromosomes of interest
 
-def get_genomic_stats(bigwig_path, chrom_sizes_dict, blacklist_path, max_percentile, prefix):
+    Args:
+        bigwig_path (str): Path to the input bigwig file
+        chrom_sizes_dict (dict): A dictionary of chromosome sizes filtered for the chroms of interest
+        blacklist_path (str): Path to the input blacklist file
+        max_percentile (int): Percentile value to use as the max for normalization
+        prefix (str): File prefix
+
+    Returns:
+        Any: Genomic minimum and maximum values
     """
-        Find the genomic minimum and maximum values in the chromosomes of interest
-
-        :param chrom_sizes_dict: (dict) A dictionary of chromosome sizes filtered for the chroms of interest
-        :param bigwig_path: (str) Path to the input bigwig file
-
-        :return: Genomic minimum and maximum values
-        """
     # Open bigwig file
     with pyBigWig.open(bigwig_path) as input_bigwig:
         # Create an empty list to store results
@@ -80,16 +83,21 @@ def get_genomic_stats(bigwig_path, chrom_sizes_dict, blacklist_path, max_percent
 
         return min_value, max_value, median_value, median_absolute_deviation, mean_value, std_value
 
+def minmax_normalize_array(array: np.array, min_value: int, max_value: int, clip: bool=False):
+    """MinMax normalize the numpy array based on the genomic min and max
 
-def minmax_normalize_array(array, min_value, max_value, clip=False):
-    """
-    MinMax normalize the numpy array based on the genomic min and max
+    Args:
+        array (np.array): Input array of bigwig values
+        min_value (int): Max value for normalization
+        max_value (int): Min value for normalization
+        clip (bool, optional): Clip the values above the max value. Defaults to False.
 
-    :param max_value:
-    :param min_value:
-    :param array: Input array of bigwig values
-
-    :return: MinMax normalized array
+    Returns:
+        min-max normalized array: An array that has been min-max normalized
+        
+    Examples:
+    
+    >>> normalized_array = minmax_normalize_array(chr1_array, 0, 1, False)
     """
     normalized_array = (array - min_value) / (max_value - min_value)
 

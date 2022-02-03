@@ -1,11 +1,11 @@
 import logging
 import os
-
+import timeit
 from maxatac.utilities.system_tools import get_dir, Mute
 
 with Mute():
     from maxatac.utilities.genome_tools import chromosome_blacklist_mask
-    from maxatac.utilities.benchmarking_tools import calculate_R2_pearson_spearman, ChromosomeAUPRC
+    from maxatac.utilities.benchmarking_tools import ChromosomeAUPRC
 
 
 def run_benchmarking(args):
@@ -30,6 +30,9 @@ def run_benchmarking(args):
 
     :return: A tsv file of precision and recall with AUPR
     """
+    # Start Timer
+    startTime = timeit.default_timer()
+
     # Create the output directory
     output_dir = get_dir(args.output_directory)
 
@@ -61,16 +64,12 @@ def run_benchmarking(args):
                         results_filename,
                         args.round_predictions)
 
-    if args.quant:
-        blacklist_mask = chromosome_blacklist_mask(
-            args.blacklist,
-            bin_size=1,
-            chromosome=args.chromosomes[0]
-        )
+    # Measure End Time of Training
+    stopTime = timeit.default_timer()
+    totalTime = stopTime - startTime
 
-        calculate_R2_pearson_spearman(args.prediction,
-                                      args.gold_standard,
-                                      args.chromosomes[0],
-                                      results_filename2,
-                                      blacklist_mask
-                                      )
+    # Output running time in a nice format.
+    mins, secs = divmod(totalTime, 60)
+    hours, mins = divmod(mins, 60)
+
+    logging.error("Total Benchmarking time: %d:%d:%d.\n" % (hours, mins, secs))
