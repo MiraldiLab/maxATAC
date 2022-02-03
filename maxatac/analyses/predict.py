@@ -8,7 +8,6 @@ from maxatac.utilities.system_tools import get_dir, Mute
 
 with Mute():
     from maxatac.utilities.genome_tools import build_chrom_sizes_dict
-    from maxatac.utilities.constants import INPUT_LENGTH
     from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, \
         import_prediction_regions, create_prediction_regions, make_stranded_predictions
 
@@ -94,7 +93,6 @@ def run_prediction(args):
                 "Model: args.model" + "\n" +
                 "Chromosome requested: \n   - " + "\n    -".join(args.chromosomes) + "\n" +
                 "Chromosomes in final prediction set: \n   - " + "\n    -".join(chrom_list) + "\n" +
-                "Threads count: " + str(args.threads) + "\n" +
                 "Output directory: " + str(output_directory) + "\n" +
                 "Batch Size: " + str(args.batch_size) + "\n" +
                 "Output filename: " + outfile_name_bigwig + "\n"

@@ -44,10 +44,6 @@ This argument specifies the path to the meta file that describes the training da
 
 This argument is reserved for the prefix used to build the output filename. This can be any string. The extension `.bw` will be added to the filename prefix. Default: `maxatac_model`
 
-### `--quant`
-
-This argument is a boolean flag that will specify whether to use maxATAC for quantitative data modeling. Default: `False`
-
 ### `--train_roi`
 
 This argument is used to input the bed file that you want to use to define the training regions of interest. If you set this option you will randomly select regions from this file for training instead of using the meta data to build the training data pool. 

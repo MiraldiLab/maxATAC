@@ -57,7 +57,6 @@ def get_description():
     with open(README, "r") as f:
         return f.read()
 
-
 setup(
     name="maxatac",
     description="maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq",
