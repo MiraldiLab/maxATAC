@@ -2,7 +2,6 @@ import argparse
 import random
 from os import getcwd
 from pkg_resources import require
-
 from yaml import dump
 
 from maxatac.utilities.system_tools import (get_version,
@@ -17,7 +16,6 @@ with Mute():
     from maxatac.analyses.train import run_training
     from maxatac.analyses.normalize import run_normalization
     from maxatac.analyses.benchmark import run_benchmarking
-    from maxatac.analyses.prediction_signal import run_prediction_signal
     from maxatac.analyses.peaks import run_call_peaks
     from maxatac.analyses.variants import run_variants
     from maxatac.analyses.prepare import run_prepare
@@ -28,7 +26,6 @@ from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          DEFAULT_LOG_LEVEL,
                                          DEFAULT_TRAIN_EPOCHS,
                                          DEFAULT_TRAIN_BATCHES_PER_EPOCH,
-                                         DEFAULT_MIN_PREDICTION,
                                          BATCH_SIZE,
                                          VAL_BATCH_SIZE,
                                          INPUT_LENGTH,
@@ -36,7 +33,6 @@ from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          DEFAULT_VALIDATE_CHRS,
                                          DEFAULT_CHROM_SIZES,
                                          BLACKLISTED_REGIONS,
-                                         DEFAULT_VALIDATE_RAND_RATIO,
                                          DEFAULT_ROUND,
                                          DEFAULT_TEST_CHRS,
                                          BLACKLISTED_REGIONS_BIGWIG,
@@ -67,7 +63,6 @@ def normalize_args(args, skip_list=[], cwd_abs_path=None):
             normalized_args[key] = value
     return argparse.Namespace(**normalized_args)
 
-
 def get_parser():
     # Parent (general) parser
     parent_parser = argparse.ArgumentParser(add_help=False)
@@ -83,10 +78,10 @@ def get_parser():
 
     #############################################
 
-    # Average parser
+    # average subparser
     average_parser = subparsers.add_parser("average",
                                            parents=[parent_parser],
-                                           help="Run maxATAC average"
+                                           help="Run maxatac average"
                                            )
 
     # Set the default function to run averaging
@@ -97,7 +92,7 @@ def get_parser():
                                 type=str,
                                 nargs="+",
                                 required=True,
-                                help="Input bigwig files to average."
+                                help="Input bigwig files."
                                 )
 
     average_parser.add_argument("--prefix",
@@ -111,7 +106,7 @@ def get_parser():
                                 dest="chrom_sizes",
                                 type=str,
                                 default=DEFAULT_CHROM_SIZES,
-                                help="Input chromosome sizes file. Default is hg38."
+                                help="Input chromosome sizes file. Default is hg38 chromosome sizes."
                                 )
 
     average_parser.add_argument("--chromosomes",
@@ -143,28 +138,28 @@ def get_parser():
     # Predict parser
     predict_parser = subparsers.add_parser("predict",
                                            parents=[parent_parser],
-                                           help="Run maxATAC prediction",
+                                           help="Run maxatac predict",
                                            )
 
     predict_parser.set_defaults(func=run_prediction)
 
     predict_parser.add_argument("--model", dest="model", type=str,
                                 required=True,
-                                help="Trained model file"
+                                help="Trained maxATAC model .h5 file."
                                 )
 
     predict_parser.add_argument("--sequence",
                                 dest="sequence",
                                 type=str,
                                 required=True,
-                                help="Genome sequence 2bit file"
+                                help="Genome sequence hg38.2bit file."
                                 )
 
     predict_parser.add_argument("--signal",
                                 dest="signal",
                                 type=str,
                                 required=True,
-                                help="Input signal file"
+                                help="Input ATACseq bigwig file."
                                 )
 
     predict_parser.add_argument("--output",
@@ -178,30 +173,15 @@ def get_parser():
                                 dest="blacklist",
                                 type=str,
                                 default=BLACKLISTED_REGIONS,
-                                help="The blacklisted regions to exclude"
+                                help="The blacklisted regions to exclude in BED format"
                                 )
 
     predict_parser.add_argument("--roi",
                                 dest="roi",
                                 default=False,
                                 required=False,
-                                help="Bed file with ranges for input sequences to be predicted. \
-                                      Default: None, predictions are done on the whole chromosome length"
-                                )
-
-    predict_parser.add_argument("--stranded",
-                                dest="stranded",
-                                default=False,
-                                action='store_true',
-                                required=False,
-                                help="Whether to make predictions based on both strands")
-
-    predict_parser.add_argument("--threads",
-                                dest="threads",
-                                default=get_cpu_count(),
-                                type=int,
-                                help="# of processes to run prediction in parallel. \
-                                        Default: # of --models multiplied by # of --chromosomes"
+                                help="Bed file with ranges for input sequences to be used in prediction. \
+                                      Default: None, predictions are done on the whole chromosome."
                                 )
 
     predict_parser.add_argument("--loglevel",
@@ -222,7 +202,7 @@ def get_parser():
     predict_parser.add_argument("--step_size",
                                 dest="step_size",
                                 type=int,
-                                default=INPUT_LENGTH,
+                                default=int(INPUT_LENGTH/4),
                                 help="Step size to use to build sliding window regions"
                                 )
 
@@ -244,10 +224,11 @@ def get_parser():
                                 dest="chromosomes",
                                 type=str,
                                 nargs="+",
-                                default=DEFAULT_TEST_CHRS,
+                                default=AUTOSOMAL_CHRS,
                                 help="Chromosomes from --chromosomes fixed for prediction. \
-                                      Default: 1, 8"
+                                      Default: Autosomal chromosomes"
                                 )
+    
     predict_parser.add_argument("-bin", "--bin_size",
                               dest="BIN_SIZE",
                               type=int,
@@ -535,7 +516,6 @@ def get_parser():
 
     normalize_parser.add_argument("--max_percentile",
                                   dest="max_percentile",
-                                  required=False,
                                   type=int,
                                   default=100,
                                   help="The maximum percentile to use for normalization")
@@ -639,92 +619,6 @@ def get_parser():
                                   default=BLACKLISTED_REGIONS_BIGWIG,
                                   help="The blacklisted regions to exclude"
                                   )
-
-    #############################################
-
-    # Prediction_signal parser
-    prediction_signal_parser = subparsers.add_parser("prediction_signal",
-                                                     parents=[parent_parser],
-                                                     help="Run maxATAC prediction_signal"
-                                                     )
-
-    prediction_signal_parser.set_defaults(func=run_prediction_signal)
-
-    prediction_signal_parser.add_argument("--prediction",
-                                          dest="prediction",
-                                          type=str,
-                                          required=True,
-                                          help="Prediction bigWig file"
-                                          )
-
-    prediction_signal_parser.add_argument("--sequence",
-                                          dest="sequence",
-                                          type=str,
-                                          required=True,
-                                          help="hg38 sequence file"
-                                          )
-
-    prediction_signal_parser.add_argument("--chromosomes",
-                                          dest="chromosomes",
-                                          type=str,
-                                          nargs="+",
-                                          default=DEFAULT_TEST_CHRS,
-                                          help="Chromosomes list for analysis. \
-                                            Optionally with regions in a form of chrN:start-end. \
-                                            Default: main human chromosomes, whole length"
-                                          )
-
-    prediction_signal_parser.add_argument("--bin_size",
-                                          dest="bin_size",
-                                          type=int,
-                                          default=DEFAULT_BENCHMARKING_BIN_SIZE,
-                                          help="Bin size to split prediction and control data before running prediction. \
-                                            Default: " + str(DEFAULT_BENCHMARKING_BIN_SIZE)
-                                          )
-
-    prediction_signal_parser.add_argument("--agg",
-                                          dest="agg_function",
-                                          type=str,
-                                          default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
-                                          help="Aggregation function to use for combining results into bins: \
-                                            max, coverage, mean, std, min"
-                                          )
-
-    prediction_signal_parser.add_argument("--round_predictions",
-                                          dest="round_predictions",
-                                          type=int,
-                                          default=DEFAULT_ROUND,
-                                          help="Round binned values to this number of decimal places"
-                                          )
-
-    prediction_signal_parser.add_argument("--prefix",
-                                          dest="prefix",
-                                          type=str,
-                                          required=True,
-                                          help="Prefix for the file name"
-                                          )
-
-    prediction_signal_parser.add_argument("--output_directory",
-                                          dest="output_directory",
-                                          type=str,
-                                          default="./benchmarking_results",
-                                          help="Folder for benchmarking results. Default: ./benchmarking_results"
-                                          )
-
-    prediction_signal_parser.add_argument("--loglevel",
-                                          dest="loglevel",
-                                          type=str,
-                                          default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
-                                          choices=LOG_LEVELS.keys(),
-                                          help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                                          )
-
-    prediction_signal_parser.add_argument("--blacklist",
-                                          dest="blacklist",
-                                          type=str,
-                                          default=BLACKLISTED_REGIONS_BIGWIG,
-                                          help="The blacklisted regions to exclude"
-                                          )
 
     #############################################
 
@@ -910,34 +804,34 @@ def get_parser():
                                   dest="chrom_sizes",
                                   type=str,
                                   default=DEFAULT_CHROM_SIZES,
-                                  help="Chrom sizes file")
+                                  help="Chrom sizes file. Default: hg38 chrom sizes")
 
     prepare_parser.add_argument("-slop", "--slop",
                               dest="slop",
                               type=int,
                               default=20,
-                              help="Slop size to use with cut sites"
+                              help="The slop size to use around the Tn5 cut sites."
                               )
     
     prepare_parser.add_argument("-rpm", "--rpm_factor",
                             dest="rpm_factor",
                             type=int,
                             default=20000000,
-                            help="What millions value to scale data to"
+                            help="The RPM factor to use for scaling your read depth normalized signal."
                             )
     
     prepare_parser.add_argument("--blacklist_bed",
                                 dest="blacklist_bed",
                                 type=str,
                                 default=BLACKLISTED_REGIONS,
-                                help="The blacklisted regions to exclude"
+                                help="The blacklisted regions to exclude in bed format."
                                 )
 
     prepare_parser.add_argument("--blacklist",
                                 dest="blacklist",
                                 type=str,
                                 default=BLACKLISTED_REGIONS_BIGWIG,
-                                help="The blacklisted regions to exclude"
+                                help="The blacklisted regions to exclude in bigwig format."
                                 )
     
     prepare_parser.add_argument("-chroms", "--chromosomes",
@@ -945,7 +839,7 @@ def get_parser():
                                         type=str,
                                         nargs="+",
                                         default=AUTOSOMAL_CHRS,
-                                        help="Chromosomes list for analysis."
+                                        help="The chromosomes to include in the final output."
                                         )
 
     prepare_parser.add_argument("-threads", "--threads",
