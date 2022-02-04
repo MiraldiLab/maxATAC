@@ -18,7 +18,7 @@ ___
 
 It is best to install maxATAC into a dedicated virtual environment.
 
-This version requires python 3.9, `bedtools`, `samtools`, `pigz`, and `bedGraphToBigWig` in order to run all functions.
+This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`, and `bedGraphToBigWig` in order to run all functions.
 
 ### Installing with Conda
 
@@ -30,7 +30,7 @@ This version requires python 3.9, `bedtools`, `samtools`, `pigz`, and `bedGraphT
 
 1. Create a virtual environment for maxATAC (conda is shown in the example) with `conda create -n maxatac python=3.9`.
 
-2. Install required packages and make sure they are on your PATH: samtools, bedtools, bedGraphToBigWig, pigz.
+2. Install required packages and make sure they are on your PATH: samtools, bedtools, bedGraphToBigWig, wget, git, pigz.
 
 3. Install maxatac with `pip install maxatac`
 
@@ -59,7 +59,7 @@ Schematic: maxATAC prediction of CTCF bindings sites for processed GM12878 ATAC-
 
 As described in [Cazares et al.](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1), **maxATAC processing of ATAC-seq signal is critical to maxATAC prediction**. Key maxATAC processing steps, summarized in a single command [`maxatac prepare`](./docs/readme/prepare.md#Prepare), include identification of Tn5 cut sites from ATAC-seq fragments, ATAC-seq signal smoothing, filtering with an extended "maxATAC" blacklist, and robust, min-max-like normalization. 
 
-The maxATAC models were trained on paired-end ATAC-seq data in human. For this reason, we recommend  paired-end sequencing with sufficient sequencing depth (e.g., ~20M reads for bulk ATAC-seq). Until these models are benchmarked in other species, we recommend limiting their use to human ATAC-seq datasets.
+The maxATAC models were trained on paired-end ATAC-seq data in human. For this reason, we recommend paired-end sequencing with sufficient sequencing depth (e.g., ~20M reads for bulk ATAC-seq). Until these models are benchmarked in other species, we recommend limiting their use to human ATAC-seq datasets. **All the data used to train maxATAC was aligned to the hg38 genome, therefore these models cannot be used on data aligned to the hg19 reference genome.**
 
 ### Preparing the ATAC-seq signal
 

@@ -3,6 +3,7 @@ import random
 from os import getcwd
 from pkg_resources import require
 from yaml import dump
+import os
 
 from maxatac.utilities.system_tools import (get_version,
                                             get_absolute_path,
@@ -20,7 +21,8 @@ with Mute():
     from maxatac.analyses.variants import run_variants
     from maxatac.analyses.prepare import run_prepare
     from maxatac.analyses.threshold import run_thresholding
-
+    from maxatac.analyses.data import run_data
+    
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
                                          DEFAULT_LOG_LEVEL,
@@ -77,7 +79,39 @@ def get_parser():
                                 )
 
     #############################################
+    # data subparser
+    data_parser = subparsers.add_parser("data",
+                                           parents=[parent_parser],
+                                           help="Run maxatac data"
+                                           )
 
+    # Set the default function to run_data
+    data_parser.set_defaults(func=run_data)
+
+    data_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="Reference genome to download data for."
+                                )
+    
+    data_parser.add_argument("--output", "-o",
+                            dest="output",
+                            type=str,
+                            default=os.path.join(os.path.expanduser('~'), "opt", "maxatac"),
+                            required=False,
+                            help="Reference genome to download data for."
+                            )
+
+    data_parser.add_argument("--loglevel",
+                            dest="loglevel",
+                            type=str,
+                            default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                            choices=LOG_LEVELS.keys(),
+                            help="Logging level. Default: " + DEFAULT_LOG_LEVEL
+                            )
+       
     # average subparser
     average_parser = subparsers.add_parser("average",
                                            parents=[parent_parser],

@@ -20,9 +20,13 @@ CPP_LOG_LEVEL = {
 }
 
 # Genomic resource constants
-blacklist_path = "/opt/maxatac/data/hg38/hg38_maxatac_blacklist.bed"
-blacklist_bigwig_path = "/opt/maxatac/data/hg38/hg38_maxatac_blacklist.bw"
-chrom_sizes_path = "/opt/maxatac/data/hg38/hg38.chrom.sizes"
+# If the user runs maxatac data the data will be installed here. The defaults for some commands rely on these paths.
+# The user can put the data anywhere, but they will need to adjust the paths for each file
+maxatac_data_path = os.path.join(os.path.expanduser('~'), "opt", "maxatac", "data")
+
+blacklist_path = os.path.join(maxatac_data_path, "hg38/hg38_maxatac_blacklist.bed")
+blacklist_bigwig_path = os.path.join(maxatac_data_path, "hg38/hg38_maxatac_blacklist.bw")
+chrom_sizes_path = os.path.join(maxatac_data_path, "hg38/hg38.chrom.sizes")
 
 BLACKLISTED_REGIONS = os.path.normpath(blacklist_path)
 BLACKLISTED_REGIONS_BIGWIG = os.path.normpath(blacklist_bigwig_path)
