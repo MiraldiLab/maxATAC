@@ -4,13 +4,14 @@
 
 ## Introduction
 
-maxATAC is a Python package for transcription factor (TF) binding prediction from ATAC-seq signal and DNA sequence in *human* cell types. maxATAC works with both population-level (bulk) ATAC-seq and pseudobulk ATAC-seq profiles derived from single-cell (sc)ATAC-seq. maxATAC makes TF binding site (TFBS) predictions at 32 bp resolution. 
-
+maxATAC is a Python package for transcription factor (TF) binding prediction from ATAC-seq signal and DNA sequence in *human* cell types. maxATAC works with both population-level (bulk) ATAC-seq and pseudobulk ATAC-seq profiles derived from single-cell (sc)ATAC-seq. maxATAC makes TF binding site (TFBS) predictions at 32 bp resolution.
 maxATAC requires three inputs:
 
 * DNA sequence, in [`.2bit`](https://genome.ucsc.edu/goldenPath/help/twoBit.html) file format.
 * ATAC-seq signal, processed as described [below](#Preparing-your-ATAC-seq-signal).
 * Trained maxATAC TF Models, in [`.h5`](https://www.tensorflow.org/tutorials/keras/save_and_load) file format.
+
+>**maxATAC was trained and evaluated on data generated using the hg38 reference genome. The defualt paths and files that are used for each function will reference hg38 files. If you want to use maxATAC with any other species or reference, you will need to provide the appropriate chromosome sizes file, blacklist, and `.2bit` file specific to your data.**
 
 ___
 
@@ -22,7 +23,7 @@ This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`,
 
 ### Installing with Conda
 
-1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9 maxatac samtools bedtools bedGraphToBigWig pigz`
+1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9 maxatac samtools wget bedtools bedGraphToBigWig pigz`
 
 2. Test installation with `maxatac -h`
 

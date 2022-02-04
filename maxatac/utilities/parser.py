@@ -66,6 +66,11 @@ def normalize_args(args, skip_list=[], cwd_abs_path=None):
     return argparse.Namespace(**normalized_args)
 
 def get_parser():
+    """Build parsers with user input
+
+    Returns:
+        argparse object
+    """
     # Parent (general) parser
     parent_parser = argparse.ArgumentParser(add_help=False)
     general_parser = argparse.ArgumentParser(description="Neural networks for predicting TF binding using ATAC-seq")
@@ -258,9 +263,9 @@ def get_parser():
                                 dest="chromosomes",
                                 type=str,
                                 nargs="+",
-                                default=AUTOSOMAL_CHRS,
+                                default=ALL_CHRS,
                                 help="Chromosomes from --chromosomes fixed for prediction. \
-                                      Default: Autosomal chromosomes"
+                                      Default: All chromosomes chr1-22, X, Y"
                                 )
     
     predict_parser.add_argument("-bin", "--bin_size",
@@ -770,30 +775,25 @@ def get_parser():
                               type=str,
                               help="Input 2bit DNA sequence")
 
-    variants_parser.add_argument("-chrom", "--chromosome",
-                              dest="chromosome",
-                              required=True,
-                              help="Chromosome name")
+    variants_parser.add_argument("-chroms", "--chromosomes",
+                              dest="chromosomes",
+                              default=ALL_CHRS,
+                              help="Chromosomes to limit prediction to")
 
-    variants_parser.add_argument("-p", "--position",
-                              dest="variant_start_pos",
+    variants_parser.add_argument("-variants_bed", "--variants_bed",
+                              dest="variants_bed",
                               type=int,
                               required=True,
-                              help="The variant start position. This is the position where the variant is located in 0-based coordinates"
+                              help="The variant start position in BED format with the nucleotide at that position"
                               )
 
-    variants_parser.add_argument("-nuc", "--target_nucleotide",
-                              dest="nucleotide",
-                              type=str,
-                              required=True,
-                              help="The nucldeotide to use at the variant start position. Example: A")
-    
-    variants_parser.add_argument("-overhang",
-                              dest="overhang",
+    variants_parser.add_argument("-roi", "--roi",
+                              dest="roi",
                               type=int,
-                              default=0,
-                              help="The amount of overhang around the 1,024 bp prediction window. Must be in intervals of 256 base pairs. Example: 512")
-
+                              required=False,
+                              help="A bed file of LD blocks to predict in specifically"
+                              )
+      
     variants_parser.add_argument("--loglevel",
                               dest="loglevel",
                               type=str,
@@ -801,6 +801,25 @@ def get_parser():
                               choices=LOG_LEVELS.keys(),
                               help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                               )
+
+    variants_parser.add_argument("--blacklist",
+                                dest="blacklist",
+                                type=str,
+                                default=BLACKLISTED_REGIONS,
+                                help="The blacklisted regions to exclude in bed format."
+                                )
+    
+    variants_parser.add_argument("--chrom_sizes",
+                                dest="chrom_sizes",
+                                type=str,
+                                default=DEFAULT_CHROM_SIZES,
+                                help="Chrom sizes file. Default: hg38 chrom sizes")
+
+    variants_parser.add_argument("--step_size",
+                                dest="step_size",
+                                type=int,
+                                default=256,
+                                help="Step size to use to stagger prediction windows. Default: 256 bp (i.e. 1,024/4)")
 
     #############################################
     
@@ -883,8 +902,8 @@ def get_parser():
                                         help="The number of threads to use"
                                         )
 
-    prepare_parser.add_argument("-dedup", "--deduplicate",
-                                        dest="dedup",
+    prepare_parser.add_argument("-skip_dedup", "--skip_deduplication",
+                                        dest="skip_dedup",
                                         default=False,
                                         action="store_true",
                                         help="Whether to perform deduplication"
@@ -977,6 +996,15 @@ def print_args(args, logger, header="Arguments:\n", excl=["func"]):
 
 # we need to cwd_abs_path parameter only for running unit tests
 def parse_arguments(argsl, cwd_abs_path=None):
+    """Parse user arguments
+
+    Args:
+        argsl ([type]): list of user inputs
+        cwd_abs_path ([type], optional): [description]. Defaults to None.
+
+    Returns:
+        Arguments list
+    """
     cwd_abs_path = getcwd() if cwd_abs_path is None else cwd_abs_path
     if len(argsl) == 0:
         argsl.append("")  # otherwise fails with error if empty

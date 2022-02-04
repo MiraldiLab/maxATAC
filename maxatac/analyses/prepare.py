@@ -53,8 +53,8 @@ def run_prepare(args):
         # Number of counts normalized for sequencing depth of 20,000,000 reads.
         scale_factor = (1/read_counts) * args.rpm_factor
         
-        if args.dedup:
-            logging.error("Processing BAM to bigwig. Running deduplication")
+        if args.skip_dedup:
+            logging.error("Processing BAM to bigwig. Skipping deduplication")
  
             # Use subprocess to run bedtools and bedgraphtobigwig
             subprocess.run(["bash", 
@@ -67,9 +67,9 @@ def run_prepare(args):
                             args.chrom_sizes,
                             str(args.slop), 
                             str(scale_factor),
-                            "deduplicate"], check=True)
+                            "skip"], check=True)
         else:
-            logging.error("Processing BAM to bigwig. Skipping eduplication")
+            logging.error("Processing BAM to bigwig. Running eduplication")
 
             subprocess.run(["bash", 
                             os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/ATAC_bowtie2_pipeline.sh"),
@@ -81,7 +81,7 @@ def run_prepare(args):
                             args.chrom_sizes,
                             str(args.slop), 
                             str(scale_factor),
-                            "skip"], check=True)
+                            "deduplicate"], check=True)
                         
     elif args.input.endswith((".tsv", ".tsv.gz")):
         logging.error("Working on 10X scATAC fragments file \n " + "Converting fragment files to Tn5 sites")
