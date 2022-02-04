@@ -37,6 +37,26 @@ This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`,
 
 4. Test installation with `maxatac -h`
 
+### Downloading required reference data
+
+In order to run the maxATAC models that were described in [Cazares et al.](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1) the following files are required to be downloaded from the [maxATAC_data](https://github.com/MiraldiLab/maxATAC_data) repository, then installed in the correct path:
+
+* hg38 reference genome `.2bit` file
+* hg38 chromosome sizes file
+* maxATAC extended blacklist
+* TF specific `.h5` model files
+* TF specific thresholding files
+  
+If you do not want to set each specific flag for the above files when running, clone the repository into your `~/opt/` directory under `~/opt/maxatac` using the command:
+
+1. `mkdir -p ~/opt/maxatac && cd ~/opt/maxatac`
+2. `git clone https://github.com/MiraldiLab/maxATAC_data.git && mv maxATAC_data data`.
+
+The directory `~/opt/maxatac/data/hg38` is the default location that maxATAC will look for the data.
+
+The alternative option is to use the command `maxatac data` to download the data to the required directory. Only the hg38 reference genome is supported.
+
+*We are still working on the best way to distribute the data with the package.*
 ___
 
 ## maxATAC Quick Start Overview
