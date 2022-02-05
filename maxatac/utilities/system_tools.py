@@ -1,10 +1,11 @@
 import logging
 import pkg_resources
 import os
+import sys
+import subprocess
 from os import path, getcwd, makedirs, error, walk, environ
 from maxatac.utilities.constants import CPP_LOG_LEVEL
 from re import match
-
 from multiprocessing import cpu_count
 
 
@@ -119,3 +120,46 @@ class Mute():
         os.dup2(self.BACKUP_FDS[1], 2)
         os.close(self.NULL_FDS[0])
         os.close(self.NULL_FDS[1])
+
+
+def check_data_packages_installed():
+    """Check that packages are installed
+    This module requires 
+    """
+    try:
+        subprocess.run(["which", "git"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "git", "conda install git")
+        
+    try:
+        subprocess.run(["which", "wget"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "wget", "conda install wget")
+
+
+def raise_exception(e, package, install_link):
+    print("command '{}' return with error (code {}): {}. Make sure {} is installed in your path {}.".format(e.cmd, e.returncode, e.output, package, install_link))
+    sys.exit()
+
+
+def check_prepare_packages_installed():
+    try:
+        subprocess.run(["which", "samtools"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "samtools", "http://www.htslib.org/")
+        
+    try:
+        subprocess.run(["which", "bedtools"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "bedtools", "https://bedtools.readthedocs.io/")
+        
+    try:
+        subprocess.run(["which", "pigz"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "pigz", "https://zlib.net/pigz/")
+        
+    try:
+        subprocess.run(["which", "bedGraphToBigWig"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "bedGraphToBigWig", "https://anaconda.org/bioconda/ucsc-bedgraphtobigwig")
+        

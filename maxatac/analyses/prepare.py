@@ -5,8 +5,8 @@ import sys
 import subprocess
 import os
 import pysam
-from maxatac.utilities.system_tools import get_dir
-from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed, check_packages_installed
+from maxatac.utilities.system_tools import get_dir, check_prepare_packages_installed
+from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed
 from maxatac.utilities.constants import ALL_CHRS, PREPARE_scATAC_SCRIPT, PREPARE_BULK_SCRIPT
 from maxatac.analyses.normalize import run_normalization
 
@@ -28,7 +28,7 @@ def run_prepare(args):
         args (argslist)): The argsparse object with input parameters as attributes.
     """
     # Check if samtools, bedtools, bedgraphtobigwig, and pigz are installed
-    check_packages_installed()
+    check_prepare_packages_installed()
     
     logging.error(f"Input file: {args.input} \n" +
                   f"Input chromosome sizes file: {args.chrom_sizes} \n" +

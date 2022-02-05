@@ -96,7 +96,7 @@ def get_parser():
     #############################################
     data_parser = subparsers.add_parser("data",
                                         parents=[parent_parser],
-                                        help="Run maxatac data"
+                                        help="Download and install publication data."
                                         )
 
     # Set the default function
@@ -114,7 +114,7 @@ def get_parser():
     data_parser.add_argument("--output", "-o",
                              dest="output",
                              type=str,
-                             default=os.path.join(os.path.expanduser('~'), "opt", "maxatac"),
+                             default=os.path.join(os.path.expanduser('~'), "opt"),
                              required=False,
                              help="Output results directory."
                             )
@@ -132,7 +132,7 @@ def get_parser():
     #############################################
     average_parser = subparsers.add_parser("average",
                                            parents=[parent_parser],
-                                           help="Run maxatac average"
+                                           help="Average bigwig files together."
                                            )
 
     # Set the default function
@@ -189,7 +189,7 @@ def get_parser():
     #############################################
     predict_parser = subparsers.add_parser("predict",
                                            parents=[parent_parser],
-                                           help="Run maxatac predict",
+                                           help="Predict transcription factor binding.",
                                            )
 
     # Set the default function
@@ -286,9 +286,9 @@ def get_parser():
                                 dest="chromosomes",
                                 type=str,
                                 nargs="+",
-                                default=ALL_CHRS,
+                                default=AUTOSOMAL_CHRS,
                                 help="Chromosomes from --chromosomes fixed for prediction. \
-                                      Default: All chromosomes chr1-22, X, Y"
+                                      Default: All chromosomes chr1-22"
                                 )
 
     predict_parser.add_argument("-bin", "--bin_size",
@@ -322,7 +322,7 @@ def get_parser():
     #############################################
     train_parser = subparsers.add_parser("train",
                                          parents=[parent_parser],
-                                         help="Run maxATAC training"
+                                         help="Train a maxATAC model."
                                          )
 
     # Set the default function
@@ -516,7 +516,7 @@ def get_parser():
     #############################################
     normalize_parser = subparsers.add_parser("normalize",
                                              parents=[parent_parser],
-                                             help="Run minmax normalization"
+                                             help="Normalize bigwig signal tracks."
                                              )
 
     # Set the default function
@@ -620,7 +620,7 @@ def get_parser():
     #############################################
     benchmark_parser = subparsers.add_parser("benchmark",
                                              parents=[parent_parser],
-                                             help="Run maxATAC benchmarking"
+                                             help="Benchmark predictions against a gold standard."
                                              )
 
     # Set the default function
@@ -708,7 +708,7 @@ def get_parser():
     #############################################
     peaks_parser = subparsers.add_parser("peaks",
                                          parents=[parent_parser],
-                                         help="Run maxATAC peaks"
+                                         help="Call peaks on a maxATAC prediction bigwig."
                                          )
 
     # Set the default function
@@ -786,7 +786,7 @@ def get_parser():
     #############################################
     variants_parser = subparsers.add_parser("variants",
                                             parents=[parent_parser],
-                                            help="Run maxATAC variants"
+                                            help="Predict sequence specific transcription factor binding."
                                             )
 
     # Set the default function
@@ -882,7 +882,7 @@ def get_parser():
     #############################################
     prepare_parser = subparsers.add_parser("prepare",
                                            parents=[parent_parser],
-                                           help="Run maxATAC prepare"
+                                           help="Prepare ATAC-seq data for maxATAC."
                                            )
 
     # Set the default function
@@ -979,7 +979,7 @@ def get_parser():
     #############################################
     threshold_parser = subparsers.add_parser("threshold",
                                              parents=[parent_parser],
-                                             help="Run maxATAC threshold"
+                                             help="Generate model threshold statistics."
                                              )
 
     # Set the default function
