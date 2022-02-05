@@ -50,10 +50,10 @@ def run_call_peaks(args):
 
     cutoff_type=dict[args.cutoff_type]
 
-    if cutoff_type == "Monotonic_Avg_F1":
+    if cutoff_type == "Avg_F1":
 
         # Find correct threshold for maximum F1 Score
-        thresh = df.loc[df['Monotonic_Avg_F1'].idxmax()].Standard_Thresh
+        thresh = df.loc[df['Avg_F1'].idxmax()].Standard_Thresh
     else:
         cutoff_val=args.cutoff_value
 

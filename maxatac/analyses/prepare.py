@@ -1,12 +1,15 @@
+"""Run maxatac prepare for generating normalized signal tracks for prediction
+"""
 import logging
-from maxatac.utilities.system_tools import get_dir, Mute
-from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed, check_packages_installed
-from maxatac.utilities.constants import ALL_CHRS
 import sys
 import subprocess
-import pysam
-from maxatac.analyses.normalize import run_normalization
 import os
+import pysam
+from maxatac.utilities.system_tools import get_dir
+from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed, check_packages_installed
+from maxatac.utilities.constants import ALL_CHRS, PREPARE_scATAC_SCRIPT, PREPARE_BULK_SCRIPT
+from maxatac.analyses.normalize import run_normalization
+
 
 def run_prepare(args):
     """Run maxatac prepare for generating normalized signal tracks for prediction
@@ -58,7 +61,7 @@ def run_prepare(args):
  
             # Use subprocess to run bedtools and bedgraphtobigwig
             subprocess.run(["bash", 
-                            os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/ATAC_bowtie2_pipeline.sh"), 
+                            PREPARE_BULK_SCRIPT,
                             args.input, 
                             args.prefix,
                             output_dir,
@@ -72,7 +75,7 @@ def run_prepare(args):
             logging.error("Processing BAM to bigwig. Running eduplication")
 
             subprocess.run(["bash", 
-                            os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/ATAC_bowtie2_pipeline.sh"),
+                            PREPARE_BULK_SCRIPT,
                             args.input, 
                             args.prefix,
                             output_dir,
@@ -108,7 +111,7 @@ def run_prepare(args):
         
         # Use subprocess to run bedtools and bedgraphtobigwig
         subprocess.run(["bash", 
-                        os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/scatac_generate_bigwig.sh"), 
+                        PREPARE_scATAC_SCRIPT, 
                         tmp_file_path, 
                         args.chrom_sizes, 
                         str(args.slop), 

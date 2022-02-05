@@ -5,24 +5,30 @@ The `predict` function will use a maxATAC model to predict TF binding in a new c
 ## Example
 
 ```bash
-maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig
+maxatac predict --models CTCF.h5 --signal GM12878.bigwig
+```
+
+or
+
+```bash
+maxatac predict --tf CTCF --signal GM12878.bigwig
 ```
 
 ## Required Arguments
 
-### `--sequence`
+### `-tf, --tf_name` or `-m, --model`
 
-This argument specifies the path to the 2bit DNA sequence for the genome of interest. maxATAC models are trained with hg38 so you will need the correct `.2bit` file.
+The user must provide either the TF name that they want to make predictions for or the h5 model file they desire. If the user provides a TF name, the best model will be used and the correct threshold file will be provided for peak calling.
 
-### `--model`
-
-The trained maxATAC model that will be used to predict TF binding. This is a h5 file produced from `maxatac train`.
-
-### `--signal`
+### `-s, --signal`
 
 The ATAC-seq signal bigwig track that will be used to make predictions of TF binding.
 
 ## Optional Arguments
+
+### `--sequence`
+
+This argument specifies the path to the 2bit DNA sequence for the genome of interest. maxATAC models are trained with hg38 so you will need the correct `.2bit` file.
 
 ### `"-cutoff_value", "--cutoff_value"`
 

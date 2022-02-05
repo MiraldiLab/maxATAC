@@ -21,9 +21,11 @@ It is best to install maxATAC into a dedicated virtual environment.
 
 This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`, and `bedGraphToBigWig` in order to run all functions.
 
+> The total install requirements for maxATAC with reference data are ~2 GB. 
+
 ### Installing with Conda
 
-1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9 maxatac samtools wget bedtools bedGraphToBigWig pigz`
+1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9 maxatac samtools wget bedtools ucsc-bedgraphtobigwig pigz`
 
 2. Test installation with `maxatac -h`
 
@@ -46,11 +48,13 @@ In order to run the maxATAC models that were described in [Cazares et al.](https
 * maxATAC extended blacklist
 * TF specific `.h5` model files
 * TF specific thresholding files
+* Bash scripts for preparing data
   
 If you do not want to set each specific flag for the above files when running, clone the repository into your `~/opt/` directory under `~/opt/maxatac` using the command:
 
 1. `mkdir -p ~/opt/maxatac && cd ~/opt/maxatac`
 2. `git clone https://github.com/MiraldiLab/maxATAC_data.git && mv maxATAC_data data`.
+3. `cd ./data/hg38 && wget https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.2bit`
 
 The directory `~/opt/maxatac/data/hg38` is the default location that maxATAC will look for the data.
 
@@ -137,6 +141,13 @@ For TFBS predictions on a single chromosome or subset of chromosomes, these can 
 ```bash
 maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig --chromosomes chr3 chr5
 ```
+
+## Raw signal tracks are large
+Each output prediction file for a whole genome is ~700 MB per TF. 
+
+The output bed files are ~60Mb.
+
+There are 127 TF models x ~700MB per TF model = ~88.9 GB of bigwig files for a single ATAC-seq input track.
 
 ___
 

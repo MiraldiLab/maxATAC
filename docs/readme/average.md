@@ -10,7 +10,7 @@ maxatac average --bigwigs *.bw --prefix IMR-90 --output ./test --chroms chr1
 
 ## Required Arguments
 
-### `--bigwigs`
+### `-i, --bigwigs`
 
 This argument is reserved for the input bigwig files to be averaged together. You could use a `*.bw` wildcard to make a list of bigwig files as input or provide the path to two bigwig files.
 

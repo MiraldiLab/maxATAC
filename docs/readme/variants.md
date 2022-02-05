@@ -18,10 +18,6 @@ The trained maxATAC model that will be used to predict TF binding. This is a h5 
 
 The ATAC-seq signal bigwig track that will be used to make predictions of TF binding. 
 
-### `-s, --sequence`
-
-This argument specifies the path to the 2bit DNA sequence for the genome of interest
-
 ### `--variants_bed`
 
 The bed file of nucleotides to change. The first 3 columns should be the coordinates and the fourth column should be the nucleotide to use.
@@ -32,9 +28,13 @@ Output filename prefix to use.
 
 ## Optional Arguments
 
+### `-s, --sequence`
+
+This argument specifies the path to the 2bit DNA sequence for the genome of interest. Default: hg38.2bit
+
 ### `-roi`
 
-The bed file of LD blocks that are to be predicted in. Predictions will be limited to these specific regions.
+The bed file of LD blocks that are to be predicted in. Predictions will be limited to these specific regions. Default: Whole genome prediction. 
 
 ### `-o, --output`
 
@@ -50,7 +50,7 @@ The path to a bigwig file that has regions to exclude. Default: maxATAC defined 
 
 ### `-step_size`
 
-The number of base pairs to overlap the 1,024 bp regions during prediction. This should be in multiples of 256.
+The number of base pairs to overlap the 1,024 bp regions during prediction. This should be in multiples of 256. Default: 256
 
 ### `-chroms, --chromosomes`
 
@@ -58,4 +58,4 @@ The chromosomes to make predictions on. Default: All chromosomes. chr1-22, X, Y
 
 ### `--chrom_sizes`
 
-The path to the chromosome sizes file. This is used to generate the bigwig signal tracks.
+The path to the chromosome sizes file. This is used to generate the bigwig signal tracks. Default: hg38.chrom.sizes
