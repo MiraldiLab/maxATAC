@@ -2,25 +2,47 @@
 
 ## Install Instructions
 
-To install maxATAC begin by cloning the code base
-1. git clone https://github.com/MiraldiLab/maxATAC.git
+### 1. To install maxATAC begin by downloading the data reopository located on github: maxATAC_data
+ git clone https://github.com/MiraldiLab/maxATAC_data.git
 
-cd maxATAC
-After moving into the cloned directory, please run the following command:
+### 2. To ensure that the data is located in a central location copy maxATAC_data to local location:
 
-2. git clone --recurse-submodules # this will clone all the recursive directories that are needed to run maxATAC
-(to update /data/ dir run: git submodule update --recursive --remote or try git submodule update --init --recursive)
-maxATAC can be run using an environment or using docker. To install using an environment, begin by creating an environment on your computer
+```
+mkdir -p /opt/maxatac/data/
+cp -r ./maxATAC_data /opt/maxatac/
+```
 
-Will need to run the script hg38_download.sh
+### 3. Then Download hg38.2bit file from UCSC in a location of your choice
 
-# Create your env
-3. conda create -n my_env python=3.9 or python3.9 -m venv env_name
+```
+wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit
+```
 
-activate your environment and install maxatac:
+### 4. Install maxATAC
 
-4. pip install -r requirements.txt 
+To install maxATAC we provide a few options to our users.
 
-5. pip install . 
+#### a) using pip
+
+##### I) Begin first by creating your environment:
+
+```
+python3.9 -m venv env_name
+```
+or by using conda 
+```
+conda create -n my_env python=3.9 or python3.9 -m venv env_name
+```
+
+##### II) activate your environment
+
+##### III) 
+
+#### b) using conda
+
+
+#### c) using Docker
+
+
 
 
