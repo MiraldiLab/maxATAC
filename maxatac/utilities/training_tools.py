@@ -155,12 +155,13 @@ def DataGenerator(
     # Calculate number of random regions to use each batch
     n_rand = round(batch_size - n_roi)
 
-    # Generate the training random regions pool
-    train_random_regions_pool = RandomRegionsPool(chroms=chroms,
-                                                  chrom_pool_size=CHR_POOL_SIZE,
-                                                  region_length=INPUT_LENGTH,
-                                                  preferences=False  # can be None
-                                                  )
+    if n_rand > 0:
+        # Generate the training random regions pool
+        train_random_regions_pool = RandomRegionsPool(chroms=build_chrom_sizes_dict(chroms, DEFAULT_CHROM_SIZES),
+                                                    chrom_pool_size=CHR_POOL_SIZE,
+                                                    region_length=INPUT_LENGTH,
+                                                    preferences=False  # can be None
+                                                    )
 
     # Initialize the ROI generator
     roi_gen = create_roi_batch(sequence=sequence,
@@ -520,19 +521,17 @@ class RandomRegionsPool:
         chrom_pool_size
         """
 
-        chroms = {chrom_name: chrom_data for chrom_name, chrom_data in self.chroms.items()}
-
-        sum_lengths = sum(map(lambda v: v["length"], chroms.values()))
+        sum_lengths = sum(self.chroms.values())
 
         frequencies = {
-            chrom_name: round(chrom_data["length"] / sum_lengths * self.chrom_pool_size)
+            chrom_name: round(chrom_length / sum_lengths * self.chrom_pool_size)
 
-            for chrom_name, chrom_data in chroms.items()
+            for chrom_name, chrom_length in self.chroms.items()
         }
         labels = []
 
         for k, v in frequencies.items():
-            labels += [(k, chroms[k]["length"])] * v
+            labels += [(k, self.chroms[k])] * v
 
         random.shuffle(labels)
 
