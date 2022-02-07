@@ -163,6 +163,17 @@ def DataGenerator(
                                                     preferences=False  # can be None
                                                     )
 
+        # Initialize the random regions generator
+        rand_gen = create_random_batch(sequence=sequence,
+                                       meta_table=meta_table,
+                                       cell_type_list=cell_type_list,
+                                       n_rand=n_rand,
+                                       regions_pool=train_random_regions_pool,
+                                       bp_resolution=bp_resolution,
+                                       target_scale_factor=target_scale_factor,
+                                       rev_comp_train=rev_comp_train
+                                       )
+
     # Initialize the ROI generator
     roi_gen = create_roi_batch(sequence=sequence,
                                meta_table=meta_table,
@@ -174,17 +185,6 @@ def DataGenerator(
                                shuffle_cell_type=shuffle_cell_type,
                                rev_comp_train=rev_comp_train
                                )
-
-    # Initialize the random regions generator
-    rand_gen = create_random_batch(sequence=sequence,
-                                   meta_table=meta_table,
-                                   cell_type_list=cell_type_list,
-                                   n_rand=n_rand,
-                                   regions_pool=train_random_regions_pool,
-                                   bp_resolution=bp_resolution,
-                                   target_scale_factor=target_scale_factor,
-                                   rev_comp_train=rev_comp_train
-                                   )
 
     while True:
         # roi_batch.shape = (n_samples, 1024, 6)
