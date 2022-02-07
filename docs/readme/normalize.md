@@ -17,13 +17,13 @@ maxatac normalize --signal GM12878_RP20M.bw --prefix GM12878 --output ./test --m
 
 ### `--signal`
 
-The input bigwig file to normalize.
+The input bigwig file to be normalized.
 
 ## Optional Arguments
 
 ### `--method`
 
-This argument is used to determine which method you want to use for normalization. Default: `min-max`
+This argument is used to determine which method to use for normalization. Default: `min-max`
 
 * `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some user defined range. The max value can be calculated as the absolute max value across the genome or you can set the percentile cutoff to use to report the max value. Example: A user wants to scale all data to the 99th percentile max value of 11 instead of the absolute max value of 100.
 * `median-mad`: Find the genomic median and calculate the median absolute deviation.
@@ -64,7 +64,7 @@ This argument is used to define the chromosome sizes file that is used to calcua
 
 ### `--blacklist`
 
-The path to the blacklist bigwig file. This file is used to remove all of the regions that are considered to have high technical noise. Default: MaxATAC defined blacklist. 
+The path to the blacklist bigwig file. This file is used to remove all the regions that are considered to have high technical noise. Default: maxATAC publication defined blacklist.
 
 ### `--output`
 

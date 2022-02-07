@@ -1,12 +1,15 @@
+"""Run maxatac prepare for generating normalized signal tracks for prediction
+"""
 import logging
-from maxatac.utilities.system_tools import get_dir, Mute
-from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed, check_packages_installed
-from maxatac.utilities.constants import ALL_CHRS
 import sys
 import subprocess
-import pysam
-from maxatac.analyses.normalize import run_normalization
 import os
+import pysam
+from maxatac.utilities.system_tools import get_dir, check_prepare_packages_installed
+from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed
+from maxatac.utilities.constants import ALL_CHRS, PREPARE_scATAC_SCRIPT, PREPARE_BULK_SCRIPT
+from maxatac.analyses.normalize import run_normalization
+
 
 def run_prepare(args):
     """Run maxatac prepare for generating normalized signal tracks for prediction
@@ -25,7 +28,7 @@ def run_prepare(args):
         args (argslist)): The argsparse object with input parameters as attributes.
     """
     # Check if samtools, bedtools, bedgraphtobigwig, and pigz are installed
-    check_packages_installed()
+    check_prepare_packages_installed()
     
     logging.error(f"Input file: {args.input} \n" +
                   f"Input chromosome sizes file: {args.chrom_sizes} \n" +
@@ -53,26 +56,12 @@ def run_prepare(args):
         # Number of counts normalized for sequencing depth of 20,000,000 reads.
         scale_factor = (1/read_counts) * args.rpm_factor
         
-        if args.dedup:
-            logging.error("Processing BAM to bigwig. Running deduplication")
+        if args.skip_dedup:
+            logging.error("Processing BAM to bigwig. Skipping deduplication")
  
             # Use subprocess to run bedtools and bedgraphtobigwig
             subprocess.run(["bash", 
-                            os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/ATAC_bowtie2_pipeline.sh"), 
-                            args.input, 
-                            args.prefix,
-                            output_dir,
-                            str(args.threads),
-                            args.blacklist_bed,
-                            args.chrom_sizes,
-                            str(args.slop), 
-                            str(scale_factor),
-                            "deduplicate"], check=True)
-        else:
-            logging.error("Processing BAM to bigwig. Skipping eduplication")
-
-            subprocess.run(["bash", 
-                            os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/ATAC_bowtie2_pipeline.sh"),
+                            PREPARE_BULK_SCRIPT,
                             args.input, 
                             args.prefix,
                             output_dir,
@@ -82,6 +71,20 @@ def run_prepare(args):
                             str(args.slop), 
                             str(scale_factor),
                             "skip"], check=True)
+        else:
+            logging.error("Processing BAM to bigwig. Running eduplication")
+
+            subprocess.run(["bash", 
+                            PREPARE_BULK_SCRIPT,
+                            args.input, 
+                            args.prefix,
+                            output_dir,
+                            str(args.threads),
+                            args.blacklist_bed,
+                            args.chrom_sizes,
+                            str(args.slop), 
+                            str(scale_factor),
+                            "deduplicate"], check=True)
                         
     elif args.input.endswith((".tsv", ".tsv.gz")):
         logging.error("Working on 10X scATAC fragments file \n " + "Converting fragment files to Tn5 sites")
@@ -108,7 +111,7 @@ def run_prepare(args):
         
         # Use subprocess to run bedtools and bedgraphtobigwig
         subprocess.run(["bash", 
-                        os.path.join(os.path.dirname(__file__), "../../data/scripts/ATAC/scatac_generate_bigwig.sh"), 
+                        PREPARE_scATAC_SCRIPT, 
                         tmp_file_path, 
                         args.chrom_sizes, 
                         str(args.slop), 
