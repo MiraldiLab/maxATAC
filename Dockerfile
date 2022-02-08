@@ -61,16 +61,10 @@ RUN apt-get update && \
     make -j 2 && \
     cp ./bin/* /usr/local/bin/ &&\
     rm -rf ./* &&\
-    #pip install maxatac==0.0.3
+    pip install maxatac==0.0.3 &&\
+    mkdir -p /opt/maxatac && cd /opt/maxatac &&\
+    git clone https://github.com/MiraldiLab/maxATAC_data.git && mv maxATAC_data data &&\
+    cd ./data/hg38 && wget https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.2bit &&\
     strip /usr/local/bin/*; true
 
-
-
-#COPY . .
-#
-#RUN pip install maxatac==0.0.3
-#git clone https://github.com/MiraldiLab/maxATAC_data.git \
-#
-##COPY . .
-#
-#CMD ["maxatac"]
+CMD ["maxatac"]
