@@ -11,7 +11,7 @@ maxATAC requires three inputs:
 * ATAC-seq signal, processed as described [below](#Preparing-your-ATAC-seq-signal).
 * Trained maxATAC TF Models, in [`.h5`](https://www.tensorflow.org/tutorials/keras/save_and_load) file format.
 
->**maxATAC was trained and evaluated on data generated using the hg38 reference genome. The defualt paths and files that are used for each function will reference hg38 files. If you want to use maxATAC with any other species or reference, you will need to provide the appropriate chromosome sizes file, blacklist, and `.2bit` file specific to your data.**
+> **maxATAC was trained and evaluated on data generated using the hg38 reference genome. The default paths and files that are used for each function will reference hg38 files. If you want to use maxATAC with any other species or reference, you will need to provide the appropriate chromosome sizes file, blacklist, and `.2bit` file specific to your data.**
 
 ___
 
@@ -21,17 +21,23 @@ It is best to install maxATAC into a dedicated virtual environment.
 
 This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`, and `bedGraphToBigWig` in order to run all functions.
 
-> The total install requirements for maxATAC with reference data are ~2 GB. 
+> The total install requirements for maxATAC with reference data are ~2 GB.
 
 ### Installing with Conda
 
-1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9 maxatac samtools wget bedtools ucsc-bedgraphtobigwig pigz`
+1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9 samtools wget bedtools ucsc-bedgraphtobigwig pigz`
 
-2. Test installation with `maxatac -h`
+> If you get an error installing ucsc-bedgraphtobigwig try `conda install -c bioconda ucsc-bedgraphtobigwig`
 
-### Installing with pip
+2. Install maxATAC with `pip install maxatac`
 
-1. Create a virtual environment for maxATAC (conda is shown in the example) with `conda create -n maxatac python=3.9`.
+3. Test installation with `maxatac -h`
+
+4. Download reference data with `maxatac data`
+
+### Installing with python virtualenv
+
+1. Create a virtual environment for maxATAC with `virtualenv -p python3.9 maxatac`.
 
 2. Install required packages and make sure they are on your PATH: samtools, bedtools, bedGraphToBigWig, wget, git, pigz.
 
@@ -39,9 +45,11 @@ This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`,
 
 4. Test installation with `maxatac -h`
 
+5. Download reference data with `maxatac data`
+
 ### Downloading required reference data
 
-In order to run the maxATAC models that were described in [Cazares et al.](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1) the following files are required to be downloaded from the [maxATAC_data](https://github.com/MiraldiLab/maxATAC_data) repository, then installed in the correct path:
+In order to run the maxATAC models that were described in the [maxATAC pre-print](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1), the following files are required to be downloaded from the [maxATAC_data](https://github.com/MiraldiLab/maxATAC_data) repository and installed in the correct directory:
 
 * hg38 reference genome `.2bit` file
 * hg38 chromosome sizes file
@@ -49,18 +57,15 @@ In order to run the maxATAC models that were described in [Cazares et al.](https
 * TF specific `.h5` model files
 * TF specific thresholding files
 * Bash scripts for preparing data
-  
-If you do not want to set each specific flag for the above files when running, clone the repository into your `~/opt/` directory under `~/opt/maxatac` using the command:
 
-1. `mkdir -p ~/opt/maxatac && cd ~/opt/maxatac`
-2. `git clone https://github.com/MiraldiLab/maxATAC_data.git && mv maxATAC_data data`.
-3. `cd ./data/hg38 && wget https://hgdownload.cse.ucsc.edu/goldenpath/hg38/bigZips/hg38.2bit`
+The easiest option is to use the command `maxatac data` to download the data to the required directory. The `maxatac data` function will download the maxATAC_data repo and reference data into your `~/opt/` directory under `~/opt/maxatac`. Only the hg38 reference genome is supported.
 
-The directory `~/opt/maxatac/data/hg38` is the default location that maxATAC will look for the data.
+#### Using custom reference data
 
-The alternative option is to use the command `maxatac data` to download the data to the required directory. Only the hg38 reference genome is supported.
+The directory `~/opt/maxatac/data` is the default location that maxATAC will look for publication related data.
 
-*We are still working on the best way to distribute the data with the package.*
+If you want to use your own data, set the appropriate flags for each file with the path to your custom file. You can also adjust the relative paths in `constants.py` to be the default values for all functions.
+
 ___
 
 ## maxATAC Quick Start Overview
@@ -82,7 +87,7 @@ Schematic: maxATAC prediction of CTCF bindings sites for processed GM12878 ATAC-
 
 ## ATAC-seq Data Requirements
 
-As described in [Cazares et al.](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1), **maxATAC processing of ATAC-seq signal is critical to maxATAC prediction**. Key maxATAC processing steps, summarized in a single command [`maxatac prepare`](./docs/readme/prepare.md#Prepare), include identification of Tn5 cut sites from ATAC-seq fragments, ATAC-seq signal smoothing, filtering with an extended "maxATAC" blacklist, and robust, min-max-like normalization. 
+As described in the [maxATAC pre-print](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1), **maxATAC processing of ATAC-seq signal is critical to maxATAC prediction**. Key maxATAC processing steps, summarized in a single command [`maxatac prepare`](./docs/readme/prepare.md#Prepare), include identification of Tn5 cut sites from ATAC-seq fragments, ATAC-seq signal smoothing, filtering with an extended "maxATAC" blacklist, and robust, min-max-like normalization. 
 
 The maxATAC models were trained on paired-end ATAC-seq data in human. For this reason, we recommend paired-end sequencing with sufficient sequencing depth (e.g., ~20M reads for bulk ATAC-seq). Until these models are benchmarked in other species, we recommend limiting their use to human ATAC-seq datasets. **All the data used to train maxATAC was aligned to the hg38 genome, therefore these models cannot be used on data aligned to the hg19 reference genome.**
 
@@ -116,14 +121,18 @@ Following maxATAC-specific processing of ATAC-seq signal inputs, use the [`maxat
 
 TF binding predictions can be made genome-wide, for a single chromosome, or, alternatively, the user can provide a `.bed` file of genomic intervals for maxATAC predictions to be made.
 
-The trained maxATAC models, reference `.2bit`, `chrom.sizes`, and maxATAC blacklist files should be downloaded and installed automatically with [Installation](#Installation).
-
 ### Whole genome prediction
 
 Example command for TFBS prediction across the whole genome:
 
 ```bash
-maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig
+maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig -o outputdir/
+```
+
+If data has been installed with maxATAC data, then the following command will use the best model and call peaks using the TF specific threshold statistics. 
+
+```bash
+maxatac predict -tf CTCF -s GM12878.bigwig -o outputdir/
 ```
 
 ### Prediction in a specific genomic region(s)
@@ -142,8 +151,9 @@ For TFBS predictions on a single chromosome or subset of chromosomes, these can 
 maxatac predict --sequence hg38.2bit --models CTCF.h5 --signal GM12878.bigwig --chromosomes chr3 chr5
 ```
 
-## Raw signal tracks are large
-Each output prediction file for a whole genome is ~700 MB per TF. 
+## Raw signal tracks (prediction bigwigs) are large
+
+Each output prediction file for a whole genome is ~700 MB per TF.
 
 The output bed files are ~60Mb.
 
@@ -175,4 +185,3 @@ maxATAC: genome-scale transcription-factor binding prediction from ATAC-seq with
 Tareian Cazares, Faiz W. Rizvi, Balaji Iyer, Xiaoting Chen, Michael Kotliar, Joseph A. Wayman, Anthony Bejjani, Omer Donmez, Benjamin Wronowski, Sreeja Parameswaran, Leah C. Kottyan, Artem Barski, Matthew T. Weirauch, VB Surya Prasath, Emily R. Miraldi
 bioRxiv 2022.01.28.478235; doi: https://doi.org/10.1101/2022.01.28.478235
 ```
-[Code to generate most of our figures](https://github.com/MiraldiLab/maxATAC_docs/tree/main/figure_code)
