@@ -15,7 +15,7 @@ echo "Current working directory ${WORKING_DIR}"
 
 
 echo "Installing required building dependencies through yum"
-yum install wget git gcc gcc-c++ make ncurses-devel bzip2-devel xz-devel zlib-devel gettext perl-devel file -y
+yum install wget git gcc gcc-c++ make ncurses-devel bzip2-devel bzip2 xz-devel zlib-devel gettext perl-devel file -y
 
 echo "Downloading linuxdeploy and creating AppDir folder"
 wget https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
