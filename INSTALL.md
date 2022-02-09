@@ -18,31 +18,36 @@ cp -r ./maxATAC_data /opt/maxatac/
 wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit
 ```
 
-### 4. Install maxATAC
 
-To install maxATAC we provide a few options to our users.
+### 4. Installing maxATAC
 
-#### a) using pip
+#### Installing with Conda
 
-##### I) Begin first by creating your environment:
+1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9 samtools wget bedtools ucsc-bedgraphtobigwig pigz`
 
-```
-python3.9 -m venv env_name
-```
-or by using conda 
-```
-conda create -n my_env python=3.9 or python3.9 -m venv env_name
-```
+> If you get an error installing ucsc-bedgraphtobigwig try `conda install -c bioconda ucsc-bedgraphtobigwig`
 
-##### II) activate your environment
+2. Install maxATAC with `pip install maxatac`
 
-##### III) 
+3. Test installation with `maxatac -h`
 
-#### b) using conda
+4. Download reference data with `maxatac data`
 
+#### Installing with python virtualenv
 
-#### c) using Docker
+1. Create a virtual environment for maxATAC with `virtualenv -p python3.9 maxatac`.
 
+2. Install required packages and make sure they are on your PATH: samtools, bedtools, bedGraphToBigWig, wget, git, pigz.
 
+3. Install maxatac with `pip install maxatac`
 
+4. Test installation with `maxatac -h`
+
+#### Running maxATAC with a docker
+
+A docker image of maxATAC can be found on our lab [dockerpage](https://hub.docker.com/repository/docker/miraldi/maxatac)
+
+1. install and run docker
+2. Run `docker pull miraldi/maxatac:v0.0.3` to pull the docker image onto your device
+3. Run maxATAC through docker `docker run --rm -ti miraldi/maxatac:v0.0.3 /bin/bash`
 
