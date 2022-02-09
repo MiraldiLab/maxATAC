@@ -132,4 +132,4 @@ Enhancement suggestions are tracked as [GitHub issues](https://github.com/Mirald
 
 <!-- omit in toc -->
 ## Attribution
-This guide is based on the **contributing-gen**. [Make your own](https://github.com/torus-online/torus/blob/master/CONTRIBUTING.MD)!
+This guide is based on the **torus**. [Make your own](https://github.com/torus-online/torus/blob/master/CONTRIBUTING.MD)!
