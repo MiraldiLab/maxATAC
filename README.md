@@ -74,6 +74,10 @@ ___
 
 Schematic: maxATAC prediction of CTCF bindings sites for processed GM12878 ATAC-seq signal
 
+![maxATAC Example Outputs](./docs/figs/example_outputs.png)
+
+IGV screenshot: maxATAC example outputs showing bigwig and bed files output by prediction by default.
+
 ### Inputs
 
 * DNA sequence, in [`.2bit`](https://genome.ucsc.edu/goldenPath/help/twoBit.html) file format.
