@@ -94,3 +94,4 @@ chmod +x appimagetool-x86_64.AppImage
 echo "Cleaning up"
 rm linuxdeploy-x86_64.AppImage
 rm appimagetool-x86_64.AppImage
+rm -rf AppDir
