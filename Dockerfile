@@ -8,9 +8,9 @@
 # Website2:         https://github.com/MiraldiLab/maxATAC_data
 # Provides:         Transcription Factor Binding Prediction
 # Base Image:       biowardrobe2/samtools:v1.4/bedtools/ucsc-bedgraphtobigwig/pigz
-# Build Cmd:        docker build --rm -t maxatac/maxatac:v0.0.3 -f Dockerfile .
-# Pull Cmd:         docker pull maxatac/maxatac:v0.0.3
-# Run Cmd:          docker run --rm -ti maxatac/maxatac:v0.0.3
+# Build Cmd:        docker build --rm -t miraldi/maxatac:v0.0.3 -f Dockerfile .
+# Pull Cmd:         docker pull miraldi/maxatac:v0.0.3
+# Run Cmd:          docker run --rm -ti miraldi/maxatac:v0.0.3
 #################################################################
 
 
