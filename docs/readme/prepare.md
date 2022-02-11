@@ -35,11 +35,11 @@ It is important to remove PCR duplicates from your ATAC-seq data if you have not
 
 ### `-slop, --slop`
 
-The slop size to use around the Tn5 cut sites. We use a slop size to smooth the sparse cut site resolved signal using a value that approximates the size of Tn5 transposase. Default: 20 bp.
+The slop size used to smooth sparse Tn5 cut sites' signal. Each Tn5 cut site will be extended +/- the slop size (in bp) selected. Because maxATAC models were trained using slop size of 20bp (a value that approximates the size of Tn5 transposase), this parameter should not be changed from default (20 bp) when using the trained maxATAC models. Default: 20 bp.
 
 ### `-rpm, --rpm_factor`
 
-The RPM factor to use for scaling your read depth normalized signal. Most groups use 1,000,000 as a scaling factor, but maxATAC uses 20,000,000 because it is approximately the median sequencing depth of the ATAC-seq data used for training. Default: 20000000.
+The reads per million (RPM) factor used for read-depth normalization of signal. Most groups use RPM and therefore 1,000,000 as a scaling factor, but maxATAC uses RP20M and therefore 20,000,000 because it is approximately the median sequencing depth of the ATAC-seq data used for training. Changing from the default (20000000) is not problematic for maxATAC prediction, as this track is only used for visualization. (Predictions are made on a min-max-like normalized signal track, also an output from `maxatac prepare`.) Default: 20000000.
 
 ### `--blacklist_bed`
 
