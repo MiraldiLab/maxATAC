@@ -35,7 +35,7 @@ It is important to remove PCR duplicates from your ATAC-seq data if you have not
 
 ### `-slop, --slop`
 
-The slop size used to smooth sparse Tn5 cut sites' signal. Each Tn5 cut site will be extended +/- the slop size (in bp) selected. Because maxATAC models were trained using slop size of 20bp (a value that approximates the size of Tn5 transposase), this parameter should not be changed from default (20 bp) when using the trained maxATAC models. Default: 20 bp.
+The slop size used to smooth sparse Tn5 cut sites' signal. Each Tn5 cut site will be extended +/- the slop size (in bp). Because maxATAC models were trained using slop size of 20bp (a value that approximates the size of Tn5 transposase), **this parameter should not be changed from default (20 bp) when using the trained models provided by maxATAC**. Default: 20 bp.
 
 ### `-rpm, --rpm_factor`
 
