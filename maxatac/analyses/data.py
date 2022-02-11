@@ -26,7 +26,7 @@ def run_data(args):
 
     # Command to clone the data repo
     clone = "git clone https://github.com/MiraldiLab/maxATAC_data.git"
-    wget_2bit = f"wget https://hgdownload.cse.ucsc.edu/goldenpath/{args.genome}/bigZips/{args.genome}.2bit"
+    wget_2bit = f"wget --no-check-certificate https://hgdownload.cse.ucsc.edu/goldenpath/{args.genome}/bigZips/{args.genome}.2bit"
 
     ############### Body ###############
     logging.error(f"Downloading data for: {args.genome} \n" +

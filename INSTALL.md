@@ -3,21 +3,21 @@
 ## Install Instructions
 
 ### 1. To install maxATAC begin by downloading the data reopository located on github: maxATAC_data
- git clone https://github.com/MiraldiLab/maxATAC_data.git
+
+ `git clone https://github.com/MiraldiLab/maxATAC_data.git`
 
 ### 2. To ensure that the data is located in a central location copy maxATAC_data to local location:
 
-```
+```bash
 mkdir -p /opt/maxatac/data/
 cp -r ./maxATAC_data /opt/maxatac/
 ```
 
 ### 3. Then Download hg38.2bit file from UCSC in a location of your choice
 
-```
+```bash
 wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit
 ```
-
 
 ### 4. Installing maxATAC
 
