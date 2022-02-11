@@ -62,9 +62,9 @@ The easiest option is to use the command `maxatac data` to download the data to 
 
 #### Using custom reference data
 
-The directory `~/opt/maxatac/data` is the default location that maxATAC will look for publication related data.
+The directory `~/opt/maxatac/data` is the default location where maxATAC will look for the maxATAC models, hg38 reference annotations, etc.
 
-If you want to use your own data, set the appropriate flags for each file with the path to your custom file. You can also adjust the relative paths in `constants.py` to be the default values for all functions.
+If you want to use your own references (e.g., hg19) or models, set the appropriate flags for each file with the path to your custom files. You can also adjust the relative paths in `constants.py` to be the default values for all functions.
 
 ___
 
@@ -72,7 +72,7 @@ ___
 
 ![maxATAC Quick Start Overview](./docs/figs/quickstart.svg)
 
-Schematic: Overview of a typical maxATAC workflow. First, ATAC-seq data is prepared using the maxatac prepare function. The prepare function processes bulk and scATAC-seq into normalized signal files. The normalized signal track can then be used to make TF binding predictions for the TF of interest. The default output to prediction is a bigwig signal track and a bed file of peaks.
+>*Schematic: Overview of a typical maxATAC workflow. First, ATAC-seq data is prepared using the maxatac prepare function. The prepare function processes bulk and scATAC-seq into normalized signal files. The normalized signal track can then be used to make TF binding predictions for the TF of interest. The IGV screenshot shows the maxATAC-normalized ATAC-seq signal (blue) and maxATAC TFBS predictions for the FOXP1 model (magenta), predictions are represented as signal tracks (.bw, bigwig) and TFBS (.bed files), the default outputs from maxATAC.*
 
 ### Inputs
 
@@ -89,7 +89,7 @@ Schematic: Overview of a typical maxATAC workflow. First, ATAC-seq data is prepa
 
 As described in the [maxATAC pre-print](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1), **maxATAC processing of ATAC-seq signal is critical to maxATAC prediction**. Key maxATAC processing steps, summarized in a single command [`maxatac prepare`](./docs/readme/prepare.md#Prepare), include identification of Tn5 cut sites from ATAC-seq fragments, ATAC-seq signal smoothing, filtering with an extended "maxATAC" blacklist, and robust, min-max-like normalization. 
 
-The maxATAC models were trained on paired-end ATAC-seq data in human. For this reason, we recommend paired-end sequencing with sufficient sequencing depth (e.g., ~20M reads for bulk ATAC-seq). Until these models are benchmarked in other species, we recommend limiting their use to human ATAC-seq datasets. **All the data used to train maxATAC was aligned to the hg38 genome, therefore these models cannot be used on data aligned to the hg19 reference genome.**
+The maxATAC models were trained on paired-end ATAC-seq data in human. For this reason, we recommend paired-end sequencing with sufficient sequencing depth (e.g., ~20M reads for bulk ATAC-seq). Until these models are benchmarked in other species, we recommend limiting their use to human ATAC-seq datasets. 
 
 ### Preparing the ATAC-seq signal
 
@@ -157,7 +157,7 @@ Each output prediction file for a whole genome is ~700 MB per TF.
 
 The output bed files are ~60Mb.
 
-There are 127 TF models x ~700MB per TF model = ~88.9 GB of bigwig files for a single ATAC-seq input track.
+There are 127 TF models x ~700MB per TF model = ~88.9 GB of bigwig files for a single ATAC-seq input track. (Note: it only makes sense to generate maxATAC predicitons for TFs expressed in your cell type / conditions of interest, so this is a worst-case estimate.)
 
 ___
 
