@@ -596,7 +596,7 @@ def get_parser():
     normalize_parser.add_argument("--max_percentile",
                                   dest="max_percentile",
                                   type=int,
-                                  default=100,
+                                  default=99,
                                   help="The maximum percentile to use for normalization"
                                   )
 

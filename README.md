@@ -70,13 +70,9 @@ ___
 
 ## maxATAC Quick Start Overview
 
-![maxATAC Predict Overview](./docs/readme/maxatac_predict_overview.svg)
+![maxATAC Quick Start Overview](./docs/figs/quickstart.svg)
 
-Schematic: maxATAC prediction of CTCF bindings sites for processed GM12878 ATAC-seq signal
-
-![maxATAC Example Outputs](./docs/figs/example_outputs.png)
-
-IGV screenshot: maxATAC example outputs showing bigwig and bed files output by prediction by default.
+Schematic: Overview of a typical maxATAC workflow. First, ATAC-seq data is prepared using the maxatac prepare function. The prepare function processes bulk and scATAC-seq into normalized signal files. The normalized signal track can then be used to make TF binding predictions for the TF of interest. The default output to prediction is a bigwig signal track and a bed file of peaks.
 
 ### Inputs
 
