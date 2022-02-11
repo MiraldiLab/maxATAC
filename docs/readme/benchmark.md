@@ -1,6 +1,6 @@
 # Benchmark
 
-The `benchmark` function can be used to calculate the area under the precision recall curve (AUPRC) for a bigwig file compared to a gold standard in bigwig format. The user must provide the predictions in bigwig format and specify the resolution they want their prediction at.
+The `benchmark` function can be used to calculate the area under the precision recall curve (AUPRC) for a bigwig file compared to a gold standard in bigwig format. The user must provide the predictions in bigwig format and specify the resolution of the evaluation (e.g., 200bp).
 
 ## Example
 
@@ -16,7 +16,7 @@ The input bigwig file of transcription factor binding predictions. This file can
 
 ### `--gold_standard`
 
-The input gold standard bigwig file. This file needs to be a binary signal track that has 1 in the positions that are true and 0 if no ChIP-seq peak found.
+The input gold standard bigwig file. This file needs to be a binary signal track that has 1 corresponding to TFBS (e.g., from ChIP-seq) and 0 in positions with no TFBS.
 
 ### `--prefix`
 
@@ -34,11 +34,11 @@ The chromosomes to benchmark the predictions for. Default: `chr1` is the held ou
 
 ### `--bin_size`
 
-The size of the bin to use for aggregating the single base-pair predictions. Default: `200` is the size used by the ENCODE dream challenge.
+The size of the bin to use for aggregating the single base-pair predictions. Default: `200` is the size used by the [ENCODE-DREAM in vivo TFBS Prediction Challenge](https://www.synapse.org/#!Synapse:syn6131484/wiki/402026)
 
 ### `--agg`
 
-The method to use for aggregating the single base-pair predictions into larger bins. Default: `max` score found in the window.
+The method to use for aggregating the single base-pair predictions into larger bins. Options include `max`. Default: `max` score found in the window.
 
 ### `--round_predictions`
 
