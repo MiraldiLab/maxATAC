@@ -32,7 +32,7 @@ This argument is used to determine which method to use for normalization. Defaul
 
 ### `--max_percentile`
 
-If method is `min-max` this argument will set the percentile value to use as the reported max value. The default is `100` so the absolute max is reported. Our publication uses the 99th percentile value as the max value.
+If method is `min-max` this argument will set the percentile value to use as the reported max value. The default is `99`, so that default will be consistent with the ATAC-seq processing for the maxATAC models, where the 99th percentile value was used as the max value.
 
 ### `--min`
 
