@@ -25,7 +25,7 @@ This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`,
 
 ### Installing with Conda
 
-1. Create a conda environment for maxATAC with `conda create -n maxatac python=3.9 samtools wget bedtools ucsc-bedgraphtobigwig pigz`
+1. Create a conda environment for maxATAC with `conda create -n maxatac -c bioconda python=3.9 samtools wget bedtools ucsc-bedgraphtobigwig pigz`
 
 > If you get an error installing ucsc-bedgraphtobigwig try `conda install -c bioconda ucsc-bedgraphtobigwig`
 

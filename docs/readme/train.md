@@ -12,8 +12,11 @@ The `train` function will train a maxATAC model using the supplied ATAC-seq and 
 | `CHIP_Peaks`       | Path to ChIP-seq peak bed file       |
 | `Train_Test_Label` | Train or Test label                  |
 
+## Approach
 
-Steps in the training workflow:
+The meta file described above is used to locate all the input files for all the training data.
+
+General Steps:
 
 1) Initialize the training regions of interest pools
 2) Initialize the batch data generators
@@ -21,6 +24,11 @@ Steps in the training workflow:
 4) Initialize the `Keras.OrderedEnquerer` for the `fit()` method
 5) Fit the model for the given # of epochs
 6) Select best model based on dice coefficient and save the results of training
+
+### Training, Validation, and Test Data Splits
+
+![maxATAC Training Approach Overview](../figs/example_training_schematic.svg)
+
 
 ## Example
 
