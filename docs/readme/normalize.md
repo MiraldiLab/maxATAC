@@ -1,8 +1,8 @@
 # Normalize
 
-The `normalize` function will normalize an input bigwig file based on the desired approach. The current options are to normalize the data using:
+The `normalize` function will normalize an input bigwig file based on the following approaches:
 
-* `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some user defined range. The max value can be calculated as the absolute max value across the genome or you can set the percentile cutoff to use to report the max value. Example: A user wants to scale all data to the 99th percentile max value of 11 instead of the absolute max value of 100.
+* `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some-user defined range. The max value can be calculated as (1) the absolute max value across the genome (traditional definition of min-max) or (2) you can set a percentile cutoff to use as the max value. Option 2 improved robustness to outlying high ATAC-seq signal and maxATAC prediction accuracy. Specifically, we use the 99th-percentile max value instead of the absolute max value, and, given important performance ramifications, is the default.
 * `median-mad`: Find the genomic median and calculate the median absolute deviation.
 * `zscore`: Set the mean value to 0 with a standard deviation of 1.
 * `arcsinh`: Transform the values using an inverse hyperbolic sin transformation (arcsinh)
@@ -25,7 +25,7 @@ The input bigwig file to be normalized.
 
 This argument is used to determine which method to use for normalization. Default: `min-max`
 
-* `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some user defined range. The max value can be calculated as the absolute max value across the genome or you can set the percentile cutoff to use to report the max value. Example: A user wants to scale all data to the 99th percentile max value of 11 instead of the absolute max value of 100.
+* `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some user-defined range. The max value can be calculated as (1) the absolute max value across the genome (traditional definition of min-max) or (2) you can set a percentile cutoff to use as the max value. Option 2 improved robustness to outlying high ATAC-seq signal and maxATAC prediction accuracy. Specifically, we use the 99th-percentile max value instead of the absolute max value, and, given important performance ramifications, is the default.
 * `median-mad`: Find the genomic median and calculate the median absolute deviation.
 * `zscore`: Set the mean value to 0 with a standard deviation of 1.
 * `arcsinh`: Transform the values using an inverse hyperbolic sin transformation (arcsinh)
@@ -40,7 +40,7 @@ The value to use as the minimum value for `min-max` normalization. Default: `0`
 
 ### `--max`
 
-The value to use as the maximum value for `min-max` normalization. Default: `False`. Set as false to that it will calculate max when not provided.
+The value to use as the maximum value for `min-max` normalization. Default: `False`, so that max is calculated based on the ATAC signal track.
 
 ### `--clip`
 
@@ -64,7 +64,7 @@ This argument is used to define the chromosome sizes file that is used to calcua
 
 ### `--blacklist`
 
-The path to the blacklist bigwig file. This file is used to remove all the regions that are considered to have high technical noise. Default: maxATAC publication defined blacklist.
+The path to the blacklist bigwig file. This file is used to remove all the regions that are considered to have high technical noise. Default: maxATAC publication-defined blacklist.
 
 ### `--output`
 
