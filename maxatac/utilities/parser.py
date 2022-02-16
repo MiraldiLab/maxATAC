@@ -664,7 +664,7 @@ def get_parser():
                                   type=str,
                                   default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
                                   help="Aggregation function to use for combining results into bins: \
-                                        max, coverage, mean, std, min"
+                                        max, mean, min"
                                   )
 
     benchmark_parser.add_argument("--round_predictions",

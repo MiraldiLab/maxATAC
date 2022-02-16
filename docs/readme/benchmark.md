@@ -38,7 +38,7 @@ The size of the bin to use for aggregating the single base-pair predictions. Def
 
 ### `--agg`
 
-The method to use for aggregating the single base-pair predictions into larger bins. Options include `max`, `min`, `std`, `cov`, and `mean`. Default: `max` score found in the window.
+The method to use for aggregating the single base-pair predictions into larger bins. Options include `max`, `min`, and `mean`. Default: `max` score found in the window.
 
 See the [pyBigWig documentation](https://github.com/deeptools/pyBigWig#compute-summary-information-on-a-range) for more details.
 
