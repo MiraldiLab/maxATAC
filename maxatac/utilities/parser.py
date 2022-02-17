@@ -217,7 +217,7 @@ def get_parser():
                                 help="Genome sequence hg38.2bit file."
                                 )
 
-    predict_parser.add_argument("-s", "--signal",
+    predict_parser.add_argument("-i", "-s", "--signal",
                                 dest="signal",
                                 type=str,
                                 required=True,
@@ -238,7 +238,7 @@ def get_parser():
                                 help="The blacklisted regions to exclude in BED format"
                                 )
 
-    predict_parser.add_argument("--roi",
+    predict_parser.add_argument("-roi", "--roi",
                                 dest="roi",
                                 default=False,
                                 required=False,
@@ -725,7 +725,7 @@ def get_parser():
     peaks_parser.add_argument("-bin", "--bin_size",
                               dest="BIN_SIZE",
                               type=int,
-                              default=DEFAULT_BENCHMARKING_BIN_SIZE,
+                              default=32,
                               help="Bin size to use for peak calling"
                               )
 

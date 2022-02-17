@@ -19,21 +19,16 @@ with Mute():
 
 def run_prediction(args):
     """
-    Run prediction using a maxATAC model. The user can either provide a bed file of regions to predict on or prediction
-    regions can be created based on the chromosome of interest.
+    Predict TF binding with a maxATAC model. The user can provide a bed file of regions to predict on or prediction
+    regions can be created based on the chromosome of interest. The default prediction will predict across all autosomal
+    chromosomes.
 
     BED file requirements for prediction. You must have at least a 3 column file with chromosome, start,
-    and stop coordinates. The interval distance has to be the same as the distance used to train the model. If you
-    trained a model with a resolution 1,024.
+    and stop coordinates.
 
     The user can decide whether to make only predictions on the forward strand or also make prediction on the reverse
     strand. If the user wants both strand, signal tracks will be produced for the forward, reverse, and mean-combined
     bigwig signal tracks will be produced.
-
-    Example input BED file for prediction:
-
-    chr1 | 1000  | 2024
-    ___________
 
     Workflow overview
 
@@ -43,14 +38,13 @@ def run_prediction(args):
     3) Convert predictions to bigwig format and write results.
 
     Args:
-        output_directory, prefix, signal, sequence, models, predict_chromosomes, threads, batch_size, roi, chromosome_sizes, blacklist, average
-
-    Returns:
-        A bigwig file of TF binding predictions
+        output_directory, prefix, signal, sequence, models, predict_chromosomes, threads, batch_size, roi,
+        chromosome_sizes, blacklist, average
     """
     # Start Timer
     startTime = timeit.default_timer()
 
+    # If the user provides the TF name,
     if args.TF:
         args.model = glob.glob(os.path.join(DATA_PATH, "models", args.TF, args.TF + "*.h5"))[0]
         
