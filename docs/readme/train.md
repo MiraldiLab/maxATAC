@@ -29,7 +29,15 @@ General Steps:
 
 ![maxATAC Training Approach Overview](../figs/example_training_schematic.svg)
 
+For each TF model, all the ATAC-seq and ChIP-seq peaks are pooled into training, validation, and test groups. 
 
+Each model is trained on 100 batches of 1,000 examples per epoch. Each batch is composed of randomly chosen peaks that are then randomly assigned to cell types.
+
+Training on ATAC-seq and ChIP-seq peaks is considered "peak-centric" training.
+
+Training on multiple cell types per batch that are randomly assigned peaks is called "pan cell" training. 
+
+For every TF model, one cell type and 2 chromosomes are held out for independent testing.
 ## Example
 
 ```bash
@@ -87,7 +95,7 @@ The architecture to use for the neural network. Default: `DCNN_V2`
 
 ### `--rand_ratio`
 
-The proportion of random regions to use per training and validation batch. Default: `.3`
+The proportion of random regions to use per training and validation batch. This corresponds to the number of regions that are randomly selected form the genome as opposed to being created based on the ATAC-seq or ChIP-seq peaks. Default: `0`
 
 ### `--seed`
 
@@ -139,5 +147,5 @@ If rev_comp, then use the reverse complement sequence in addition to the referen
 
 ### `--shuffle_cell_type`
 
-If shuffle_cell_type, then shuffle training ROI cell type label. Default: `False`
+If shuffle_cell_type, then shuffle training ROI cell type label. This is related to "pan-cell" training as described in the maxATAC manuscript. Default: `True`
 

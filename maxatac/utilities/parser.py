@@ -407,9 +407,9 @@ def get_parser():
                               dest="rand_ratio",
                               type=float,
                               required=False,
-                              default=.3,
+                              default=0,
                               help="Ratio for controlling fraction of random sequences in each training batch. "
-                                   "Default: .3 "
+                                   "Default: 0 "
                               )
 
     train_parser.add_argument("--seed",
@@ -500,7 +500,7 @@ def get_parser():
     train_parser.add_argument("--shuffle_cell_type",
                               dest="shuffle_cell_type",
                               action="store_true",
-                              default=False,
+                              default=True,
                               help="If shuffle_cell_type, then shuffle training ROI cell type label"
                               )
 
