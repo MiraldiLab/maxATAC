@@ -75,7 +75,7 @@ The scaling factor for scaling model targets signal. Used only for quantitative 
 
 ### `--output_activation`
 
-The output activation to use for the model. Default: `sigmoid`
+The output activation to use for the model. No other options are considered in the publication. Test at your own risk. Default: `sigmoid`
 
 ### `--chroms`
 
