@@ -24,10 +24,6 @@ The output filename prefix to use. Default: `maxatac_benchmark`
 
 ## Optional Arguments
 
-### `--quant`
-
-Whether the predictions should be assessed with the Rsquared metric. Default: `False` if your data is binary.
-
 ### `--chromosomes`
 
 The chromosomes to benchmark the predictions for. Default: `chr1` is the held out test chromosome.
