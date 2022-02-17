@@ -76,7 +76,8 @@ def run_prediction(args):
         regions_pool = import_prediction_regions(bed_file=args.roi,
                                                  chromosomes=args.chromosomes,
                                                  chrom_sizes_dictionary=chrom_sizes_dict,
-                                                 blacklist=args.blacklist
+                                                 blacklist=args.blacklist,
+                                                 step_size=args.step_size
                                                  )
         
         # Find the chromosomes for which we can make predictions based on the requested chroms

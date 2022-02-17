@@ -82,7 +82,8 @@ def import_prediction_regions(bed_file: str,
                               chromosomes: list,
                               chrom_sizes_dictionary: dict,
                               blacklist: str,
-                              region_length: int = INPUT_LENGTH):
+                              region_length: int = INPUT_LENGTH,
+                              step_size: int = 256):
     """Import BED file of regions of interest and format for maxATAC
 
     Args:
@@ -122,10 +123,12 @@ def import_prediction_regions(bed_file: str,
     blacklist_bedtool = pybedtools.BedTool(blacklist)
 
     # Create an object that has the blacklisted regions removed
-    blacklisted_df = merged_bedtool.intersect(blacklist_bedtool, v=True)
+    blacklisted_bedtool = merged_bedtool.intersect(blacklist_bedtool, v=True)
+
+    windowed_regions = pybedtools.BedTool().makewindows(b=blacklisted_bedtool, w=1024, s=step_size)
 
     # Create a dataframe from the bedtools object
-    df = blacklisted_df.to_dataframe()
+    df = windowed_regions.to_dataframe()
 
     # Rename columns
     df.columns = ["chr", "start", "stop"]
@@ -133,23 +136,7 @@ def import_prediction_regions(bed_file: str,
     # Find the length of the regions
     df["length"] = df["stop"] - df["start"]
 
-    # Find the center of the regions
-    df["center"] = np.floor(df["start"] + (df["length"] / 2)).apply(int)
-
-    # Find the start coordinates based on center
-    df["start"] = np.floor(df["center"] - (region_length / 2)).apply(int)
-
-    # Find the stop coordinates based on center
-    df["stop"] = np.floor(df["center"] + (region_length / 2)).apply(int)
-
-    # Map chrom end
-    df["END"] = df["chr"].map(chrom_sizes_dictionary)
-
-    # Make sure none of the stops are out of bounds
-    df = df[df["stop"].apply(int) < df["END"].apply(int)]
-
-    # Make sure none of the starts are out of bounds
-    df = df[df["start"].apply(int) > 0]
+    df = df[df["length"] == 1024]
 
     return df[["chr", "start", "stop"]]
 
