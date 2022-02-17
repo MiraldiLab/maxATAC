@@ -29,7 +29,7 @@ def get_version():
     Returns package version
     """
 
-    version = "0.0.3"                                       # default version
+    version = "1.0.3"                                       # default version
     try:
         with open(GIT_VERSION_FILE, "r") as input_stream:   # try to get version info from file
             version = input_stream.read()
@@ -40,7 +40,7 @@ def get_version():
         version = get_git_tag()                             # try to get version info from the closest tag
     except Exception:
         try:
-            version = "0.0.3"          # try to get version info from commit date
+            version = "1.0.3"          # try to get version info from commit date
         except Exception:
             pass
 
