@@ -72,7 +72,7 @@ The path to the chromosome sizes file. This is used to generate the bigwig signa
 
 ### `--chromosomes`
 
-The chromosomes to make predictions on. Our models do not currently considered chromosomes X or Y. This means that most of the files will not contain this information. You should not predict in chrX or chrY unless you known your bigwig contains these chromosomes. Default: Autosomal chromosomes 1-22.
+The chromosomes to make predictions on. Our models do not currently considered chromosomes X or Y. This means that most of the files will not contain this information. You should not predict in chrX or chrY unless you know your bigwig contains these chromosomes. Default: Autosomal chromosomes 1-22.
 
 ### `--loglevel`
 
