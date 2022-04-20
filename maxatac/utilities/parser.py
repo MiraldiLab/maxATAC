@@ -22,7 +22,7 @@ with Mute():
     from maxatac.analyses.prepare import run_prepare
     from maxatac.analyses.threshold import run_thresholding
     from maxatac.analyses.data import run_data
-    
+
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
                                          DEFAULT_LOG_LEVEL,
@@ -40,8 +40,8 @@ from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          BLACKLISTED_REGIONS_BIGWIG,
                                          DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
                                          DEFAULT_BENCHMARKING_BIN_SIZE,
-                                         ALL_CHRS, 
-                                         AUTOSOMAL_CHRS, 
+                                         ALL_CHRS,
+                                         AUTOSOMAL_CHRS,
                                          REFERENCE_SEQUENCE_TWOBIT
                                          )
 
@@ -80,7 +80,7 @@ def get_parser():
     # Parent (general) parser
     parent_parser = argparse.ArgumentParser(add_help=False)
     general_parser = argparse.ArgumentParser(description="Neural networks for predicting TF binding using ATAC-seq")
-    
+
     # Add subparsers to the general parser and require that one is provided
     subparsers = general_parser.add_subparsers()
     subparsers.required = True
@@ -110,7 +110,7 @@ def get_parser():
                              required=False,
                              help="The reference genome build to download."
                             )
-    
+
     data_parser.add_argument("--output", "-o",
                              dest="output",
                              type=str,
@@ -126,7 +126,7 @@ def get_parser():
                              choices=LOG_LEVELS.keys(),
                              help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                             )
-    
+
     #############################################
     # Average subparser
     #############################################
@@ -203,9 +203,9 @@ def get_parser():
                         type=str,
                         help="The TF name for prediction"
                         )
-        
-    group.add_argument("-m", "--model", 
-                        dest="model", 
+
+    group.add_argument("-m", "--model",
+                        dest="model",
                         type=str,
                         help="Trained maxATAC model .h5 file."
                         )
@@ -820,7 +820,7 @@ def get_parser():
                                  required=True,
                                  help="Output filename without extension. Example: Tcell_chr1_rs1234_CTCF"
                                 )
-    
+
     variants_parser.add_argument("-s", "--sequence",
                                  dest="sequence",
                                  default=REFERENCE_SEQUENCE_TWOBIT,
@@ -830,24 +830,23 @@ def get_parser():
 
     variants_parser.add_argument("-chroms", "--chromosomes",
                                  dest="chromosomes",
+                                 nargs="+",
                                  default=ALL_CHRS,
                                  help="Chromosomes to limit prediction to"
                                 )
 
     variants_parser.add_argument("-variants_bed", "--variants_bed",
                                  dest="variants_bed",
-                                 type=int,
                                  required=True,
                                  help="The variant start position in BED format with the nucleotide at that position"
                                 )
 
     variants_parser.add_argument("-roi", "--roi",
                                  dest="roi",
-                                 type=int,
                                  required=False,
                                  help="A bed file of LD blocks to predict in specifically"
                                 )
-      
+
     variants_parser.add_argument("--loglevel",
                                  dest="loglevel",
                                  type=str,
@@ -862,7 +861,7 @@ def get_parser():
                                  default=BLACKLISTED_REGIONS,
                                  help="The blacklisted regions to exclude in bed format."
                                 )
-    
+
     variants_parser.add_argument("--chrom_sizes",
                                  dest="chrom_sizes",
                                  type=str,
@@ -909,7 +908,7 @@ def get_parser():
                                 required=True,
                                 help="Filename prefix to use as the basename"
                                )
-    
+
     prepare_parser.add_argument("--chrom_sizes",
                                 dest="chrom_sizes",
                                 type=str,
@@ -923,14 +922,14 @@ def get_parser():
                                 default=20,
                                 help="The slop size to use around the Tn5 cut sites."
                                )
-    
+
     prepare_parser.add_argument("-rpm", "--rpm_factor",
                                 dest="rpm_factor",
                                 type=int,
                                 default=20000000,
                                 help="The RPM factor to use for scaling your read depth normalized signal."
                                )
-    
+
     prepare_parser.add_argument("--blacklist_bed",
                                 dest="blacklist_bed",
                                 type=str,
@@ -944,7 +943,7 @@ def get_parser():
                                 default=BLACKLISTED_REGIONS_BIGWIG,
                                 help="The blacklisted regions to exclude in bigwig format."
                                 )
-    
+
     prepare_parser.add_argument("-chroms", "--chromosomes",
                                 dest="chroms",
                                 type=str,
@@ -966,7 +965,7 @@ def get_parser():
                                 action="store_true",
                                 help="Whether to perform deduplication"
                                 )
-        
+
     prepare_parser.add_argument("--loglevel",
                                 dest="loglevel",
                                 type=str,
