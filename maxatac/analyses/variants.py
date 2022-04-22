@@ -24,7 +24,7 @@ def run_variants(args):
         logging.error("Import prediction regions")
         bed_df = pd.read_table(args.roi, header=None, names=["chr", "start", "stop"])
 
-        regions_pool = import_roi_bed(args.roi)
+        regions_pool = import_roi_bed(args.roi, args.chrom_sizes)
 
         # Find the chromosomes for which we can make predictions based on the requested chroms
         # and the BED regions provided in the ROI file
