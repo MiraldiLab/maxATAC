@@ -139,27 +139,6 @@ def convert_predictions_to_bedgraph(predictions: list,
     return windowed_coordinates_dataframe
 
 
-def import_roi_bed(roi_bed, chrom_sizes):
-    """Import bed file of haplotype blocks or LD blocks
-
-    Args:
-        roi_bed (str): Path to the bedfile with region information
-
-    Returns:
-        pyBedTool.BedTool: A BedTool object of regions to use for prediction
-    """
-    roi_bedtool = pybedtools.BedTool(roi_bed)
-    roi_bedtool_slop = roi_bedtool.slop(g=chrom_sizes, b=512)
-
-    roi_DF = pybedtools.BedTool().window_maker(b=roi_bedtool_slop, w=1024, s=256).to_dataframe()
-    roi_DF["length"] = roi_DF["end"] - roi_DF["start"]
-    roi_DF = roi_DF[roi_DF["length"] == 1024]
-    
-    roi_BT = pybedtools.BedTool.from_dataframe(roi_DF[["chrom", "start", "end"]])
-
-    return roi_BT
-
-
 def variant_specific_predict(model:str,
             signal:str,
             sequence:str,

@@ -1,8 +1,8 @@
 import logging
 import os
 from maxatac.utilities.system_tools import get_dir
-from maxatac.utilities.variant_tools import import_roi_bed, variant_specific_predict
-from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, create_prediction_regions
+from maxatac.utilities.variant_tools import variant_specific_predict
+from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, create_prediction_regions, import_prediction_regions
 from maxatac.utilities.genome_tools import build_chrom_sizes_dict
 import pandas as pd
 import pybedtools
@@ -21,14 +21,21 @@ def run_variants(args):
 
     # Import regions to make predictions in. Currently designed for non-overlapping LD blocks or whole chromosome approaches
     if args.roi:
-        logging.error("Import prediction regions")
-        bed_df = pd.read_table(args.roi, header=None, names=["chr", "start", "stop"])
+        # Define the ends of the chroms for windowing functions
+        chr_dict = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
 
-        regions_pool = import_roi_bed(args.roi, args.chrom_sizes)
+        logging.error("Import prediction regions")
+        regions_df = import_prediction_regions(bed_file=args.roi,
+                                                 chromosomes=args.chromosomes,
+                                                 chrom_sizes_dictionary=chr_dict,
+                                                 blacklist=args.blacklist,
+                                                 )
+
+        regions_pool = pybedtools.BedTool.from_dataframe(regions_df)
 
         # Find the chromosomes for which we can make predictions based on the requested chroms
         # and the BED regions provided in the ROI file
-        chrom_list = list(set(args.chromosomes).intersection(set(bed_df["chr"].unique())))
+        chrom_list = list(set(args.chromosomes).intersection(set(regions_df["chr"])))
 
     else:
         logging.error("Create prediction regions")
@@ -49,7 +56,8 @@ def run_variants(args):
                   f"Prediction Windows: {output_windows} \n" +
                   f"Sequence file: {args.sequence} \n" +
                   f"MaxATAC model: {args.model} \n" +
-                  f"Chromosome(s): {chrom_list} \n" +
+                  f"Chromosome(s) requested: {chrom_list} \n" +
+                  f"Chromosome(s) final: {chrom_list} \n" +
                   f"Variants Bed: {args.variants_bed}"
                   )
 

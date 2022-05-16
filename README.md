@@ -128,7 +128,7 @@ TF binding predictions can be made genome-wide, for a single chromosome, or, alt
 Example command for TFBS prediction across the whole genome:
 
 ```bash
-maxatac predict --sequence hg38.2bit -tf CTCF --signal GM12878.bigwig -o outputdir/
+maxatac predict -tf CTCF --signal GM12878.bigwig -o outputdir/
 ```
 
 If data has been installed with maxATAC data, then the following command will use the best model and call peaks using the TF specific threshold statistics. 
@@ -142,7 +142,7 @@ maxatac predict -tf CTCF -s GM12878.bigwig -o outputdir/
 For TFBS predictions within specific regions of the genome, a `BED` file of genomic intervals, `roi` (regions of interest) are supplied:
 
 ```bash
-maxatac predict --sequence hg38.2bit -m CTCF.h5 --signal GM12878.bigwig --roi ROI.bed
+maxatac predict -tf CTCF --signal GM12878.bigwig --roi ROI.bed
 ```
 
 ### Prediction on a specific chromosome(s)
@@ -150,7 +150,7 @@ maxatac predict --sequence hg38.2bit -m CTCF.h5 --signal GM12878.bigwig --roi RO
 For TFBS predictions on a single chromosome or subset of chromosomes, these can be provided using the `--chromosomes` argument:
 
 ```bash
-maxatac predict --sequence hg38.2bit -m CTCF.h5 --signal GM12878.bigwig --chromosomes chr3 chr5
+maxatac predict -TF CTCF --signal GM12878.bigwig --chromosomes chr3 chr5
 ```
 
 ## Raw signal tracks (prediction bigwigs) are large
