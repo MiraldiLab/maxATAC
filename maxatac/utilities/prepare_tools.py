@@ -13,20 +13,14 @@ def convert_fragments_to_tn5_bed(fragments_tsv: str, chroms: list):
     
     >>> bed_file = convert_fragments_to_tn5_bed(Granja_frags.tsv, ["chr1, "chr2"])
     """
-    col_types = {
-                 "chr": "category", 
-                 "start": "int32", 
-                 "stop": "int32", 
-                 "barcode": "category", 
-                 "support": "int32"
-                }
     
     # Import fragments tsv as a dataframe
     df = pd.read_table(fragments_tsv,
+                       sep="\t",
                        header=None,
-                       names=["chr", "start", "stop", "barcode", "support"],
-                       dtype=col_types, 
-                       low_memory=False)
+                       usecols=[0,1,2,3],
+                       names=["chr", "start", "stop", "barcode"]
+                       )
     
     df = df[df["chr"].isin(chroms)]
     
