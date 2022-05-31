@@ -1,6 +1,6 @@
 # Variants
 
-The `variants` function is intended for using a maxATAC model to predict TF binding in non-overlapping LD blocks. *The function can perform whole genome prediction, but has not been optimized for that yet.* The `variants` function takes as input a bed file of variants and the nucleotide at that position along with the regions that you want to make predictions for.
+The `variants` function is intended for using a maxATAC model to predict TF binding in non-overlapping LD blocks. *The function can perform whole genome prediction, but has not been optimized for that yet.* The `variants` function takes as input a bed file of variants and the nucleotide to use at that position. You must also provide the regions that you want to make predictions in. This function will then merge nearby ROI intervals (+/- 512 bp) and create sliding windows (1,024 bp wide x 256 bp step) along the ROI. Regions at the end of the interval will be trimmmed off if they are less than 1,024 bp. 
 
 ## Example
 
@@ -34,7 +34,7 @@ This argument specifies the path to the 2bit DNA sequence for the genome of inte
 
 ### `-roi`
 
-The bed file of LD blocks that are to be predicted in. Predictions will be limited to these specific regions. Default: Whole genome prediction. 
+The bed file of intervals to use for prediction windows. Predictions will be limited to these specific regions. Only the first 3 columns of the file will be considered when making the prediction windows. Default: Whole genome prediction. 
 
 ### `-o, --output`
 
