@@ -95,7 +95,7 @@ The maxATAC models were trained on paired-end ATAC-seq data in human. For this r
 
 ### Preparing the ATAC-seq signal
 
-The current `maxatac predict` function requires a normalized ATAC-seq signal in a bigwig format. Use `maxatac prepare` to generate a normalized signal track from a `.bam` file of aligned reads.
+The current `maxatac predict` function requires a normalized ATAC-seq signal in a bigwig format. Use `maxatac prepare` to generate a normalized signal track from a `.bam` file of aligned reads. See [the prepare documentation](./docs/readme/prepare.md) for more details about the expected outputs and file name descriptions.
 
 #### Bulk ATAC-seq
 
