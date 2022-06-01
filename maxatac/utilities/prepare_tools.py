@@ -11,7 +11,7 @@ def convert_fragments_to_tn5_bed(fragments_tsv: str, chroms: list):
         
     Examples:
     
-    >>> bed_file = convert_fragments_to_tn5_bed(Granja_frags.tsv, ["chr1, "chr2"])
+    >>> bed_file = convert_fragments_to_tn5_bed(Granja_frags.tsv, ["chr1", "chr2"])
     """
     
     # Import fragments tsv as a dataframe

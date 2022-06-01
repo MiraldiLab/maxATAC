@@ -91,7 +91,6 @@ def setup_logger(log_level, log_format):
 
 
 class EmptyStream():
-
     def __enter__(self):
         return None
 
@@ -123,8 +122,14 @@ class Mute():
 
 
 def check_data_packages_installed():
-    """Check that packages are installed
-    This module requires 
+    """
+    Check whether the pakages required by maxatac data are installed before running.
+
+    Returns: None
+
+    Examples:
+
+    >>> check_data_packages_installed()
     """
     try:
         subprocess.run(["which", "git"], stdout=subprocess.DEVNULL, check=True)
@@ -143,6 +148,15 @@ def raise_exception(e, package, install_link):
 
 
 def check_prepare_packages_installed():
+    """
+    Check whether the pakages required by the prepare function are installed before running.
+
+    Returns: None
+
+    Examples:
+
+    >>> check_prepare_packages_installed()
+    """
     try:
         subprocess.run(["which", "samtools"], stdout=subprocess.DEVNULL, check=True)
     except subprocess.CalledProcessError as e:
