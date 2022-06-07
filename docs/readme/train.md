@@ -1,10 +1,10 @@
 # Train
 
-The `train` function will train a maxATAC model using the supplied ATAC-seq and ChIP-seq inputs. The inputs are organized by a tab-delimited text file described below: 
+The `train` function will train a maxATAC model using the supplied ATAC-seq and ChIP-seq inputs. The inputs are organized by a tab-delimited text file described below:
 
 | Column Name        | Description                          |
 | ------------------ | ------------------------------------ |
-| `Cell_type`        | Sample Cell Type                     |
+| `Cell_Line`        | Sample Cell Type                     |
 | `TF`               | Gene Symbol for TF                   |
 | `ATAC_Signal_File` | Path to ATAC-seq bigwig signal track |
 | `Binding_File`     | Path to ChIP-seq bigwig signal track |
@@ -19,25 +19,24 @@ The meta file described above is used to locate all the input files for all the 
 General Steps:
 
 1) Initialize the training regions of interest pools
-2) Initialize the batch data generators
-3) Make the generators into `Keras.Sequence` objects
-4) Initialize the `Keras.OrderedEnquerer` for the `fit()` method
-5) Fit the model for the given # of epochs
-6) Select best model based on dice coefficient and save the results of training
+2) Initialize a `Keras.Sequence` object. Each sequence object is specific for training or prediction. The object will then create random batches of regions of interest from the input ROI pool with the correct ATAC-seq and ChIP-seq signals. 
+3) Fit the model for the given # of epochs
+4) Select best model based on dice coefficient and save the results of training
 
 ### Training, Validation, and Test Data Splits
 
 ![maxATAC Training Approach Overview](../figs/example_training_schematic.svg)
 
-For each TF model, all the ATAC-seq and ChIP-seq peaks are pooled into training, validation, and test groups. 
+For each TF model, all the ATAC-seq and ChIP-seq peaks are pooled into training, validation, and test groups.
 
 Each model is trained on 100 batches of 1,000 examples per epoch. Each batch is composed of randomly chosen peaks that are then randomly assigned to cell types.
 
 Training on ATAC-seq and ChIP-seq peaks is considered "peak-centric" training.
 
-Training on multiple cell types per batch that are randomly assigned peaks is called "pan cell" training. 
+Training on multiple cell types per batch that are randomly assigned peaks is called "pan cell" training.
 
 For every TF model, one cell type and 2 chromosomes are held out for independent testing.
+
 ## Example
 
 ```bash
@@ -66,7 +65,7 @@ This argument is used to input the bed file that you want to use to define the t
 
 ### `--validate_roi`
 
-This argument is used to input the bed file that you want to use to define the validation regions of interest. If you set this option you will randomly select regions from this file for validation instead of using the meta data to build the validation data pool. 
+This argument is used to input the bed file that you want to use to define the validation regions of interest. If you set this option you will randomly select regions from this file for validation instead of using the meta data to build the validation data pool.
 
 ### `--target_scale_factor`
 
@@ -143,7 +142,7 @@ This argument is used to set the logging level. Currently, the only working logg
 
 ### `--rev_comp`
 
-If rev_comp, then use the reverse complement sequence in addition to the reference sequence. Default: `False`
+If rev_comp_train, then use the reverse complement sequence in addition to the reference sequence. Default: `False`
 
 ### `--shuffle_cell_type`
 

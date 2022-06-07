@@ -45,7 +45,29 @@ def run_training(args):
     # Start Timer
     startTime = timeit.default_timer()
 
-    logging.error("Set up model parameters")
+    logging.error(f"Training Parameters:\n" +
+                  f"Architecture: {args.arch} \n" +
+                  f"Filename prefix: {args.prefix} \n" +
+                  f"Output directory: {args.output} \n" +
+                  f"Meta file: {args.meta_file} \n" +
+                  f"Output activation: {args.output_activation} \n" +
+                  f"Number of threads: {args.threads} \n" +
+                  f"Use dense layer?: {args.dense} \n" +
+                  f"Training ROI file (if provided): {args.train_roi} \n" +
+                  f"Validation ROI file (if provided): {args.validate_roi} \n" +
+                  f"2bit sequence file: {args.sequence} \n" +
+                  "Restricting to chromosomes: \n   - " + "\n   - ".join(args.chroms) + "\n" +
+                  "Restricting training to chromosomes: \n   - " + "\n   - ".join(args.tchroms) + "\n" +
+                  "Restricting validation to chromosomes: \n   - " + "\n   - ".join(args.vchroms) + "\n" +
+                  f"Number of batches: {args.batches} \n" +
+                  f"Number of examples per batch: {args.batch_size} \n" +
+                  f"Proportion of examples drawn randomly: {args.rand_ratio} \n" +
+                  f"Shuffle training regions amongst cell types: {args.shuffle_cell_type} \n" +
+                  f"Train with the reverse complement sequence: {args.rev_comp} \n" +
+                  f"Number of epochs: {args.epochs} \n" +
+                  f"Use multiprocessing?: {args.multiprocessing} \n" +
+                  f"Max number of workers to queue: {args.max_queue_size} \n"
+                  )
 
     # Initialize the model with the architecture of choice
     maxatac_model = MaxATACModel(arch=args.arch,

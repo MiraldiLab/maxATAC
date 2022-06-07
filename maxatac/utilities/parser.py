@@ -511,6 +511,18 @@ def get_parser():
                               help="If rev_comp, then use the reverse complement in training"
                               )
 
+    train_parser.add_argument("--multiprocessing",
+                              dest="multiprocessing",
+                              action="store_true",
+                              default=False,
+                              help="If multiprocessing, then use multiprocessing with tf.keras.fit()"
+                              )
+
+    train_parser.add_argument("--max_queue_size",
+                              dest="max_queue_size",
+                              default=10,
+                              help="The max number of workers to spin up. These workers will load data and wait for fit."
+                              )
     #############################################
     # Normalize parser
     #############################################
@@ -1078,8 +1090,8 @@ def parse_arguments(argsl, cwd_abs_path=None):
             args,
             [
                 "func", "loglevel", "threads", "seed",
-                "proportion", "vchroms", "tchroms",
-                "chroms", "keep", "epochs", "batches",
+                "proportion", "vchroms", "tchroms", "multiprocessing",
+                "chroms", "keep", "epochs", "batches", "max_queue_size",
                 "prefix", "plot", "lrate", "decay", "bin",
                 "minimum", "test_cell_lines", "rand_ratio",
                 "train_tf", "arch", "batch_size",
