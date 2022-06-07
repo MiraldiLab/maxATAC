@@ -140,7 +140,7 @@ Use to change the number of threads used per job. Default: `get available`
 
 This argument is used to set the logging level. Currently, the only working logging level is `ERROR`.
 
-### `--rev_comp_train`
+### `--rev_comp`
 
 If rev_comp_train, then use the reverse complement sequence in addition to the reference sequence. Default: `False`
 
