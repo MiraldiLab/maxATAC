@@ -97,10 +97,12 @@ def run_training(args):
     seq_train_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
 
     # Builds a Enqueuer from a Sequence.
-    '''train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
-    train_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)'''
-    train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=False)
-    train_gen_enq.start(workers=1, max_queue_size=args.threads * 2)
+    train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
+    train_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
+    
+    '''train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=False)
+    train_gen_enq.start(workers=1, max_queue_size=args.threads * 2)'''
+    
     enq_train_gen = train_gen_enq.get()
 
     # Initialize the validation generator
@@ -119,10 +121,12 @@ def run_training(args):
     seq_validate_gen = SeqDataGenerator(batches=args.batches, generator=val_gen)
 
     # Builds a Enqueuer from a Sequence.
-    '''val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
-    val_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)'''
-    val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=False)
-    val_gen_enq.start(workers=1, max_queue_size=args.threads * 2)
+    val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
+    val_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
+    
+    '''val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=False)
+    val_gen_enq.start(workers=1, max_queue_size=args.threads * 2)'''
+    
     enq_val_gen = val_gen_enq.get()
 
 
