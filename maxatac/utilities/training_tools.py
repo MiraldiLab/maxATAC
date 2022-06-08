@@ -259,6 +259,43 @@ def get_input_matrix(signal_stream,
     return input_matrix.T
 
 
+def get_target_matrix(binding_stream,
+                      chromosome,
+                      start,
+                      end,
+                      rev_comp,
+                      bp_resolution):
+    # Some bigwig files do not have signal for some chromosomes because they do not have peaks
+    # in those regions
+    # Our workaround for issue#42 is to provide a zero matrix for that position
+    try:
+        # Get the target matrix
+        target_vector = np.array(binding_stream.values(chromosome, start, end)).T
+
+    except:
+        # TODO change length of array
+        target_vector = np.zeros(1024)
+
+    # change nan to numbers
+    target_vector = np.nan_to_num(target_vector, 0.0)
+
+    # If reverse compliment, reverse the matrix
+    if rev_comp:
+        target_vector = target_vector[::-1]
+
+    # get the number of 32 bp bins across the input sequence
+    n_bins = int(target_vector.shape[0] / bp_resolution)
+
+    # Split the data up into 32 x 32 bp bins.
+    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+
+    # TODO we might want to test what happens if we change the
+    bin_sums = np.sum(split_targets, axis=1)
+    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+
+    return bin_vector
+
+
 def create_roi_batch(sequence,
                      meta_table,
                      roi_pool,
@@ -343,36 +380,16 @@ def create_roi_batch(sequence,
                 # Append the sample to the inputs batch.
                 inputs_batch.append(input_matrix)
 
-                # Some bigwig files do not have signal for some chromosomes because they do not have peaks
-                # in those regions
-                # Our workaround for issue#42 is to provide a zero matrix for that position
-                try:
-                    # Get the target matrix
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-
-                except:
-                    # TODO change length of array
-                    target_vector = np.zeros(1024)
-
-                # change nan to numbers
-                target_vector = np.nan_to_num(target_vector, 0.0)
-
-                # If reverse compliment, reverse the matrix
-                if rev_comp:
-                    target_vector = target_vector[::-1]
-
-                # get the number of 32 bp bins across the input sequence
-                n_bins = int(target_vector.shape[0] / bp_resolution)
-
-                # Split the data up into 32 x 32 bp bins.
-                split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-
-                # TODO we might want to test what happens if we change the
-                bin_sums = np.sum(split_targets, axis=1)
-                bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+                # Get the target matrix of values
+                target_matrix = get_target_matrix(binding_stream=binding_stream,
+                                                  chromosome=chrom_name,
+                                                  start=start,
+                                                  end=end,
+                                                  rev_comp=rev_comp,
+                                                  bp_resolution=bp_resolution)
 
                 # Append the sample to the target batch
-                targets_batch.append(bin_vector)
+                targets_batch.append(target_matrix)
 
         yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
@@ -427,25 +444,16 @@ def create_random_batch(
 
                 inputs_batch.append(input_matrix)
 
-                try:
-                    # Get the target matrix
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+                # Get the target matrix of values
+                target_matrix = get_target_matrix(binding_stream=binding_stream,
+                                                  chromosome=chrom_name,
+                                                  start=seq_start,
+                                                  end=seq_end,
+                                                  rev_comp=rev_comp,
+                                                  bp_resolution=bp_resolution)
 
-                except:
-                    # TODO change length of array
-                    target_vector = np.zeros(1024)
-
-                target_vector = np.nan_to_num(target_vector, 0.0)
-
-                if rev_comp:
-                    target_vector = target_vector[::-1]
-
-                n_bins = int(target_vector.shape[0] / bp_resolution)
-                split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                bin_sums = np.sum(split_targets, axis=1)
-                bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-                targets_batch.append(bin_vector)
-
+                # Append the sample to the target batch
+                targets_batch.append(target_matrix)
 
         yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
@@ -636,8 +644,10 @@ class ROIPool(object):
     def __get_roi_pool__(self, dictionary, roi_type_tag):
         """
         Build a pool of regions of interest from BED files.
+
         :param dictionary: A dictionary of Cell Types and their associated BED files
         :param roi_type_tag: Tag used to name the type of ROI being generated. IE Chip or ATAC
+
         :return: A dataframe of BED regions that are formatted for maxATAC training.
         """
         bed_list = []
@@ -652,9 +662,11 @@ class ROIPool(object):
     def write_data(self, prefix="ROI_pool", output_dir="./ROI", set_tag="training"):
         """
         Write the ROI dataframe to a tsv and a bed for for ATAC, CHIP, and combined ROIs
+
         :param set_tag: Tag for training or validation
         :param prefix: Prefix for filenames to use
         :param output_dir: Directory to output the bed and tsv files
+
         :return: Write BED and TSV versions of the ROI data
         """
         output_directory = get_dir(output_dir)
@@ -684,9 +696,11 @@ class ROIPool(object):
                      ROI_cell_tag):
         """
         Import a BED file and format the regions to be compatible with our maxATAC models
+
         :param bed_file: Input BED file to format
         :param ROI_type_tag: Tag to use in the description column
         :param ROI_cell_tag: Tag to use in the description column
+
         :return: A dataframe of BED regions compatible with our model
         """
 
