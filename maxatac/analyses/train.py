@@ -4,7 +4,7 @@ import timeit
 
 from keras.utils.data_utils import OrderedEnqueuer
 
-from maxatac.utilities.constants import TRAIN_MONITOR
+from maxatac.utilities.constants import TRAIN_MONITOR, INPUT_LENGTH
 from maxatac.utilities.system_tools import Mute
 
 with Mute():
@@ -89,8 +89,10 @@ def run_training(args):
                              meta_file=args.meta_file,
                              prefix=args.prefix,
                              output_directory=maxatac_model.output_directory,
-                             shuffle=True,
-                             tag="training")
+                             blacklist=args.blacklist,
+                             region_length=INPUT_LENGTH,
+                             chrom_sizes_file=args.chrom_sizes
+                             )
 
     # Import validation regions
     validate_examples = ROIPool(chroms=args.vchroms,
@@ -98,10 +100,12 @@ def run_training(args):
                                 meta_file=args.meta_file,
                                 prefix=args.prefix,
                                 output_directory=maxatac_model.output_directory,
-                                shuffle=True,
-                                tag="validation")
-
-    logging.error("Initialize data generator")
+                                blacklist=args.blacklist,
+                                region_length=INPUT_LENGTH,
+                                chrom_sizes_file=args.chrom_sizes
+                                )
+    
+    logging.error("Initialize training data generator")
 
     # Initialize the training generator
     train_gen = DataGenerator(sequence=args.sequence,
@@ -125,6 +129,8 @@ def run_training(args):
     train_gen_enq.start(workers=1, max_queue_size=args.threads * 2)
     enq_train_gen = train_gen_enq.get()
 
+    logging.error("Initialize validation data generator")
+
     # Initialize the validation generator
     val_gen = DataGenerator(sequence=args.sequence,
                             meta_table=maxatac_model.meta_dataframe,
@@ -147,6 +153,8 @@ def run_training(args):
     val_gen_enq.start(workers=1, max_queue_size=args.threads * 2)
     enq_val_gen = val_gen_enq.get()
 
+
+    logging.error("Fit model")
 
     # Fit the model
     training_history = maxatac_model.nn_model.fit(enq_train_gen,
@@ -182,6 +190,13 @@ def run_training(args):
         export_model_structure(maxatac_model.nn_model, maxatac_model.results_location)
 
         export_binary_metrics(training_history, tf, RR, ARC, maxatac_model.results_location, best_epoch)
+
+    # If save_roi save the ROI files
+    if args.save_roi:
+        # Write the ROI pools
+        train_examples.write_data(prefix=args.prefix, output_dir=maxatac_model.output_directory, set_tag="training")
+        validate_examples.write_data(prefix=args.prefix, output_dir=maxatac_model.output_directory,
+                                     set_tag="validation")
 
     logging.error("Results are saved to: " + maxatac_model.results_location)
     

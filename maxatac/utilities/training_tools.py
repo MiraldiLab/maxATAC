@@ -259,6 +259,43 @@ def get_input_matrix(signal_stream,
     return input_matrix.T
 
 
+def get_target_matrix(binding_stream,
+                      chromosome,
+                      start,
+                      end,
+                      rev_comp,
+                      bp_resolution):
+    # Some bigwig files do not have signal for some chromosomes because they do not have peaks
+    # in those regions
+    # Our workaround for issue#42 is to provide a zero matrix for that position
+    try:
+        # Get the target matrix
+        target_vector = np.array(binding_stream.values(chromosome, start, end)).T
+
+    except:
+        # TODO change length of array
+        target_vector = np.zeros(1024)
+
+    # change nan to numbers
+    target_vector = np.nan_to_num(target_vector, 0.0)
+
+    # If reverse compliment, reverse the matrix
+    if rev_comp:
+        target_vector = target_vector[::-1]
+
+    # get the number of 32 bp bins across the input sequence
+    n_bins = int(target_vector.shape[0] / bp_resolution)
+
+    # Split the data up into 32 x 32 bp bins.
+    split_targets = np.array(np.split(target_vector, n_bins, axis=0))
+
+    # TODO we might want to test what happens if we change the
+    bin_sums = np.sum(split_targets, axis=1)
+    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+
+    return bin_vector
+
+
 def create_roi_batch(sequence,
                      meta_table,
                      roi_pool,
@@ -343,36 +380,16 @@ def create_roi_batch(sequence,
                 # Append the sample to the inputs batch.
                 inputs_batch.append(input_matrix)
 
-                # Some bigwig files do not have signal for some chromosomes because they do not have peaks
-                # in those regions
-                # Our workaround for issue#42 is to provide a zero matrix for that position
-                try:
-                    # Get the target matrix
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
-
-                except:
-                    # TODO change length of array
-                    target_vector = np.zeros(1024)
-
-                # change nan to numbers
-                target_vector = np.nan_to_num(target_vector, 0.0)
-
-                # If reverse compliment, reverse the matrix
-                if rev_comp:
-                    target_vector = target_vector[::-1]
-
-                # get the number of 32 bp bins across the input sequence
-                n_bins = int(target_vector.shape[0] / bp_resolution)
-
-                # Split the data up into 32 x 32 bp bins.
-                split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-
-                # TODO we might want to test what happens if we change the
-                bin_sums = np.sum(split_targets, axis=1)
-                bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+                # Get the target matrix of values
+                target_matrix = get_target_matrix(binding_stream=binding_stream,
+                                                  chromosome=chrom_name,
+                                                  start=start,
+                                                  end=end,
+                                                  rev_comp=rev_comp,
+                                                  bp_resolution=bp_resolution)
 
                 # Append the sample to the target batch
-                targets_batch.append(bin_vector)
+                targets_batch.append(target_matrix)
 
         yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
@@ -427,25 +444,16 @@ def create_random_batch(
 
                 inputs_batch.append(input_matrix)
 
-                try:
-                    # Get the target matrix
-                    target_vector = np.array(binding_stream.values(chrom_name, start, end)).T
+                # Get the target matrix of values
+                target_matrix = get_target_matrix(binding_stream=binding_stream,
+                                                  chromosome=chrom_name,
+                                                  start=seq_start,
+                                                  end=seq_end,
+                                                  rev_comp=rev_comp,
+                                                  bp_resolution=bp_resolution)
 
-                except:
-                    # TODO change length of array
-                    target_vector = np.zeros(1024)
-
-                target_vector = np.nan_to_num(target_vector, 0.0)
-
-                if rev_comp:
-                    target_vector = target_vector[::-1]
-
-                n_bins = int(target_vector.shape[0] / bp_resolution)
-                split_targets = np.array(np.split(target_vector, n_bins, axis=0))
-                bin_sums = np.sum(split_targets, axis=1)
-                bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
-                targets_batch.append(bin_vector)
-
+                # Append the sample to the target batch
+                targets_batch.append(target_matrix)
 
         yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
@@ -539,167 +547,101 @@ class RandomRegionsPool:
 
 
 class ROIPool(object):
-    """
-    Import genomic regions of interest for training
-    """
-
     def __init__(self,
-                 chroms,
-                 roi_file_path,
-                 meta_file,
-                 prefix,
-                 output_directory,
-                 shuffle,
-                 tag
-                 ):
-        """
-        :param chroms: Chromosomes to limit the analysis to
-        :param roi_file_path: User provided ROI file path
-        :param meta_file: path to meta file
-        :param prefix: Prefix for saving output file
-        :param output_directory: Output directory to save files to
-        :param shuffle: Whether to shuffle the input ROI file
-        :param tag: Tag to use for writing the file.
+                 chroms: list,
+                 roi_file_path: str,
+                 meta_file: str,
+                 prefix: str,
+                 output_directory: str,
+                 blacklist: str,
+                 region_length: int,
+                 chrom_sizes_file: str):
+        """Import genomic ROIs for training
+        Two  modes are available:
+        1) Generate ROIs from meta file:
+        This class will generate a pool of examples based on regions of interest defined by ATAC-seq and ChIP-seq peaks.
+        2) Import ROI File:
+        If a file of ROIs is provided, the file will be imported instead of de-novo generating the ROIs..
+        Args:
+            chroms: Chromosomes to limit the analysis to
+            roi_file_path: User provided ROI file path
+            meta_file: Path to meta file
+            prefix: Prefix for saving output file
+            output_directory: Output directory
+            shuffle: Whether to shuffle the input ROI file
+            tag: Tag to use for writing the file
         """
         self.chroms = chroms
         self.roi_file_path = roi_file_path
         self.meta_file = meta_file
         self.prefix = prefix
         self.output_directory = output_directory
-        self.tag = tag
+        self.blacklist = blacklist
+        self.region_length = region_length
+        self.chrom_sizes = chrom_sizes_file
+
+        # Build a dictionary of chromosome sizes
+        self.chromosome_sizes_dictionary = build_chrom_sizes_dict(self.chroms, self.chrom_sizes)
 
         # If an ROI path is provided import it as the ROI pool
         if self.roi_file_path:
-            self.ROI_pool = self.__import_roi_pool__(shuffle=shuffle)
+            self.ROI_pool = self.__import_roi_pool_file__()
 
         # Import the data from the meta file.
         else:
-            regions = GenomicRegions(meta_path=self.meta_file,
-                                     region_length=1024,
-                                     chromosomes=self.chroms,
-                                     chromosome_sizes_dictionary=build_chrom_sizes_dict(self.chroms,
-                                                                                        DEFAULT_CHROM_SIZES),
-                                     blacklist=BLACKLISTED_REGIONS)
+            self.ROI_pool = self.__generate_ROI_pool__()
 
-            regions.write_data(self.prefix,
-                               output_dir=self.output_directory,
-                               set_tag=tag)
+        # Set the shape of the total ROI pool
+        self.total_roi_size = self.ROI_pool.shape[0]
 
-            self.ROI_pool = regions.combined_pool
-
-    def __import_roi_pool__(self, shuffle=False):
-        """
-        Import the ROI file containing the regions of interest. This file is similar to a bed file, but with a header
-
+    def __import_roi_pool_file__(self):
+        """Import the ROI file containing the regions of interest.
         The roi DF is read in from a TSV file that is formatted similarly as a BED file with a header. The following
         columns are required:
-
         Chr | Start | Stop | ROI_Type | Cell_Line
-
-        The chroms list is used to filter the ROI df to make sure that only training chromosomes are included.
-
-        :param shuffle: Whether to shuffle the dataframe upon import
-
-        :return: A pool of regions to use for training or validation
+        The chroms list is used to filter the ROI df to make sure that only specific chromosomes are included.
+        Return:
+            A pool of regions to use for training or validation
         """
         roi_df = pd.read_csv(self.roi_file_path, sep="\t", header=0, index_col=None)
 
         roi_df = roi_df[roi_df['Chr'].isin(self.chroms)]
 
-        if shuffle:
-            roi_df = roi_df.sample(frac=1)
-
         return roi_df
 
-
-class SeqDataGenerator(tf.keras.utils.Sequence):
-    # ‘Generates data for Keras’
-
-    def __init__(self, batches, generator):
-        # ‘Initialization’
-        self.batches = batches
-        self.generator = generator
-
-    def __len__(self):
-        # ‘Denotes the number of batches per epoch’
-        return self.batches
-
-    def __getitem__(self, index):
-        # ‘Generate one batch of data’
-        # Generate indexes of the batch
-        # Generate data
-        return next(self.generator)
-
-
-def model_selection(training_history, output_dir):
-    """
-    This function will take the training history and output the best model based on the dice coefficient value.
-    """
-    # Create a dataframe from the history object
-    df = pd.DataFrame(training_history.history)
-
-    epoch = df['val_dice_coef'].idxmax() + 1
-
-    # Get the realpath to the best model
-    out = pd.DataFrame([glob.glob(output_dir + "/*" + str(epoch) + ".h5")], columns=['Best_Model_Path'])
-
-    # Write the location of the best model to a file
-    out.to_csv(output_dir + "/" + "best_epoch.txt", sep='\t', index=None, header=None)
-
-    return epoch
-
-
-class GenomicRegions(object):
-    """
-    This class will generate a pool of examples based on regions of interest defined by ATAC-seq and ChIP-seq peaks.
-    """
-
-    def __init__(self,
-                 meta_path,
-                 chromosomes,
-                 chromosome_sizes_dictionary,
-                 blacklist,
-                 region_length
-                 ):
-        """
-        When the object is initialized it will import all of the peaks in the meta files and parse them into training
+    def __generate_ROI_pool__(self):
+        """Generate a pool of ROIs using the training metadata
+        When the object is initialized, it will import all the peaks in the meta files and parse them into training
         and validation regions of interest. These will be output in the form of TSV formatted file similar to a BED
         file.
-
-        :param meta_path: Path to the meta file
-        :param chromosomes: List of chromosomes to use
-        :param chromosome_sizes_dictionary: A dictionary of chromosome sizes
-        :param blacklist: The blacklist file of BED regions to exclude
-        :param region_length: Length of the input regions
+        Returns:
+            A pool of regions formatted for training
         """
-        self.meta_path = meta_path
-        self.chromosome_sizes_dictionary = chromosome_sizes_dictionary
-        self.chromosomes = chromosomes
-        self.blacklist = blacklist
-        self.region_length = region_length
-
         # Import meta txt as dataframe
-        self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
+        self.meta_dataframe = pd.read_csv(self.meta_file, sep='\t', header=0, index_col=None)
+
         # Select Training Cell lines
         self.meta_dataframe = self.meta_dataframe[self.meta_dataframe["Train_Test_Label"] == 'Train']
 
-        # Get a dictionary of {Cell Types: Peak Paths}
+        # Get a dictionary of {Cell Types: Peak Paths} for ATAC
         self.atac_dictionary = pd.Series(self.meta_dataframe.ATAC_Peaks.values,
                                          index=self.meta_dataframe.Cell_Line).to_dict()
 
+        # Get a dictionary of {Cell Types: Peak Paths} for ChIP
         self.chip_dictionary = pd.Series(self.meta_dataframe.CHIP_Peaks.values,
                                          index=self.meta_dataframe.Cell_Line).to_dict()
 
         # You must generate the ROI pool before you can get the final shape
-        self.atac_roi_pool = self.__get_roi_pool(self.atac_dictionary, "ATAC", )
-        self.chip_roi_pool = self.__get_roi_pool(self.chip_dictionary, "CHIP")
+        self.atac_roi_pool = self.__get_roi_pool__(self.atac_dictionary, "ATAC", )
+        self.chip_roi_pool = self.__get_roi_pool__(self.chip_dictionary, "CHIP")
 
-        self.combined_pool = pd.concat([self.atac_roi_pool, self.chip_roi_pool])
-
+        # Get the number of rows in the dataframe for each pool
         self.atac_roi_size = self.atac_roi_pool.shape[0]
         self.chip_roi_size = self.chip_roi_pool.shape[0]
 
-    def __get_roi_pool(self, dictionary, roi_type_tag):
+        return pd.concat([self.atac_roi_pool, self.chip_roi_pool])
+
+    def __get_roi_pool__(self, dictionary, roi_type_tag):
         """
         Build a pool of regions of interest from BED files.
 
@@ -729,34 +671,24 @@ class GenomicRegions(object):
         """
         output_directory = get_dir(output_dir)
 
+        # Combined ROI filenames
         combined_BED_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI.bed.gz")
 
-        stats_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI_stats")
+        # Summary Stats filenames
+        stats_filename = os.path.join(output_directory, prefix + "_" + set_tag + "_ROI_stats.txt")
+
         total_regions_stats_filename = os.path.join(output_directory,
-                                                    prefix + "_" + set_tag + "_ROI_totalregions_stats")
+                                                    prefix + "_" + set_tag + "_ROI_totalregions_stats.txt")
 
-        self.combined_pool.to_csv(combined_BED_filename, sep="\t", index=False, header=False)
+        self.ROI_pool.to_csv(combined_BED_filename, sep="\t", index=False, header=False)
 
-        group_ms = self.combined_pool.groupby(["Chr", "Cell_Line", "ROI_Type"], as_index=False).size()
-        len_ms = self.combined_pool.shape[0]
+        group_ms = self.ROI_pool.groupby(["Chr", "Cell_Line", "ROI_Type"], as_index=False).size()
+        len_ms = self.ROI_pool.shape[0]
         group_ms.to_csv(stats_filename, sep="\t", index=False)
 
         file = open(total_regions_stats_filename, "a")
         file.write('Total number of regions found for ' + set_tag + ' are: {0}\n'.format(len_ms))
         file.close()
-
-    def get_regions_list(self,
-                         n_roi):
-        """
-        Generate a batch of regions of interest from the input ChIP-seq and ATAC-seq peaks
-
-        :param n_roi: Number of regions to generate per batch
-
-        :return: A batch of training examples centered on regions of interest
-        """
-        random_roi_pool = self.combined_pool.sample(n=n_roi, replace=True, random_state=1)
-
-        return random_roi_pool.to_numpy().tolist()
 
     def __import_bed(self,
                      bed_file,
@@ -771,16 +703,22 @@ class GenomicRegions(object):
 
         :return: A dataframe of BED regions compatible with our model
         """
+
+        data_types = {"Chr": "category",
+                      "Start": "int",
+                      "Stop": "int"}
+
         # Import dataframe
         df = pd.read_csv(bed_file,
                          sep="\t",
                          usecols=[0, 1, 2],
                          header=None,
-                         names=["Chr", "Start", "Stop"],
-                         low_memory=False)
+                         dtype=data_types,
+                         names=["Chr", "Start", "Stop"]
+                         )
 
         # Make sure the chromosomes in the ROI file frame are in the target chromosome list
-        df = df[df["Chr"].isin(self.chromosomes)]
+        df = df[df["Chr"].isin(self.chroms)]
 
         # Find the length of the regions
         df["length"] = df["Stop"] - df["Start"]
@@ -822,8 +760,47 @@ class GenomicRegions(object):
         # Rename the columns
         df.columns = ["Chr", "Start", "Stop"]
 
+        # Set the ROI type to the tag: ie ATAC or ChIP
         df["ROI_Type"] = ROI_type_tag
 
+        # Set the cell line information for where the ROI was derived from
         df["Cell_Line"] = ROI_cell_tag
 
         return df
+
+
+class SeqDataGenerator(tf.keras.utils.Sequence):
+    # ‘Generates data for Keras’
+
+    def __init__(self, batches, generator):
+        # ‘Initialization’
+        self.batches = batches
+        self.generator = generator
+
+    def __len__(self):
+        # ‘Denotes the number of batches per epoch’
+        return self.batches
+
+    def __getitem__(self, index):
+        # ‘Generate one batch of data’
+        # Generate indexes of the batch
+        # Generate data
+        return next(self.generator)
+
+
+def model_selection(training_history, output_dir):
+    """
+    This function will take the training history and output the best model based on the dice coefficient value.
+    """
+    # Create a dataframe from the history object
+    df = pd.DataFrame(training_history.history)
+
+    epoch = df['val_dice_coef'].idxmax() + 1
+
+    # Get the realpath to the best model
+    out = pd.DataFrame([glob.glob(output_dir + "/*" + str(epoch) + ".h5")], columns=['Best_Model_Path'])
+
+    # Write the location of the best model to a file
+    out.to_csv(output_dir + "/" + "best_epoch.txt", sep='\t', index=None, header=None)
+
+    return epoch
