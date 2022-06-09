@@ -2,11 +2,36 @@
 
 The `prepare` function will convert a BAM file to Tn5 cut sites that are smoothed with a specific slop size. The files are converted to bigwig signal tracks and then min-max normalized. The `maxatac prepare` function requires `samtools`, `bedtools`, `pigz`, and `bedGraphToBigWig` be installed on your PATH to run.
 
-## Example
+## Examples
 
+### Bulk ATAC-seq
 ```bash
-maxatac prepare -i SRX2717911.bam -o ./output -prefix SRX2717911
+maxatac prepare -i GM12878.bam -o ./output -prefix GM12878
 ```
+
+### Pseudo-bulk scATAC-seq
+```bash
+maxatac prepare -i GM12878_scatac_1M.tsv -o ./output -prefix GM12878
+```
+
+### Outputs
+
+There are multiple outputs from the prepare function. The outputs and a brief description are shown below for an example pseudo-bulk GM12878 scATAC-seq input with the name `-prefix GM12878_scatac_1M`.
+
+| Filename                                                          | Description                                                                                 |
+|-------------------------------------------------------------------|---------------------------------------------------------------------------------------------|
+| GM12878_scatac_1M_IS_slop20_RP20M_minmax01_chromosome_min_max.txt | Contains the minimum and maximum values per chromosome                                      |
+| GM12878_scatac_1M_IS_slop20_RP20M_minmax01_genome_stats.txt       | Contains the min, max, median, and stats on the input file.                                 |
+| GM12878_scatac_1M_IS_slop20_RP20M_minmax01.bw                     | The output file that is to be used for prediction. This file has been min-max normalized.   |
+| GM12878_scatac_1M_IS_slop20_RP20M.bw                              | The read-depth normalized signal tracks.                                                    |
+| GM12878_scatac_1M_IS_slop20.bed.gz                                | The compressed bed file of individual cut sites that have been corrected for the Tn5 shift. |
+
+Description of filename parts:
+
+* `IS` : Insertion sites
+* `slop20`: Slop size 20
+* `RP20M`: Read depth normalized to 20,000,000 reads
+* `minmax01`: Min-max normalized between 0 and 1
 
 ## Required Arguments
 
@@ -23,7 +48,7 @@ The output directory path.
 
 ### `-prefix`
 
-This argument is used to set the logging level. Currently, the only working logging level is `ERROR`.
+This argument is used to set the prefix for setting the filenames. 
 
 ## Optional Arguments
 

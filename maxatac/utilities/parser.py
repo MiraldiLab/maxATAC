@@ -517,12 +517,34 @@ def get_parser():
                               default=False,
                               help="If multiprocessing, then use multiprocessing with tf.keras.fit()"
                               )
-
+    
     train_parser.add_argument("--max_queue_size",
                               dest="max_queue_size",
                               help="The max number of workers to spin up. These workers will load data and wait for fit."
                               )
-
+    
+    train_parser.add_argument("--save_roi",
+                              dest="save_roi",
+                              action="store_true",
+                              default=False,
+                              help="If multiprocessing, then use multiprocessing with tf.keras.fit()"
+                              )
+    
+    train_parser.add_argument("--blacklist",
+                              dest="blacklist",
+                              type=str,
+                              default=BLACKLISTED_REGIONS,
+                              help="Blacklist regions to exclude"
+                              )    
+    
+    train_parser.add_argument("--chrom_sizes",
+                              dest="chrom_sizes",
+                              type=str,
+                              default=DEFAULT_CHROM_SIZES,
+                              help="Chromosome sizes file"
+                              )
+    
+      
     #############################################
     # Normalize parser
     #############################################
@@ -1090,13 +1112,14 @@ def parse_arguments(argsl, cwd_abs_path=None):
             args,
             [
                 "func", "loglevel", "threads", "seed",
-                "proportion", "vchroms", "tchroms",
-                "chroms", "keep", "epochs", "batches",
+                "proportion", "vchroms", "tchroms", "multiprocessing",
+                "chroms", "keep", "epochs", "batches", "max_queue_size",
                 "prefix", "plot", "lrate", "decay", "bin",
                 "minimum", "test_cell_lines", "rand_ratio",
                 "train_tf", "arch", "batch_size",
                 "val_batch_size", "target_scale_factor",
                 "output_activation", "dense", "shuffle_cell_type", "rev_comp", "multiprocessing", "max_queue_size"
+
             ],
             cwd_abs_path
         )

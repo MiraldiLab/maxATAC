@@ -21,7 +21,7 @@ ___
 
 It is best to install maxATAC into a dedicated virtual environment.
 
-This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`, and `bedGraphToBigWig` in order to run all functions.
+This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`, `graphviz`, and `bedGraphToBigWig` in order to run all functions.
 
 > The total install requirements for maxATAC with reference data are ~2 GB.
 
@@ -31,12 +31,15 @@ This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`,
 
 > If you get an error installing ucsc-bedgraphtobigwig try `conda install -c bioconda ucsc-bedgraphtobigwig`
 
+> If you get an error regarding graphviz while training a model, re-install graphviz with `conda install graphviz`
+
 2. Install maxATAC with `pip install maxatac`
 
 3. Test installation with `maxatac -h`
 
 4. Download reference data with `maxatac data`
 
+> If you have an error related to pybigwig, reference issues: [96](https://github.com/MiraldiLab/maxATAC/issues/96) and [87](https://github.com/MiraldiLab/maxATAC/issues/87#issue-1139117054)
 ### Installing with python virtualenv
 
 1. Create a virtual environment for maxATAC with `virtualenv -p python3.9 maxatac`.
@@ -60,7 +63,7 @@ In order to run the maxATAC models that were described in the [maxATAC pre-print
 * TF specific thresholding files
 * Bash scripts for preparing data
 
-The easiest option is to use the command `maxatac data` to download the data to the required directory. The `maxatac data` function will download the maxATAC_data repo and reference data into your `~/opt/` directory under `~/opt/maxatac`. Only the hg38 reference genome is supported.
+The easiest option is to use the command `maxatac data` to download the data to the required directory. The `maxatac data` function will download the maxATAC_data repo and reference data into your `~/opt/` directory under `~/opt/maxatac`. Only the hg38 reference genome has been extensively tested.
 
 #### Using custom reference data
 
@@ -95,7 +98,7 @@ The maxATAC models were trained on paired-end ATAC-seq data in human. For this r
 
 ### Preparing the ATAC-seq signal
 
-The current `maxatac predict` function requires a normalized ATAC-seq signal in a bigwig format. Use `maxatac prepare` to generate a normalized signal track from a `.bam` file of aligned reads.
+The current `maxatac predict` function requires a normalized ATAC-seq signal in a bigwig format. Use `maxatac prepare` to generate a normalized signal track from a `.bam` file of aligned reads. See [the prepare documentation](./docs/readme/prepare.md) for more details about the expected outputs and file name descriptions.
 
 #### Bulk ATAC-seq
 

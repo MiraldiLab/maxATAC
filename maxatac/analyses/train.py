@@ -4,7 +4,7 @@ import timeit
 
 from keras.utils.data_utils import OrderedEnqueuer
 
-from maxatac.utilities.constants import TRAIN_MONITOR
+from maxatac.utilities.constants import TRAIN_MONITOR, INPUT_LENGTH
 from maxatac.utilities.system_tools import Mute
 
 with Mute():
@@ -45,7 +45,29 @@ def run_training(args):
     # Start Timer
     startTime = timeit.default_timer()
 
-    logging.error("Set up model parameters")
+    logging.error(f"Training Parameters:\n" +
+                  f"Architecture: {args.arch} \n" +
+                  f"Filename prefix: {args.prefix} \n" +
+                  f"Output directory: {args.output} \n" +
+                  f"Meta file: {args.meta_file} \n" +
+                  f"Output activation: {args.output_activation} \n" +
+                  f"Number of threads: {args.threads} \n" +
+                  f"Use dense layer?: {args.dense} \n" +
+                  f"Training ROI file (if provided): {args.train_roi} \n" +
+                  f"Validation ROI file (if provided): {args.validate_roi} \n" +
+                  f"2bit sequence file: {args.sequence} \n" +
+                  "Restricting to chromosomes: \n   - " + "\n   - ".join(args.chroms) + "\n" +
+                  "Restricting training to chromosomes: \n   - " + "\n   - ".join(args.tchroms) + "\n" +
+                  "Restricting validation to chromosomes: \n   - " + "\n   - ".join(args.vchroms) + "\n" +
+                  f"Number of batches: {args.batches} \n" +
+                  f"Number of examples per batch: {args.batch_size} \n" +
+                  f"Proportion of examples drawn randomly: {args.rand_ratio} \n" +
+                  f"Shuffle training regions amongst cell types: {args.shuffle_cell_type} \n" +
+                  f"Train with the reverse complement sequence: {args.rev_comp} \n" +
+                  f"Number of epochs: {args.epochs} \n" +
+                  f"Use multiprocessing?: {args.multiprocessing} \n" +
+                  f"Max number of workers to queue: {args.max_queue_size} \n"
+                  )
 
     # Initialize the model with the architecture of choice
     maxatac_model = MaxATACModel(arch=args.arch,
@@ -67,8 +89,10 @@ def run_training(args):
                              meta_file=args.meta_file,
                              prefix=args.prefix,
                              output_directory=maxatac_model.output_directory,
-                             shuffle=True,
-                             tag="training")
+                             blacklist=args.blacklist,
+                             region_length=INPUT_LENGTH,
+                             chrom_sizes_file=args.chrom_sizes
+                             )
 
     # Import validation regions
     validate_examples = ROIPool(chroms=args.vchroms,
@@ -76,10 +100,12 @@ def run_training(args):
                                 meta_file=args.meta_file,
                                 prefix=args.prefix,
                                 output_directory=maxatac_model.output_directory,
-                                shuffle=True,
-                                tag="validation")
-
-    logging.error("Initialize data generator")
+                                blacklist=args.blacklist,
+                                region_length=INPUT_LENGTH,
+                                chrom_sizes_file=args.chrom_sizes
+                                )
+    
+    logging.error("Initialize training data generator")
 
     # Initialize the training generator
     train_gen = DataGenerator(sequence=args.sequence,
@@ -118,6 +144,8 @@ def run_training(args):
 
     enq_train_gen = train_gen_enq.get()
 
+    logging.error("Initialize validation data generator")
+
     # Initialize the validation generator
     val_gen = DataGenerator(sequence=args.sequence,
                             meta_table=maxatac_model.meta_dataframe,
@@ -146,6 +174,8 @@ def run_training(args):
 
     enq_val_gen = val_gen_enq.get()
 
+
+    logging.error("Fit model")
 
     # Fit the model
     training_history = maxatac_model.nn_model.fit(enq_train_gen,
@@ -181,6 +211,13 @@ def run_training(args):
         export_model_structure(maxatac_model.nn_model, maxatac_model.results_location)
 
         export_binary_metrics(training_history, tf, RR, ARC, maxatac_model.results_location, best_epoch)
+
+    # If save_roi save the ROI files
+    if args.save_roi:
+        # Write the ROI pools
+        train_examples.write_data(prefix=args.prefix, output_dir=maxatac_model.output_directory, set_tag="training")
+        validate_examples.write_data(prefix=args.prefix, output_dir=maxatac_model.output_directory,
+                                     set_tag="validation")
 
     logging.error("Results are saved to: " + maxatac_model.results_location)
     
