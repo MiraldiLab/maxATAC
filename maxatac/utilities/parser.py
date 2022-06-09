@@ -1116,10 +1116,9 @@ def parse_arguments(argsl, cwd_abs_path=None):
                 "chroms", "keep", "epochs", "batches", "max_queue_size",
                 "prefix", "plot", "lrate", "decay", "bin",
                 "minimum", "test_cell_lines", "rand_ratio",
-                "train_tf", "arch", "batch_size",
-                "val_batch_size", "target_scale_factor",
-                "output_activation", "dense", "shuffle_cell_type", "rev_comp", "multiprocessing", "max_queue_size"
-
+                "train_tf", "arch", "batch_size", "save_roi",
+                "val_batch_size", "target_scale_factor", "blacklist", "chrom_sizes",
+                "output_activation", "dense", "shuffle_cell_type", "rev_comp",
             ],
             cwd_abs_path
         )
