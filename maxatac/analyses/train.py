@@ -38,7 +38,7 @@ def run_training(args):
 
     :params args: arch, seed, output, prefix, output_activation, lrate, decay, weights,
     dense, batch_size, val_batch_size, train roi, validate roi, meta_file, sequence, average, threads, epochs, batches,
-    tchroms, vchroms, shuffle_cell_type, rev_comp
+    tchroms, vchroms, shuffle_cell_type, rev_comp, multiprocessing, max_que_size
 
     :returns: Trained models saved after each epoch
     """
@@ -96,13 +96,26 @@ def run_training(args):
     # Create keras.utils.sequence object from training generator
     seq_train_gen = SeqDataGenerator(batches=args.batches, generator=train_gen)
 
+    # Specify max_que_size
+    if args.max_queue_size:
+        queue_size = int(args.max_queue_size)
+        logging.error("User specified Max Queue Size: " + str(queue_size))
+    else:
+        queue_size = args.threads * 2
+        logging.error("Max Queue Size found: " + str(queue_size))
+
     # Builds a Enqueuer from a Sequence.
-    train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
-    train_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
-    
-    '''train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=False)
-    train_gen_enq.start(workers=1, max_queue_size=args.threads * 2)'''
-    
+    # Specify multiprocessing
+    if args.multiprocessing:
+        logging.error("Training with multiprocessing")
+        train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
+        train_gen_enq.start(workers=args.threads, max_queue_size=queue_size)
+
+    else:
+        logging.error("Training without multiprocessing")
+        train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=False)
+        train_gen_enq.start(workers=1, max_queue_size=queue_size)
+
     enq_train_gen = train_gen_enq.get()
 
     # Initialize the validation generator
@@ -121,12 +134,16 @@ def run_training(args):
     seq_validate_gen = SeqDataGenerator(batches=args.batches, generator=val_gen)
 
     # Builds a Enqueuer from a Sequence.
-    val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
-    val_gen_enq.start(workers=args.threads, max_queue_size=args.threads * 2)
-    
-    '''val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=False)
-    val_gen_enq.start(workers=1, max_queue_size=args.threads * 2)'''
-    
+    # Specify multiprocessing
+    if args.multiprocessing:
+        logging.error("Training with multiprocessing")
+        val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
+        val_gen_enq.start(workers=args.threads, max_queue_size=queue_size)
+    else:
+        logging.error("Training without multiprocessing")
+        val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=False)
+        val_gen_enq.start(workers=1, max_queue_size=queue_size)
+
     enq_val_gen = val_gen_enq.get()
 
 
