@@ -527,7 +527,7 @@ def get_parser():
                               dest="save_roi",
                               action="store_true",
                               default=False,
-                              help="If multiprocessing, then use multiprocessing with tf.keras.fit()"
+                              help="Saves ROI file and stats generated for training"
                               )
     
     train_parser.add_argument("--blacklist",
@@ -1118,7 +1118,7 @@ def parse_arguments(argsl, cwd_abs_path=None):
                 "minimum", "test_cell_lines", "rand_ratio",
                 "train_tf", "arch", "batch_size", "save_roi",
                 "val_batch_size", "target_scale_factor", "blacklist", "chrom_sizes",
-                "output_activation", "dense", "shuffle_cell_type", "rev_comp",
+                "output_activation", "dense", "shuffle_cell_type", "rev_comp"
             ],
             cwd_abs_path
         )
