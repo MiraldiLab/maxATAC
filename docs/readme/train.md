@@ -44,7 +44,9 @@ maxatac train --arch DCNN_V2 --sequence hg38.2bit --meta_file CTCF_meta.tsv --ou
 ```
 
 ## Required Arguments
+### `--genome`
 
+Specify which genome build this task is specified for (i.e. hg38). 
 ### `--sequence`
 
 This argument specifies the path to the 2bit DNA sequence for the genome of interest

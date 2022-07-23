@@ -62,7 +62,7 @@ chr1, chr2, chr3, chr4, chr5, chr6, chr7, chr8, chr9, chr10, chr11, chr12, chr13
 
 This argument is used to define the chromosome sizes file that is used to calcuate the chromosome ends. The current default file are the chromosome sizes for hg38.
 
-### `--blacklist`
+### `--blacklist_bw`
 
 The path to the blacklist bigwig file. This file is used to remove all the regions that are considered to have high technical noise. Default: maxATAC publication-defined blacklist.
 

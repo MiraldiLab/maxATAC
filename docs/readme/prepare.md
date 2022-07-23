@@ -66,7 +66,7 @@ The slop size used to smooth sparse Tn5 cut sites' signal. Each Tn5 cut site wil
 
 The reads per million (RPM) factor used for read-depth normalization of signal. Most groups use RPM and therefore 1,000,000 as a scaling factor, but maxATAC uses RP20M and therefore 20,000,000 because it is approximately the median sequencing depth of the ATAC-seq data used for training. Changing from the default (20000000) is not problematic for maxATAC prediction, as this track is only used for visualization. (Predictions are made on a min-max-like normalized signal track, also an output from `maxatac prepare`.) Default: 20000000.
 
-### `--blacklist_bed`
+### `--blacklist`
 
 The path to the blacklist bed file. Default: maxATAC defined blacklisted regions for hg38.
 

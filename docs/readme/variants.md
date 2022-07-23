@@ -10,6 +10,10 @@ maxatac variants -m ELF1_99.h5 -signal GM12878__slop20bp_RP20M_minmax01.bw -name
 
 ## Required Arguments
 
+### `--genome`
+
+Specify which genome build this task is specified for (i.e. hg38). 
+
 ### `-m, --model`
 
 The trained maxATAC model that will be used to predict TF binding. This is a h5 file produced from `maxatac train`. 

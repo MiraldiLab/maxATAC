@@ -46,7 +46,7 @@ This flag will set the precision of the predictions signal track. Provide an int
 
 The output directory to write the results to. Default: `./prediction_results`
 
-### `--blacklist`
+### `--blacklist_bw`
 
 The path to the blacklist bigwig signal track of regions that should be excluded. Default: `hg38_maxatac_blacklist.bed` which contains regions that are specific to ATAC-seq.
 

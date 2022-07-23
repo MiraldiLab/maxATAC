@@ -24,6 +24,10 @@ The user must provide either the TF name that they want to make predictions for 
 
 The ATAC-seq signal bigwig track that will be used to make predictions of TF binding.
 
+### `--genome`
+
+Specify which genome build this task is specified for (i.e. hg38). 
+
 ## Optional Arguments
 
 ### `--sequence`
@@ -66,7 +70,7 @@ The step size to use for building the prediction intervals. Overlapping predicti
 
 Output filename prefix to use. Default `maxatac_predict`.
 
-### `--chromosome_sizes`
+### `--chrom_sizes`
 
 The path to the chromosome sizes file. This is used to generate the bigwig signal tracks.
 
