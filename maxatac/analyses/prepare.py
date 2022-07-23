@@ -33,7 +33,7 @@ def run_prepare(args):
     logging.error(f"Input file: {args.input} \n" +
                   f"Input chromosome sizes file: {args.chrom_sizes} \n" +
                   f"Tn5 cut sites will be slopped {args.slop} bps on each side \n" +
-                  f"Input blacklist file: {args.blacklist} \n" +
+                  f"Input blacklist file: {args.blacklist_bw} \n" +
                   f"Output filename: {args.prefix} \n" +
                   f"Output directory: {args.output} \n" +
                   f"Using a millions factor of: {args.rpm_factor} \n" +
@@ -66,7 +66,7 @@ def run_prepare(args):
                             args.prefix,
                             output_dir,
                             str(args.threads),
-                            args.blacklist_bed,
+                            args.blacklist,
                             args.chrom_sizes,
                             str(args.slop), 
                             str(scale_factor),
@@ -80,7 +80,7 @@ def run_prepare(args):
                             args.prefix,
                             output_dir,
                             str(args.threads),
-                            args.blacklist_bed,
+                            args.blacklist,
                             args.chrom_sizes,
                             str(args.slop), 
                             str(scale_factor),
@@ -115,7 +115,7 @@ def run_prepare(args):
                         tmp_file_path, 
                         args.chrom_sizes, 
                         str(args.slop), 
-                        args.blacklist_bed,
+                        args.blacklist,
                         args.prefix,
                         output_dir,
                         str(scale_factor)], check=True)

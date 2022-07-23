@@ -57,7 +57,7 @@ def run_benchmarking(args):
 
         ChromosomeAUPRC(args.prediction,
                         args.gold_standard,
-                        args.blacklist,
+                        args.blacklist_bw,
                         chromosome,
                         args.bin_size,
                         args.agg_function,

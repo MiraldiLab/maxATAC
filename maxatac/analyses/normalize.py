@@ -63,7 +63,7 @@ def run_normalization(args):
 
         min_value, max_value, median, mad, mean_value, std_value = get_genomic_stats(bigwig_path=args.signal,
                                                                                      chrom_sizes_dict=chromosome_length_dictionary,
-                                                                                     blacklist_path=args.blacklist,
+                                                                                     blacklist_path=args.blacklist_bw,
                                                                                      max_percentile=args.max_percentile,
                                                                                      prefix=os.path.join(args.output,
                                                                                                          args.prefix))
@@ -104,7 +104,7 @@ def run_normalization(args):
                 raise NameError('Wrong normalization')
 
             # Import the blacklist mask for chromosome
-            blacklist_mask = chromosome_blacklist_mask(args.blacklist,
+            blacklist_mask = chromosome_blacklist_mask(args.blacklist_bw,
                                                        chrom_name,
                                                        chromosome_length_dictionary[chrom_name]
                                                        )
