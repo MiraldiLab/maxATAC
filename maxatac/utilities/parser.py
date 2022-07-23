@@ -23,6 +23,7 @@ with Mute():
     from maxatac.analyses.threshold import run_thresholding
     from maxatac.analyses.data import run_data
 
+from maxatac.utilities.paths import build_path_names
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
                                          DEFAULT_LOG_LEVEL,
@@ -33,16 +34,12 @@ from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          INPUT_LENGTH,
                                          DEFAULT_TRAIN_CHRS,
                                          DEFAULT_VALIDATE_CHRS,
-                                         DEFAULT_CHROM_SIZES,
-                                         BLACKLISTED_REGIONS,
                                          DEFAULT_ROUND,
                                          DEFAULT_TEST_CHRS,
-                                         BLACKLISTED_REGIONS_BIGWIG,
                                          DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
                                          DEFAULT_BENCHMARKING_BIN_SIZE,
                                          ALL_CHRS,
-                                         AUTOSOMAL_CHRS,
-                                         REFERENCE_SEQUENCE_TWOBIT
+                                         AUTOSOMAL_CHRS
                                          )
 
 
@@ -67,6 +64,34 @@ def normalize_args(args, skip_list=[], cwd_abs_path=None):
             normalized_args[key] = value
     return argparse.Namespace(**normalized_args)
 
+
+def extend_config(args):
+    """
+    Update args depending on which reference genome is used (hg38, hg19, or mm10).
+    """
+    updated_args = {}
+    DATA_PATH, BLACKLISTED_REGIONS, BLACKLISTED_REGIONS_BIGWIG, DEFAULT_CHROM_SIZES, REFERENCE_SEQUENCE_TWOBIT = build_path_names(args)
+    for key, value in args.__dict__.items():
+        if args.blacklist is None or args.blacklist_bw is None:
+            updated_args["blacklist"] = BLACKLISTED_REGIONS
+            updated_args["blacklist_bw"] = BLACKLISTED_REGIONS_BIGWIG
+        if args.chrom_sizes is None:
+            updated_args["chrom_sizes"] = DEFAULT_CHROM_SIZES
+        if args.sequence is None:
+            updated_args["sequence"] = REFERENCE_SEQUENCE_TWOBIT
+        else:
+         updated_args[key] = value
+    updated_args["DATA_PATH"] = DATA_PATH
+
+    updated_args = argparse.Namespace(**updated_args)
+    args.blacklist = updated_args.blacklist
+    args.blacklsit_bw = updated_args.blacklist_bw
+    args.chrom_sizes = updated_args.chrom_sizes
+    args.sequence = updated_args.sequence
+    args.DATA_PATH = updated_args.DATA_PATH
+
+    return args
+
 def get_parser():
     """Build parsers with user input.
     
@@ -90,6 +115,25 @@ def get_parser():
                                 version=get_version(),
                                 help="Print version information and exit"
                                 )
+    #############################################
+    # Paths subparser
+    #############################################
+    paths_parser = subparsers.add_parser("paths",
+                                        parents=[parent_parser],
+                                        help="Get correct paths per genome"
+                                        )
+
+    # Set the default function
+    paths_parser.set_defaults(func=build_path_names)
+
+    # Add arguments to the parser
+    paths_parser.add_argument("--genome",
+                             dest="genome",
+                             type=str,
+                             default="hg38",
+                             required=False,
+                             help="The reference genome build to use."
+                            )
 
     #############################################
     # Data subparser
@@ -106,7 +150,8 @@ def get_parser():
     data_parser.add_argument("--genome",
                              dest="genome",
                              type=str,
-                             default="hg38",
+                             nargs="+",
+                             default=["hg38"],
                              required=False,
                              help="The reference genome build to download."
                             )
@@ -157,8 +202,7 @@ def get_parser():
     average_parser.add_argument("--chrom_sizes",
                                 dest="chrom_sizes",
                                 type=str,
-                                default=DEFAULT_CHROM_SIZES,
-                                help="Input chromosome sizes file. Default is hg38 chromosome sizes."
+                                help="Input chromosome sizes file"
                                 )
 
     average_parser.add_argument("--chromosomes",
@@ -210,10 +254,17 @@ def get_parser():
                         help="Trained maxATAC model .h5 file."
                         )
 
+    predict_parser.add_argument("--genome",
+                             dest="genome",
+                             type=str,
+                             default="hg38",
+                             required=False,
+                             help="The reference genome build to use."
+                            )
+
     predict_parser.add_argument("-seq", "--sequence",
                                 dest="sequence",
                                 type=str,
-                                default=REFERENCE_SEQUENCE_TWOBIT,
                                 help="Genome sequence hg38.2bit file."
                                 )
 
@@ -234,7 +285,6 @@ def get_parser():
     predict_parser.add_argument("--blacklist",
                                 dest="blacklist",
                                 type=str,
-                                default=BLACKLISTED_REGIONS,
                                 help="The blacklisted regions to exclude in BED format"
                                 )
 
@@ -275,12 +325,11 @@ def get_parser():
                                 help="Prefix for filename"
                                 )
 
-    predict_parser.add_argument("--chromosome_sizes",
-                                dest="chromosome_sizes",
-                                type=str,
-                                default=DEFAULT_CHROM_SIZES,
-                                help="The chromosome sizes file to reference"
-                                )
+    predict_parser.add_argument("--chrom_sizes",
+                              dest="chrom_sizes",
+                              type=str,
+                              help="Chromosome sizes file"
+                              )
 
     predict_parser.add_argument("--chromosomes",
                                 dest="chromosomes",
@@ -329,10 +378,17 @@ def get_parser():
     train_parser.set_defaults(func=run_training)
 
     # Add arguments to the parser
+    train_parser.add_argument("--genome",
+                              dest="genome",
+                              type=str,
+                              default="hg38",
+                              required=False,
+                              help="The reference genome build to use."
+                              )
+
     train_parser.add_argument("--sequence",
                               dest="sequence",
                               type=str,
-                              default=REFERENCE_SEQUENCE_TWOBIT,
                               help="Genome sequence 2bit file"
                               )
 
@@ -533,14 +589,12 @@ def get_parser():
     train_parser.add_argument("--blacklist",
                               dest="blacklist",
                               type=str,
-                              default=BLACKLISTED_REGIONS,
-                              help="Blacklist regions to exclude"
+                              help="Blacklist regions to exclude in BED format"
                               )    
     
     train_parser.add_argument("--chrom_sizes",
                               dest="chrom_sizes",
                               type=str,
-                              default=DEFAULT_CHROM_SIZES,
                               help="Chromosome sizes file"
                               )
     
@@ -567,7 +621,6 @@ def get_parser():
     normalize_parser.add_argument("--chrom_sizes",
                                   dest="chrom_sizes",
                                   type=str,
-                                  default=DEFAULT_CHROM_SIZES,
                                   help="Chrom sizes file"
                                   )
 
@@ -642,11 +695,10 @@ def get_parser():
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                   )
 
-    normalize_parser.add_argument("--blacklist",
-                                  dest="blacklist",
+    normalize_parser.add_argument("--blacklist_bw",
+                                  dest="blacklist_bw",
                                   type=str,
-                                  default=BLACKLISTED_REGIONS_BIGWIG,
-                                  help="The blacklisted regions to exclude"
+                                  help="The blacklisted regions to exclude (BigWig file format)"
                                   )
 
     #############################################
@@ -730,11 +782,10 @@ def get_parser():
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                   )
 
-    benchmark_parser.add_argument("--blacklist",
-                                  dest="blacklist",
+    benchmark_parser.add_argument("--blacklist_bw",
+                                  dest="blacklist_bw",
                                   type=str,
-                                  default=BLACKLISTED_REGIONS_BIGWIG,
-                                  help="The blacklisted regions to exclude"
+                                  help="The blacklisted regions to exclude in BigWig format"
                                   )
 
     #############################################
@@ -855,9 +906,16 @@ def get_parser():
                                  help="Output filename without extension. Example: Tcell_chr1_rs1234_CTCF"
                                 )
 
+    variants_parser.add_argument("--genome",
+                              dest="genome",
+                              type=str,
+                              default="hg38",
+                              required=False,
+                              help="The reference genome build to use."
+                              )
+
     variants_parser.add_argument("-s", "--sequence",
                                  dest="sequence",
-                                 default=REFERENCE_SEQUENCE_TWOBIT,
                                  type=str,
                                  help="Input 2bit DNA sequence"
                                 )
@@ -892,14 +950,12 @@ def get_parser():
     variants_parser.add_argument("--blacklist",
                                  dest="blacklist",
                                  type=str,
-                                 default=BLACKLISTED_REGIONS,
                                  help="The blacklisted regions to exclude in bed format."
                                 )
 
     variants_parser.add_argument("--chrom_sizes",
                                  dest="chrom_sizes",
                                  type=str,
-                                 default=DEFAULT_CHROM_SIZES,
                                  help="Chrom sizes file. Default: hg38 chrom sizes"
                                 )
 
@@ -946,7 +1002,6 @@ def get_parser():
     prepare_parser.add_argument("--chrom_sizes",
                                 dest="chrom_sizes",
                                 type=str,
-                                default=DEFAULT_CHROM_SIZES,
                                 help="Chrom sizes file. Default: hg38 chrom sizes"
                                 )
 
@@ -964,17 +1019,15 @@ def get_parser():
                                 help="The RPM factor to use for scaling your read depth normalized signal."
                                )
 
-    prepare_parser.add_argument("--blacklist_bed",
-                                dest="blacklist_bed",
-                                type=str,
-                                default=BLACKLISTED_REGIONS,
-                                help="The blacklisted regions to exclude in bed format."
-                                )
-
     prepare_parser.add_argument("--blacklist",
                                 dest="blacklist",
                                 type=str,
-                                default=BLACKLISTED_REGIONS_BIGWIG,
+                                help="The blacklisted regions to exclude in bed format."
+                                )
+
+    prepare_parser.add_argument("--blacklist_bw",
+                                dest="blacklist_bw",
+                                type=str,
                                 help="The blacklisted regions to exclude in bigwig format."
                                 )
 
@@ -1029,7 +1082,6 @@ def get_parser():
     threshold_parser.add_argument("--chrom_sizes",
                                   dest="chrom_sizes",
                                   type=str,
-                                  default=DEFAULT_CHROM_SIZES,
                                   help="Input chromosome sizes file. Default is hg38."
                                   )
 
@@ -1064,11 +1116,10 @@ def get_parser():
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                   )
 
-    threshold_parser.add_argument("--blacklist",
-                                  dest="blacklist",
+    threshold_parser.add_argument("--blacklist_bw",
+                                  dest="blacklist_bw",
                                   type=str,
-                                  default=BLACKLISTED_REGIONS_BIGWIG,
-                                  help="The blacklisted regions to exclude"
+                                  help="The blacklisted regions to exclude in bigwig format."
                                   )
 
     threshold_parser.add_argument("--meta_file",
@@ -1090,7 +1141,6 @@ def print_args(args, logger, header="Arguments:\n", excl=["func"]):
     }
     logger(header + dump(filtered))
 
-
 # we need to cwd_abs_path parameter only for running unit tests
 def parse_arguments(argsl, cwd_abs_path=None):
     """Parse user arguments
@@ -1106,6 +1156,7 @@ def parse_arguments(argsl, cwd_abs_path=None):
     if len(argsl) == 0:
         argsl.append("")  # otherwise fails with error if empty
     args, _ = get_parser().parse_known_args(argsl)
+    args = extend_config(args)
 
     if args.func == run_training:
         args = normalize_args(
@@ -1118,7 +1169,7 @@ def parse_arguments(argsl, cwd_abs_path=None):
                 "minimum", "test_cell_lines", "rand_ratio",
                 "train_tf", "arch", "batch_size", "save_roi",
                 "val_batch_size", "target_scale_factor", "blacklist", "chrom_sizes",
-                "output_activation", "dense", "shuffle_cell_type", "rev_comp"
+                "output_activation", "dense", "shuffle_cell_type", "rev_comp", "genome"
             ],
             cwd_abs_path
         )
