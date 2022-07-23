@@ -55,7 +55,7 @@ def run_thresholding(args):
     for chrom_name, chrom_length in chromosome_sizes_dictionary.items():
         bin_count = int(int(chrom_length) / int(args.bin_size))  # need to floor the number
         
-        blacklist_mask = import_blacklist_mask(args.blacklist, chrom_name, chrom_length, bin_count)
+        blacklist_mask = import_blacklist_mask(args.blacklist_bw, chrom_name, chrom_length, bin_count)
         
         blacklist = np.repeat(blacklist_mask, len(training_data_dict.keys()))
         
@@ -107,7 +107,8 @@ def run_thresholding(args):
     BED_df_bedtool = pybedtools.BedTool().window_maker(g=args.chrom_sizes, w=args.bin_size)
     
     # Create a blacklist object form the blacklist bed
-    blacklist_bed_location = ".".join([args.blacklist.split(".")[0],'bed'])
+    # TODO: I do not think we need to get the blacklist bed location like this since it is a part of the args now.
+    blacklist_bed_location = ".".join([args.blacklist_bw.split(".")[0],'bed'])
     blacklist_bedtool = pybedtools.BedTool(blacklist_bed_location)
     
     # Remove the blacklisted regions from the windowed genome object
