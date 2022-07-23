@@ -19,25 +19,15 @@ CPP_LOG_LEVEL = {
     DEBUG: 0
 }
 
-# Paths to Genomic resource and scripts for preparing data. This is where most of the hardcoded paths are generated.
-# If the user runs maxatac data the data will be installed here. The default arguments for some commands rely on these paths.
-# The user can put the data anywhere, but they will need to adjust the paths for each file
+# build maxatac data path
 maxatac_data_path = os.path.join(os.path.expanduser('~'), "opt", "maxatac", "data")
 
-# build path names
-blacklist_path = os.path.join(maxatac_data_path, "hg38/hg38_maxatac_blacklist.bed") # maxATAC extended blacklist as bed
-blacklist_bigwig_path = os.path.join(maxatac_data_path, "hg38/hg38_maxatac_blacklist.bw") # maxATAC extended blacklist as bigwig
-chrom_sizes_path = os.path.join(maxatac_data_path, "hg38/hg38.chrom.sizes") # chrom sizes file
-sequence_path = os.path.join(maxatac_data_path, "hg38/hg38.2bit") # sequence 2bit
-prepare_atac_script_dir = os.path.join(maxatac_data_path, "scripts", "ATAC", "ATAC_bowtie2_pipeline.sh") # bulk processing script
-prepare_scatac_script_dir = os.path.join(maxatac_data_path, "scripts", "ATAC", "scatac_generate_bigwig.sh")  # scatac processing script
+# build processing script path names
+prepare_atac_script_dir = os.path.join(maxatac_data_path, "scripts", "ATAC",
+                                       "ATAC_bowtie2_pipeline.sh")  # bulk processing script
+prepare_scatac_script_dir = os.path.join(maxatac_data_path, "scripts", "ATAC",
+                                         "scatac_generate_bigwig.sh")  # scatac processing script
 
-# normalize paths
-DATA_PATH = os.path.normpath(maxatac_data_path)
-BLACKLISTED_REGIONS = os.path.normpath(blacklist_path)
-BLACKLISTED_REGIONS_BIGWIG = os.path.normpath(blacklist_bigwig_path)
-DEFAULT_CHROM_SIZES = os.path.normpath(chrom_sizes_path)
-REFERENCE_SEQUENCE_TWOBIT = os.path.normpath(sequence_path)
 PREPARE_BULK_SCRIPT = os.path.normpath(prepare_atac_script_dir)
 PREPARE_scATAC_SCRIPT = os.path.normpath(prepare_scatac_script_dir)
 
