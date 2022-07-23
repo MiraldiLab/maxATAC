@@ -9,8 +9,6 @@ from sklearn.metrics import precision_recall_curve
 from scipy import stats
 from maxatac.utilities.system_tools import remove_tags
 import pybedtools
-from maxatac.utilities.constants import DEFAULT_CHROM_SIZES as chrom_sizes
-from maxatac.utilities.constants import BLACKLISTED_REGIONS  as blacklist_bed_location
 
 
 class ChromosomeAUPRC(object):

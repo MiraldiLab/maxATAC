@@ -1,4 +1,5 @@
-"""Predict TF binding with a maxATAC model
+"""
+Predict TF binding with a maxATAC model
 """
 import logging
 import os
@@ -13,7 +14,6 @@ with Mute():
     from maxatac.utilities.genome_tools import build_chrom_sizes_dict
     from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, \
         import_prediction_regions, create_prediction_regions, make_stranded_predictions
-    from maxatac.utilities.constants import DATA_PATH
     from maxatac.analyses.peaks import run_call_peaks
 
 
@@ -39,7 +39,7 @@ def run_prediction(args):
 
     Args:
         output_directory, prefix, signal, sequence, models, predict_chromosomes, threads, batch_size, roi,
-        chromosome_sizes, blacklist, average
+        chrom_sizes, blacklist, average
     """
     # Start Timer
     startTime = timeit.default_timer()
@@ -68,7 +68,7 @@ def run_prediction(args):
 
     # The function build_chrom_sizes_dict is used to make sure regions fall within chromosome bounds.
     # Create a dictionary of chromosome sizes used to make the bigwig files
-    chrom_sizes_dict = build_chrom_sizes_dict(args.chromosomes, args.chromosome_sizes)
+    chrom_sizes_dict = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
     
     # Import the regions for prediction.
     if args.roi:
@@ -87,7 +87,7 @@ def run_prediction(args):
     else:
         logging.error("Create prediction regions")
         regions_pool = create_prediction_regions(chromosomes=args.chromosomes,
-                                                 chrom_sizes=args.chromosome_sizes,
+                                                 chrom_sizes=args.chrom_sizes,
                                                  blacklist=args.blacklist,
                                                  step_size=args.step_size
                                                  )
