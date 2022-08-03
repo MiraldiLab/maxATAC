@@ -93,7 +93,8 @@ setup(
         "pyfiglet",
         "pyyaml",
         "pysam",
-        "seaborn"
+        "seaborn",
+        "pytest"
     ],
     zip_safe=False,
     scripts=["maxatac/bin/maxatac"],

@@ -176,4 +176,18 @@ def check_prepare_packages_installed():
         subprocess.run(["which", "bedGraphToBigWig"], stdout=subprocess.DEVNULL, check=True)
     except subprocess.CalledProcessError as e:
         raise_exception(e, "bedGraphToBigWig", "https://anaconda.org/bioconda/ucsc-bedgraphtobigwig")
-        
+
+
+class Namespace:
+    """
+    Create a namespoce object.
+    https://stackoverflow.com/questions/28345780/how-do-i-create-a-python-namespace-argparse-parse-args-value
+
+    >>> args = Namespace(a=1, b='c')
+    >>> args.a
+    1
+    >>> args.b
+    'c'
+    """
+    def __init__(self, **kwargs):
+        self.__dict__.update(kwargs)

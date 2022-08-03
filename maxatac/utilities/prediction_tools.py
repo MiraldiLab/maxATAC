@@ -12,7 +12,8 @@ with Mute():
     from tensorflow.keras.models import load_model
     from maxatac.utilities.genome_tools import load_bigwig, load_2bit, dump_bigwig
     from maxatac.utilities.training_tools import get_input_matrix
- 
+
+
 def sortChroms(chrom):
     """Sort a list of chromosomes based on a specific order
 
@@ -25,12 +26,13 @@ def sortChroms(chrom):
     order = dict(zip(ALL_CHRS, range(0, len(ALL_CHRS))))
     return order[chrom] 
 
+
 def write_predictions_to_bigwig(df: pd.DataFrame,
                                 output_filename: str,
                                 chrom_sizes_dictionary: dict,
                                 chromosomes: list,
                                 agg_mean: bool = True
-                                ) -> object:
+                                ):
     """Write the predictions dataframe into a bigwig file
 
     Args:
@@ -41,7 +43,7 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
         agg_mean (bool, optional): use aggregation method of mean. Defaults to True.
 
     Returns:
-        object: Writes a bigwig file
+        Writes a bigwig file
         
     Example:
     

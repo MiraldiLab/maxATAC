@@ -135,6 +135,13 @@ def get_parser():
                              help="The reference genome build to use."
                             )
 
+    general_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="The reference genome build to download."
+                                )
     #############################################
     # Data subparser
     #############################################
@@ -154,7 +161,7 @@ def get_parser():
                              default=["hg38"],
                              required=False,
                              help="The reference genome build to download."
-                            )
+                             )
 
     data_parser.add_argument("--output", "-o",
                              dest="output",
@@ -162,7 +169,7 @@ def get_parser():
                              default=os.path.join(os.path.expanduser('~'), "opt"),
                              required=False,
                              help="Output results directory."
-                            )
+                             )
 
     data_parser.add_argument("--loglevel",
                              dest="loglevel",
@@ -170,11 +177,12 @@ def get_parser():
                              default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
                              choices=LOG_LEVELS.keys(),
                              help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                            )
+                             )
 
     #############################################
     # Average subparser
     #############################################
+    # Add a subparser for the average function
     average_parser = subparsers.add_parser("average",
                                            parents=[parent_parser],
                                            help="Average bigwig files together."
@@ -183,8 +191,8 @@ def get_parser():
     # Set the default function
     average_parser.set_defaults(func=run_averaging)
 
-    # Add arguments to the parser
-    average_parser.add_argument("-i", "--bigwigs",
+    # Add required arguments to the parser
+    average_parser.add_argument("-i",
                                 dest="bigwig_files",
                                 type=str,
                                 nargs="+",
@@ -192,20 +200,20 @@ def get_parser():
                                 help="Input bigwig files."
                                 )
 
-    average_parser.add_argument("--prefix",
-                                dest="prefix",
+    average_parser.add_argument("-n", "--name",
+                                dest="name",
                                 type=str,
                                 required=True,
-                                help="Output filename prefix."
+                                help="Output filename base. The extension .bw will be added to the name."
                                 )
-
-    average_parser.add_argument("--chrom_sizes",
-                                dest="chrom_sizes",
+    # Add optional arguments to the parser
+    average_parser.add_argument("-cs", "--chrom_sizes", "--chromosome_sizes",
+                                dest="chromosome_sizes",
                                 type=str,
                                 help="Input chromosome sizes file"
                                 )
 
-    average_parser.add_argument("--chromosomes",
+    average_parser.add_argument("-c", "--chroms", "--chromosomes",
                                 dest="chromosomes",
                                 type=str,
                                 nargs="+",
@@ -213,11 +221,11 @@ def get_parser():
                                 help="Chromosomes for averaging. Default: 1-22"
                                 )
 
-    average_parser.add_argument("--output",
+    average_parser.add_argument("-o", "--output",
                                 dest="output_dir",
                                 type=str,
-                                default="./average",
-                                help="Output directory."
+                                default=os.getcwd(),
+                                help="Output directory. Default: Output to current working directory."
                                 )
 
     average_parser.add_argument("--loglevel",
@@ -242,17 +250,17 @@ def get_parser():
     # Add arguments to the parser
     group = predict_parser.add_mutually_exclusive_group(required=True)
 
-    group.add_argument("-tf","--tf_name",
-                        dest="TF",
-                        type=str,
-                        help="The TF name for prediction"
-                        )
+    group.add_argument("-tf", "--tf_name",
+                       dest="TF",
+                       type=str,
+                       help="The TF name for prediction"
+                       )
 
     group.add_argument("-m", "--model",
-                        dest="model",
-                        type=str,
-                        help="Trained maxATAC model .h5 file."
-                        )
+                       dest="model",
+                       type=str,
+                       help="Trained maxATAC model .h5 file."
+                       )
 
     predict_parser.add_argument("--genome",
                              dest="genome",
@@ -314,7 +322,7 @@ def get_parser():
     predict_parser.add_argument("--step_size",
                                 dest="step_size",
                                 type=int,
-                                default=int(INPUT_LENGTH/4),
+                                default=int(INPUT_LENGTH / 4),
                                 help="Step size to use to build sliding window regions"
                                 )
 
@@ -573,19 +581,19 @@ def get_parser():
                               default=False,
                               help="If multiprocessing, then use multiprocessing with tf.keras.fit()"
                               )
-    
+
     train_parser.add_argument("--max_queue_size",
                               dest="max_queue_size",
                               help="The max number of workers to spin up. These workers will load data and wait for fit."
                               )
-    
+
     train_parser.add_argument("--save_roi",
                               dest="save_roi",
                               action="store_true",
                               default=False,
                               help="Saves ROI file and stats generated for training"
                               )
-    
+
     train_parser.add_argument("--blacklist",
                               dest="blacklist",
                               type=str,
@@ -597,8 +605,7 @@ def get_parser():
                               type=str,
                               help="Chromosome sizes file"
                               )
-    
-      
+
     #############################################
     # Normalize parser
     #############################################
@@ -856,7 +863,7 @@ def get_parser():
                               help="Chromosomes list for analysis. \
                               Optionally with regions in a form of chrN:start-end. \
                               Default: main human chromosomes, whole length"
-                             )
+                              )
 
     peaks_parser.add_argument("--loglevel",
                               dest="loglevel",
@@ -883,28 +890,28 @@ def get_parser():
                                  type=str,
                                  required=True,
                                  help="maxATAC model"
-                                )
+                                 )
 
     variants_parser.add_argument("-signal", "--signal",
                                  dest="input_bigwig",
                                  type=str,
                                  required=True,
                                  help="Input ATAC-seq signal"
-                                )
+                                 )
 
     variants_parser.add_argument("-o", "--output",
                                  dest="output",
                                  type=str,
                                  default="./variants",
                                  help="Output directory."
-                                )
+                                 )
 
     variants_parser.add_argument("-n", "--name",
                                  dest="name",
                                  type=str,
                                  required=True,
                                  help="Output filename without extension. Example: Tcell_chr1_rs1234_CTCF"
-                                )
+                                 )
 
     variants_parser.add_argument("--genome",
                               dest="genome",
@@ -918,26 +925,26 @@ def get_parser():
                                  dest="sequence",
                                  type=str,
                                  help="Input 2bit DNA sequence"
-                                )
+                                 )
 
     variants_parser.add_argument("-chroms", "--chromosomes",
                                  dest="chromosomes",
                                  nargs="+",
                                  default=ALL_CHRS,
                                  help="Chromosomes to limit prediction to"
-                                )
+                                 )
 
     variants_parser.add_argument("-variants_bed", "--variants_bed",
                                  dest="variants_bed",
                                  required=True,
                                  help="The variant start position in BED format with the nucleotide at that position"
-                                )
+                                 )
 
     variants_parser.add_argument("-roi", "--roi",
                                  dest="roi",
                                  required=False,
                                  help="A bed file of LD blocks to predict in specifically"
-                                )
+                                 )
 
     variants_parser.add_argument("--loglevel",
                                  dest="loglevel",
@@ -945,26 +952,26 @@ def get_parser():
                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
                                  choices=LOG_LEVELS.keys(),
                                  help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                                )
+                                 )
 
     variants_parser.add_argument("--blacklist",
                                  dest="blacklist",
                                  type=str,
                                  help="The blacklisted regions to exclude in bed format."
-                                )
+                                 )
 
     variants_parser.add_argument("--chrom_sizes",
                                  dest="chrom_sizes",
                                  type=str,
                                  help="Chrom sizes file. Default: hg38 chrom sizes"
-                                )
+                                 )
 
     variants_parser.add_argument("--step_size",
                                  dest="step_size",
                                  type=int,
                                  default=256,
                                  help="Step size to use to stagger prediction windows. Default: 256 bp (i.e. 1,024/4)"
-                                )
+                                 )
 
     #############################################
     # Prepare subparser
@@ -983,21 +990,21 @@ def get_parser():
                                 type=str,
                                 required=True,
                                 help="Input BAM or scATAC fragments file"
-                               )
+                                )
 
     prepare_parser.add_argument("-o", "--output",
                                 dest="output",
                                 type=str,
                                 required=True,
                                 help="Output directory path"
-                               )
+                                )
 
     prepare_parser.add_argument("-prefix", "--prefix",
                                 dest="prefix",
                                 type=str,
                                 required=True,
                                 help="Filename prefix to use as the basename"
-                               )
+                                )
 
     prepare_parser.add_argument("--chrom_sizes",
                                 dest="chrom_sizes",
@@ -1010,14 +1017,14 @@ def get_parser():
                                 type=int,
                                 default=20,
                                 help="The slop size to use around the Tn5 cut sites."
-                               )
+                                )
 
     prepare_parser.add_argument("-rpm", "--rpm_factor",
                                 dest="rpm_factor",
                                 type=int,
                                 default=20000000,
                                 help="The RPM factor to use for scaling your read depth normalized signal."
-                               )
+                                )
 
     prepare_parser.add_argument("--blacklist",
                                 dest="blacklist",
@@ -1059,7 +1066,7 @@ def get_parser():
                                 default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
                                 choices=LOG_LEVELS.keys(),
                                 help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                               )
+                                )
     #############################################
     # Threshold subparser
     #############################################

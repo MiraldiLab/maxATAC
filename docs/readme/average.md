@@ -4,38 +4,46 @@ The `average` function will average multiple bigwig files into a single bigwig f
 
 ## Example
 
+Example command using only required flags:
+
 ```bash
-maxatac average --bigwigs *.bw --prefix IMR-90 --output ./test --chroms chr1
+maxatac average -i *.bw -n IMR-90
+```
+
+Example command using all flags:
+
+```bash
+maxatac average -i *.bw -n IMR-90 -o ./test -c chr1 -cs hg38.chrom.sizes
 ```
 
 ## Required Arguments
 
-### `-i, --bigwigs`
+### `-i`
 
-This argument is reserved for the input bigwig files to be averaged together. You could use a `*.bw` wildcard to make a list of bigwig files as input or provide the path to two bigwig files.
+The input bigwig files. You could use a `*.bw` wildcard to make a list of bigwig files as input or provide the path to each file.
 
-### `--prefix`
+### `-n`, `--name`
 
-This argument is reserved for the prefix used to build the output filename. This can be any string. The extension `.bw` will be added to the filename prefix.
+The name string used to build the output filename. The extension `.bw` will be added to the filename.
 
 ## Optional Arguments
 
-### `--chrom_sizes`
+### `-cs`, `--chrom_sizes`, `--chromosome_sizes`
 
-This argument is used to define the chromosome sizes file that is used to calculate the chromosome ends. The current default is for hg38.
+The chromosome sizes file for the reference genome used during alignment. The current default is set for hg38.
 
-### `--chromosomes`
+### `-c`, `--chroms`, `--chromosomes`
 
-This argument is used to define the chromosomes that are averaged together. Only the chromosomes in this list will be written to the output file. The current default list of chromosomes are restricted to the autosomal chromosomes:
+The chromosomes that are averaged together and written to output. Only the chromosomes in this list will be written to the output file. The current default list of chromosomes are restricted to the autosomal chromosomes:
 
-```pre
-chr1, chr2, chr3, chr4, chr5, chr6, chr7, chr8, chr9, chr10, chr11, chr12, chr13, chr14, chr15, chr16, chr17, chr18, chr19, chr20, chr21, chr22
+```bash
+chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22
 ```
 
-### `--output`
+### `-o`, `--output`
 
-This argument is used to define the output directory. If the output directory is not supplied a directory called `./average` will be created in the current working directory.
+The output directory. If the output directory is not supplied the file will be created in the current working directory.
 
 ### `--loglevel`
 
-This argument is used to set the logging level. Currently, the only working logging level is `ERROR`.
+Set the logging level. Currently, the only working logging level is `ERROR`.
