@@ -14,33 +14,19 @@ expected_outputs = {"../data/average/IMR-90_single_chrom.bw": "6194b2bc8ddd1f8b9
                     "../data/average/IMR-90_multi_chrom.bw": "46775111a72df9fc54c8c9d153135272",
                     "../data/average/IMR-90_all_chrom.bw": "a7b2b7b1be22a046d49cff36ba46e8ea"}
 
-args_test_single_chrom = Namespace(bigwig_files=input_file_paths,
-                                   output_dir=DATA_FOLDER,
-                                   name="average_single_chrom_test",
-                                   chromosomes=["chr22"],
-                                   chromosome_sizes=chrom_sizes_path
-                                   )
-
-args_test_multi_chrom = Namespace(bigwig_files=input_file_paths,
-                                  output_dir=DATA_FOLDER,
-                                  name="average_multi_chrom_test",
-                                  chromosomes=["chr22", "chr3"],
-                                  chromosome_sizes=chrom_sizes_path
-                                  )
-
-args_test_all_chrom = Namespace(bigwig_files=input_file_paths,
-                                output_dir=DATA_FOLDER,
-                                name="average_all_chrom_test",
-                                chromosomes=ALL_CHRS,
-                                chromosome_sizes=chrom_sizes_path
-                                )
-
 
 def test_average_multi_chrom():
     """
     Test that maxatac average can produce a .bw that has been filtered for chr22 and chr3
 
     """
+    args_test_multi_chrom = Namespace(bigwig_files=input_file_paths,
+                                      output_dir=DATA_FOLDER,
+                                      name="average_multi_chrom_test",
+                                      chromosomes=["chr22", "chr3"],
+                                      chromosome_sizes=chrom_sizes_path
+                                      )
+
     run_averaging(args_test_multi_chrom)
 
     output_file = os.path.join(DATA_FOLDER, "average_multi_chrom_test.bw")
@@ -57,6 +43,13 @@ def test_average_single_chrom():
     Test that maxatac average can produce a .bw file that has only a single chromosome
 
     """
+    args_test_single_chrom = Namespace(bigwig_files=input_file_paths,
+                                       output_dir=DATA_FOLDER,
+                                       name="average_single_chrom_test",
+                                       chromosomes=["chr22"],
+                                       chromosome_sizes=chrom_sizes_path
+                                       )
+
     run_averaging(args_test_single_chrom)
 
     output_file = os.path.join(DATA_FOLDER, "average_single_chrom_test.bw")
@@ -73,6 +66,13 @@ def test_average_all_chrom():
     Test that maxatac average can produce a .bw file that uses all chromosome
 
     """
+    args_test_all_chrom = Namespace(bigwig_files=input_file_paths,
+                                    output_dir=DATA_FOLDER,
+                                    name="average_all_chrom_test",
+                                    chromosomes=ALL_CHRS,
+                                    chromosome_sizes=chrom_sizes_path
+                                    )
+
     run_averaging(args_test_all_chrom)
 
     output_file = os.path.join(DATA_FOLDER, "average_all_chrom_test.bw")

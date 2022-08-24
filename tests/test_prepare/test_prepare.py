@@ -18,16 +18,16 @@ expected_bulk_outputs = {"GM12878_bulk_IS_slop20_RP20M.bw": "c49a30be1da68b73141
                          "GM12878_bulk_IS_slop20_RP20M_minmax01_chromosome_min_max.txt": "36e5f37a4ec1aaea0fb55ed1c86e12ee",
                          "GM12878_bulk_IS_slop20_RP20M_minmax01_genome_stats.txt": "b366a2c759587d24440f25c6343caae6"}
 
-# These are for the scATAC-seq data sets
+# These are for the scATAC-seq processing functions
 input_file_path = "../data/prepare/scatac_fragments.tsv"
 expected_file_path = "../data/prepare/scatac_CutSites.tsv"
-
-input_scatac_frags = "/Users/caz3so/workspaces/miraldiLab/maxATAC/tests/data/prepare/scatac_fragments.tsv"
-
 expected_dataframe = pd.read_table(expected_file_path, sep="\t")
 
+# Full scATAC fragment file test
+input_scatac_frags = "/Users/caz3so/workspaces/miraldiLab/maxATAC/tests/data/prepare/GM12878_fragments_subsample_1M.tsv"
+
 expected_scatac_outputs = {"GM12878_scatac_1M_IS_slop20_RP20M.bw": "5ad8c991d458e74f96024337652c93b3",
-                           "GM12878_scatac_1M_IS_slop20.bed.gz": "71de60f13ab4377b3cf06f44455a6785",
+                           "GM12878_scatac_1M_IS_slop20_RP20M_minmax01.bw": "04b7edda09ec6303d80c121109bad90e",
                            "GM12878_scatac_1M_IS_slop20_RP20M_minmax01_chromosome_min_max.txt": "25863a4d1b83e7410dbaae0fa6090d59",
                            "GM12878_scatac_1M_IS_slop20_RP20M_minmax01_genome_stats.txt": "a7397bf4c5ef4dd4c79aaab35830ff4d"}
 
@@ -54,7 +54,6 @@ def test_prepare_bulk():
     """
     Test that a bam file can be prepared for maxATAC
     """
-    print(os.getcwd())
     # Args for bulk
     args_bulk = Namespace(input=input_bam_path,
                           output_dir=DATA_FOLDER,
