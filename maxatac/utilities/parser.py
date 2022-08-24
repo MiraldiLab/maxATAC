@@ -200,7 +200,7 @@ def get_parser():
                                 help="Input bigwig files."
                                 )
 
-    average_parser.add_argument("-n", "--name",
+    average_parser.add_argument("-n", "--name", "--prefix",
                                 dest="name",
                                 type=str,
                                 required=True,
@@ -221,7 +221,7 @@ def get_parser():
                                 help="Chromosomes for averaging. Default: 1-22"
                                 )
 
-    average_parser.add_argument("-o", "--output",
+    average_parser.add_argument("-o", "--output", "--output_dir",
                                 dest="output_dir",
                                 type=str,
                                 default=os.getcwd(),
@@ -609,6 +609,7 @@ def get_parser():
     #############################################
     # Normalize parser
     #############################################
+    # Add a subparser for the normalize function
     normalize_parser = subparsers.add_parser("normalize",
                                              parents=[parent_parser],
                                              help="Normalize bigwig signal tracks."
@@ -618,42 +619,39 @@ def get_parser():
     normalize_parser.set_defaults(func=run_normalization)
 
     # Add arguments to the parser
-    normalize_parser.add_argument("--signal",
+    normalize_parser.add_argument("-i", "--signal",
                                   dest="signal",
                                   type=str,
                                   required=True,
-                                  help="Input signal bigWig file(s) to be normalized by reference"
+                                  help="Input .bigwig file."
                                   )
 
-    normalize_parser.add_argument("--chrom_sizes",
+    normalize_parser.add_argument("-n", "--name", "--prefix",
+                                  required=True,
+                                  dest="name",
+                                  type=str,
+                                  help="Name to use for filename"
+                                  )
+
+    normalize_parser.add_argument("-cs", "--chrom_sizes", "--chromosome_sizes",
                                   dest="chrom_sizes",
                                   type=str,
                                   help="Chrom sizes file"
                                   )
 
-    normalize_parser.add_argument("--chroms",
-                                  dest="chroms",
+    normalize_parser.add_argument("-c", "--chroms", "--chromosomes",
+                                  dest="chromosomes",
                                   type=str,
                                   nargs="+",
                                   default=AUTOSOMAL_CHRS,
-                                  help="Chromosome list for analysis. \
-                                    Regions in a form of chrN:start-end are ignored. \
-                                    Use --filters instead \
-                                    Default: main human chromosomes, whole length"
+                                  help="Chromosomes for normalization. Default: 1-22"
                                   )
 
-    normalize_parser.add_argument("--output",
-                                  dest="output",
+    normalize_parser.add_argument("-o", "--output", "--output_dir",
+                                  dest="output_dir",
                                   type=str,
-                                  default="./normalize",
-                                  help="Folder for normalization results. Default: ./normalization_results"
-                                  )
-
-    normalize_parser.add_argument("--prefix",
-                                  dest="prefix",
-                                  type=str,
-                                  default="normalized",
-                                  help="Name to use for filename"
+                                  default=os.getcwd(),
+                                  help="Output directory. Default: Output to current working directory."
                                   )
 
     normalize_parser.add_argument("--min",
@@ -993,20 +991,20 @@ def get_parser():
                                 )
 
     prepare_parser.add_argument("-o", "--output",
-                                dest="output",
+                                dest="output_dir",
                                 type=str,
                                 required=True,
                                 help="Output directory path"
                                 )
 
-    prepare_parser.add_argument("-prefix", "--prefix",
-                                dest="prefix",
+    prepare_parser.add_argument("-prefix", "--prefix", "-name", "-n",
+                                dest="name",
                                 type=str,
                                 required=True,
                                 help="Filename prefix to use as the basename"
                                 )
 
-    prepare_parser.add_argument("--chrom_sizes",
+    prepare_parser.add_argument("-cs", "--chrom_sizes", "--chromosome_sizes",
                                 dest="chrom_sizes",
                                 type=str,
                                 help="Chrom sizes file. Default: hg38 chrom sizes"
@@ -1038,15 +1036,15 @@ def get_parser():
                                 help="The blacklisted regions to exclude in bigwig format."
                                 )
 
-    prepare_parser.add_argument("-chroms", "--chromosomes",
-                                dest="chroms",
+    prepare_parser.add_argument("-c", "-chroms", "--chromosomes",
+                                dest="chromosomes",
                                 type=str,
                                 nargs="+",
                                 default=AUTOSOMAL_CHRS,
                                 help="The chromosomes to include in the final output."
                                 )
 
-    prepare_parser.add_argument("-threads", "--threads",
+    prepare_parser.add_argument("-t", "-threads", "--threads",
                                 dest="threads",
                                 type=int,
                                 default=get_cpu_count(),
