@@ -24,26 +24,27 @@ def get_roi_variant_overlap(variants_bed: str, roi_BT: pybedtools.BedTool):
     variants_BT = pybedtools.BedTool(variants_bed)
 
     # Intersect ROI with variants bed file and convert to dataframe
-    intersect_df = roi_BT.intersect(variants_BT, loj=True).to_dataframe(names=["chr", "start", "stop", "rs_chr", "rs_start", "rs_stop", "nucleotide"])
-    
+    intersect_df = roi_BT.intersect(variants_BT, loj=True).to_dataframe(
+        names=["chr", "start", "stop", "rs_chr", "rs_start", "rs_stop", "nucleotide"])
+
     row_indices = []
 
-    for _ , row in intersect_df.iterrows():
+    for _, row in intersect_df.iterrows():
         if row["rs_start"] == -1:
             row_indices.append(-1)
         else:
             row_indices.append(row["rs_start"] - row["start"])
-            
+
     # Find the index of the array to be changed during prediction
     intersect_df["index"] = row_indices
-    
+
     return intersect_df
 
 
-def get_seq_specific_input_matrix(window, 
-                                  signal: str, 
+def get_seq_specific_input_matrix(window,
+                                  signal: str,
                                   sequence: str,
-                                  BP_DICT={"A":0, "C":1, "G":2, "T":3},
+                                  BP_DICT={"A": 0, "C": 1, "G": 2, "T": 3},
                                   bp_order=BP_ORDER,
                                   cols=1024,
                                   rows=5):
@@ -63,10 +64,10 @@ def get_seq_specific_input_matrix(window,
     """
     # The nucleotide positions are 0-4
     signal_stream = load_bigwig(signal)
-    sequence_stream  = load_2bit(sequence)
-    
+    sequence_stream = load_2bit(sequence)
+
     input_matrix = np.zeros((rows, cols))
-    
+
     for n, bp in enumerate(bp_order):
         # Get the sequence from the interval of interest
         target_sequence = Seq(sequence_stream.sequence(window['chr'], window['start'], window['stop']))
@@ -79,18 +80,18 @@ def get_seq_specific_input_matrix(window,
     input_matrix[4, :] = signal_array
 
     input_matrix = input_matrix.T
-            
-    if window["index"] == -1:  
+
+    if window["index"] == -1:
         pass
-    
+
     else:
         # Get the nucleotide row
         nucleotide_index = BP_DICT[window["nucleotide"]]
-    
+
         input_matrix[window["index"], nucleotide_index] = 1
 
-        other_nucleotides = [item for item in [0,1,2,3] if item not in [nucleotide_index]]
-        
+        other_nucleotides = [item for item in [0, 1, 2, 3] if item not in [nucleotide_index]]
+
         input_matrix[window["index"], other_nucleotides[0]] = 0
         input_matrix[window["index"], other_nucleotides[1]] = 0
         input_matrix[window["index"], other_nucleotides[2]] = 0
@@ -98,7 +99,7 @@ def get_seq_specific_input_matrix(window,
     return np.array([input_matrix])
 
 
-def convert_predictions_to_bedgraph(predictions: list, 
+def convert_predictions_to_bedgraph(predictions: list,
                                     predict_roi_df: pd.DataFrame):
     """Convert output predictions to bedgraph
 
@@ -110,7 +111,7 @@ def convert_predictions_to_bedgraph(predictions: list,
         pd.DataFrame: Dataframe of predictions in bedgraph format
     """
     predictions_df = pd.DataFrame(data=predictions, index=None)
-    
+
     predictions_df["chr"] = predict_roi_df["chr"]
     predictions_df["start"] = predict_roi_df["start"]
     predictions_df["stop"] = predict_roi_df["stop"]
@@ -134,16 +135,17 @@ def convert_predictions_to_bedgraph(predictions: list,
     windowed_coordinates_dataframe.columns = ['chr', 'start', 'stop', 'score']
 
     # Get the mean of all sliding window predicitons
-    windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"], as_index=False).mean()
+    windowed_coordinates_dataframe = windowed_coordinates_dataframe.groupby(["chr", "start", "stop"],
+                                                                            as_index=False).mean()
 
     return windowed_coordinates_dataframe
 
 
-def variant_specific_predict(model:str,
-            signal:str,
-            sequence:str,
-            roi_BT:pybedtools.BedTool,
-            variants_bed:str):
+def variant_specific_predict(model: str,
+                             signal: str,
+                             sequence: str,
+                             roi_BT: pybedtools.BedTool,
+                             variants_bed: str):
     """Make predictions in LD blocks
 
     Args:
@@ -161,17 +163,17 @@ def variant_specific_predict(model:str,
 
     # Get the overlap between variants and prediction windows and annotated with index and nucleotide to change
     prediction_windows = get_roi_variant_overlap(variants_bed, roi_BT)
-    
+
     prediction_list = []
-    
+
     for _, window in prediction_windows.iterrows():
         # Get the sequence specific input matrix for the genomic region of interest
         seq_specific_array = get_seq_specific_input_matrix(window, signal, sequence)
-        
+
         # Append the batch of predictions from the model
         prediction_list.append(nn_model.predict_on_batch(seq_specific_array).flatten())
-        
+
     # convert all predictions to a bedgraph format dataframe
-    bedgraph_df = convert_predictions_to_bedgraph(predictions=prediction_list, 
-                                                            predict_roi_df = prediction_windows)    
+    bedgraph_df = convert_predictions_to_bedgraph(predictions=prediction_list,
+                                                  predict_roi_df=prediction_windows)
     return bedgraph_df

@@ -890,7 +890,7 @@ def get_parser():
                                  help="maxATAC model"
                                  )
 
-    variants_parser.add_argument("-signal", "--signal",
+    variants_parser.add_argument("-i", "-bw", "-signal", "--signal",
                                  dest="input_bigwig",
                                  type=str,
                                  required=True,
@@ -898,13 +898,13 @@ def get_parser():
                                  )
 
     variants_parser.add_argument("-o", "--output",
-                                 dest="output",
+                                 dest="output_dir",
                                  type=str,
                                  default="./variants",
                                  help="Output directory."
                                  )
 
-    variants_parser.add_argument("-n", "--name",
+    variants_parser.add_argument("-n", "--name", "--prefix",
                                  dest="name",
                                  type=str,
                                  required=True,
@@ -925,7 +925,7 @@ def get_parser():
                                  help="Input 2bit DNA sequence"
                                  )
 
-    variants_parser.add_argument("-chroms", "--chromosomes",
+    variants_parser.add_argument("-c", "-chroms", "--chromosomes",
                                  dest="chromosomes",
                                  nargs="+",
                                  default=ALL_CHRS,
@@ -958,7 +958,7 @@ def get_parser():
                                  help="The blacklisted regions to exclude in bed format."
                                  )
 
-    variants_parser.add_argument("--chrom_sizes",
+    variants_parser.add_argument("-cs", "--chrom_sizes", "chromosome_sizes",
                                  dest="chrom_sizes",
                                  type=str,
                                  help="Chrom sizes file. Default: hg38 chrom sizes"
