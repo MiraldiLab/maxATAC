@@ -87,6 +87,7 @@ setup(
         "pyBigWig",
         "pydot",
         "matplotlib",
+        'MOODS-python',
         "scikit-learn",
         "pybedtools",
         "pandas",

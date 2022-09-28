@@ -31,6 +31,10 @@ prepare_scatac_script_dir = os.path.join(maxatac_data_path, "scripts", "ATAC",
 PREPARE_BULK_SCRIPT = os.path.normpath(prepare_atac_script_dir)
 PREPARE_scATAC_SCRIPT = os.path.normpath(prepare_scatac_script_dir)
 
+cisbp_motifs_meta = os.path.join(maxatac_data_path, "motifs", "CISBP_v2_motif_mapping_noTransfac.txt")
+zipped_motifs_dir = os.path.join(maxatac_data_path, "motifs", "all_motifs.tar.gz")
+motifs_dir = os.path.join(maxatac_data_path, "motifs", "all_motifs")
+
 # Default chromosome sets
 ALL_CHRS = ["chr1", "chr2", "chr3", "chr4", "chr5", "chr6",
             "chr7", "chr8", "chr9", "chr10", "chr11", "chr12",

@@ -178,6 +178,16 @@ def check_prepare_packages_installed():
         raise_exception(e, "bedGraphToBigWig", "https://anaconda.org/bioconda/ucsc-bedgraphtobigwig")
 
 
+def check_moods_packages_installed():
+    """Check that packages are installed
+    This module requires moods-dna.py
+    """
+    try:
+        subprocess.run(["which", "moods-dna.py"], stdout=subprocess.DEVNULL, check=True)
+    except subprocess.CalledProcessError as e:
+        raise_exception(e, "MOODS", "pip install MOODS-dna")
+
+
 class Namespace:
     """
     Create a namespoce object.
