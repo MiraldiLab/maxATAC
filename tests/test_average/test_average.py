@@ -2,7 +2,7 @@ import os
 import pytest
 from maxatac.analyses.average import run_averaging
 from maxatac.utilities.system_tools import Namespace
-from maxatac.utilities.constants import chrom_sizes_path, ALL_CHRS
+from maxatac.utilities.constants import ALL_CHRS
 import subprocess
 
 DATA_FOLDER = os.path.abspath(os.path.join(os.path.dirname(__file__), "temp"))
@@ -14,6 +14,7 @@ expected_outputs = {"../data/average/IMR-90_single_chrom.bw": "6194b2bc8ddd1f8b9
                     "../data/average/IMR-90_multi_chrom.bw": "46775111a72df9fc54c8c9d153135272",
                     "../data/average/IMR-90_all_chrom.bw": "a7b2b7b1be22a046d49cff36ba46e8ea"}
 
+chrom_sizes_path = "~/opt/maxatac/data/hg38/hg38.chrom.sizes"
 
 def test_average_multi_chrom():
     """
