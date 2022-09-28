@@ -11,7 +11,8 @@ from maxatac.analyses.moods import run_moods
 from maxatac.utilities.system_tools import (get_version,
                                             get_absolute_path,
                                             get_cpu_count,
-                                            Mute
+                                            Mute,
+                                            update_reference_genome_paths
                                             )
 
 with Mute():
@@ -26,7 +27,6 @@ with Mute():
     from maxatac.analyses.threshold import run_thresholding
     from maxatac.analyses.data import run_data
 
-from maxatac.utilities.paths import build_path_names
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
                                          DEFAULT_LOG_LEVEL,
@@ -68,33 +68,6 @@ def normalize_args(args, skip_list=[], cwd_abs_path=None):
     return argparse.Namespace(**normalized_args)
 
 
-def extend_config(args):
-    """
-    Update args depending on which reference genome is used (hg38, hg19, or mm10).
-    """
-    updated_args = {}
-    DATA_PATH, BLACKLISTED_REGIONS, BLACKLISTED_REGIONS_BIGWIG, DEFAULT_CHROM_SIZES, REFERENCE_SEQUENCE_TWOBIT = build_path_names(args)
-    for key, value in args.__dict__.items():
-        if args.blacklist is None or args.blacklist_bw is None:
-            updated_args["blacklist"] = BLACKLISTED_REGIONS
-            updated_args["blacklist_bw"] = BLACKLISTED_REGIONS_BIGWIG
-        if args.chrom_sizes is None:
-            updated_args["chrom_sizes"] = DEFAULT_CHROM_SIZES
-        if args.sequence is None:
-            updated_args["sequence"] = REFERENCE_SEQUENCE_TWOBIT
-        else:
-         updated_args[key] = value
-    updated_args["DATA_PATH"] = DATA_PATH
-
-    updated_args = argparse.Namespace(**updated_args)
-    args.blacklist = updated_args.blacklist
-    args.blacklsit_bw = updated_args.blacklist_bw
-    args.chrom_sizes = updated_args.chrom_sizes
-    args.sequence = updated_args.sequence
-    args.DATA_PATH = updated_args.DATA_PATH
-
-    return args
-
 def get_parser():
     """Build parsers with user input.
     
@@ -107,6 +80,7 @@ def get_parser():
     """
     # Parent (general) parser
     parent_parser = argparse.ArgumentParser(add_help=False)
+
     general_parser = argparse.ArgumentParser(description="Neural networks for predicting TF binding using ATAC-seq")
 
     # Add subparsers to the general parser and require that one is provided
@@ -118,25 +92,6 @@ def get_parser():
                                 version=get_version(),
                                 help="Print version information and exit"
                                 )
-    #############################################
-    # Paths subparser
-    #############################################
-    paths_parser = subparsers.add_parser("paths",
-                                        parents=[parent_parser],
-                                        help="Get correct paths per genome"
-                                        )
-
-    # Set the default function
-    paths_parser.set_defaults(func=build_path_names)
-
-    # Add arguments to the parser
-    paths_parser.add_argument("--genome",
-                             dest="genome",
-                             type=str,
-                             default="hg38",
-                             required=False,
-                             help="The reference genome build to use."
-                            )
 
     general_parser.add_argument("--genome",
                                 dest="genome",
@@ -145,6 +100,7 @@ def get_parser():
                                 required=False,
                                 help="The reference genome build to download."
                                 )
+
     #############################################
     # Data subparser
     #############################################
@@ -265,18 +221,10 @@ def get_parser():
                        help="Trained maxATAC model .h5 file."
                        )
 
-    predict_parser.add_argument("--genome",
-                             dest="genome",
-                             type=str,
-                             default="hg38",
-                             required=False,
-                             help="The reference genome build to use."
-                            )
-
-    predict_parser.add_argument("-seq", "--sequence",
+    predict_parser.add_argument("--seq", "--sequence",
                                 dest="sequence",
                                 type=str,
-                                help="Genome sequence hg38.2bit file."
+                                help="Genome sequence 2bit file."
                                 )
 
     predict_parser.add_argument("-i", "-s", "--signal",
@@ -287,19 +235,19 @@ def get_parser():
                                 )
 
     predict_parser.add_argument("-o", "--output",
-                                dest="output",
+                                dest="output_directory",
                                 type=str,
                                 default="./prediction_results",
                                 help="Folder for prediction results. Default: ./prediction_results"
                                 )
 
-    predict_parser.add_argument("--blacklist",
+    predict_parser.add_argument("-bl", "--blacklist",
                                 dest="blacklist",
                                 type=str,
                                 help="The blacklisted regions to exclude in BED format"
                                 )
 
-    predict_parser.add_argument("-roi", "--roi",
+    predict_parser.add_argument("--bed", "--peaks", "--regions", "-roi",
                                 dest="roi",
                                 default=False,
                                 required=False,
@@ -329,20 +277,20 @@ def get_parser():
                                 help="Step size to use to build sliding window regions"
                                 )
 
-    predict_parser.add_argument("--prefix",
-                                dest="prefix",
+    predict_parser.add_argument("-n", "--name", "--prefix",
+                                dest="name",
                                 type=str,
                                 default="maxatac_predict",
                                 help="Prefix for filename"
                                 )
 
-    predict_parser.add_argument("--chrom_sizes",
+    predict_parser.add_argument("-cs", "--chrom_sizes", "--chrom_sizes",
                               dest="chrom_sizes",
                               type=str,
                               help="Chromosome sizes file"
                               )
 
-    predict_parser.add_argument("--chromosomes",
+    predict_parser.add_argument("-c", "-chroms", "--chromosomes",
                                 dest="chromosomes",
                                 type=str,
                                 nargs="+",
@@ -1296,19 +1244,17 @@ def get_parser():
                               help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                               )
 
-    moods_parser.add_argument("--chromosomes",
+    moods_parser.add_argument("-c", "--chroms", "--chromosomes",
                               dest="chromosomes",
                               type=str,
                               nargs="+",
-                              default=ALL_CHRS,
                               help="Chromosomes for thresholding predictions. \
                                           Default: 1-22,X,Y"
                               )
 
-    moods_parser.add_argument("--chromosome_sizes",
+    moods_parser.add_argument("-cs", "--chrom_sizes", "--chromosome_sizes",
                               dest="chromosome_sizes",
                               type=str,
-                              default=DEFAULT_CHROM_SIZES,
                               help="Input chromosome sizes file. Default is hg38."
                               )
 
@@ -1324,9 +1270,13 @@ def print_args(args, logger, header="Arguments:\n", excl=["func"]):
     }
     logger(header + dump(filtered))
 
+
 # we need to cwd_abs_path parameter only for running unit tests
 def parse_arguments(argsl, cwd_abs_path=None):
     """Parse user arguments
+
+    This function will parse, append, and modify the user inputs with consideration for reference genome. This function
+    will also prepare the path names for easier testing.
 
     Args:
         argsl ([type]): list of user inputs
@@ -1336,10 +1286,15 @@ def parse_arguments(argsl, cwd_abs_path=None):
         Arguments list
     """
     cwd_abs_path = getcwd() if cwd_abs_path is None else cwd_abs_path
+
     if len(argsl) == 0:
         argsl.append("")  # otherwise fails with error if empty
+
+    # Create the parser
     args, _ = get_parser().parse_known_args(argsl)
-    args = extend_config(args)
+
+    # Update the reference genome paths
+    args = update_reference_genome_paths(args)
 
     if args.func == run_training:
         args = normalize_args(

@@ -201,3 +201,39 @@ class Namespace:
     """
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
+
+
+def update_reference_genome_paths(args):
+    """
+    Build path names based on the input reference genome. This function will take an input args Namespace object
+    and create a path names based on the input reference genome.
+
+    Args: args Namespace object containing the arguments from the parser
+
+    Returns:    an augmented args parser
+
+    """
+    logging.error(f"Generating Paths for genome build: {args.genome} \n")
+
+    # build maxatac data path
+    maxatac_data_path = os.path.join(os.path.expanduser('~'), "opt", "maxatac", "data")
+
+    # build genome specific paths
+    blacklist_path = os.path.join(maxatac_data_path,
+                                  f"{args.genome}/{args.genome}_maxatac_blacklist.bed")  # maxATAC extended blacklist as bed
+
+    blacklist_bigwig_path = os.path.join(maxatac_data_path,
+                                         f"{args.genome}/{args.genome}_maxatac_blacklist.bw")  # maxATAC extended blacklist as bigwig
+
+    chrom_sizes_path = os.path.join(maxatac_data_path, f"{args.genome}/{args.genome}.chrom.sizes")  # chrom sizes file
+
+    sequence_path = os.path.join(maxatac_data_path, f"{args.genome}/{args.genome}.2bit")  # sequence 2bit
+
+    # normalize paths
+    args.blacklist = blacklist_path
+    args.blacklist_bw = blacklist_bigwig_path
+    args.chrom_sizes = chrom_sizes_path
+    args.sequence = sequence_path
+    args.DATA_PATH = maxatac_data_path
+
+    return args

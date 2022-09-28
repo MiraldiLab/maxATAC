@@ -23,8 +23,8 @@ def run_call_peaks(args):
     Return:
         Write BED file
     """
-    if args.prefix:
-        prefix = args.prefix
+    if args.name:
+        prefix = args.name
 
     else:
         prefix = os.path.basename(args.input_bigwig).replace(".bw", "")
@@ -34,7 +34,7 @@ def run_call_peaks(args):
         from maxatac.utilities.constants import AUTOSOMAL_CHRS as all_chr
         args.chromosomes = all_chr
 
-    output_dir = get_dir(args.output)
+    output_dir = get_dir(args.output_directory)
 
     results_filename = os.path.join(output_dir, prefix + "_" + str(args.BIN_SIZE) + "bp.bed")
 
@@ -74,7 +74,8 @@ def run_call_peaks(args):
         results_list = p.starmap(call_peaks_per_chromosome,
                                 [(args.input_bigwig, chromosome,thresh, args.BIN_SIZE) for chromosome in args.chromosomes]
                                 )
-        
+
+    logging.error("Combining results for all chromosomes.")
     # Concatenate results lists into a dataframe
     results_df = pd.concat(results_list)
 
@@ -90,8 +91,12 @@ def run_call_peaks(args):
     # Convert bedtool object to dataframe
     BED_df = merged_peaks.to_dataframe()
 
+    logging.error(f"Writing results to output {results_filename}.")
+
     # Write dataframe to a bed format file
     BED_df.to_csv(results_filename, 
                 sep="\t", 
                 index=False, 
                 header=False)
+
+    logging.error(f"Done!")

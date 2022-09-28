@@ -38,7 +38,7 @@ def run_prediction(args):
     3) Convert predictions to bigwig format and write results.
 
     Args:
-        output_directory, prefix, signal, sequence, models, predict_chromosomes, threads, batch_size, roi,
+        output_directory, name, signal, sequence, models, predict_chromosomes, threads, batch_size, roi,
         chrom_sizes, blacklist, average
     """
     # Start Timer
@@ -46,9 +46,9 @@ def run_prediction(args):
 
     # If the user provides the TF name,
     if args.TF:
-        args.model = glob.glob(os.path.join(DATA_PATH, "models", args.TF, args.TF + "*.h5"))[0]
+        args.model = glob.glob(os.path.join(args.DATA_PATH, "models", args.TF, args.TF + "*.h5"))[0]
         
-        args.cutoff_file = glob.glob(os.path.join(DATA_PATH, "models", args.TF, args.TF + "*.tsv"))[0]
+        args.cutoff_file = glob.glob(os.path.join(args.DATA_PATH, "models", args.TF, args.TF + "*.tsv"))[0]
         
     else:
         pass
@@ -61,10 +61,10 @@ def run_prediction(args):
         args.chromosomes = all_chr
 
     # Create the output directory set by the parser
-    output_directory = get_dir(args.output)
+    output_directory = get_dir(args.output_directory)
 
     # Output filename for the bigwig predictions file based on the output directory and the prefix. Add the bw extension
-    outfile_name_bigwig = os.path.join(output_directory, args.prefix + ".bw")
+    outfile_name_bigwig = os.path.join(output_directory, args.name + ".bw")
 
     # The function build_chrom_sizes_dict is used to make sure regions fall within chromosome bounds.
     # Create a dictionary of chromosome sizes used to make the bigwig files
