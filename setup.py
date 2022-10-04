@@ -87,7 +87,6 @@ setup(
         "pyBigWig",
         "pydot",
         "matplotlib",
-        'MOODS-python',
         "scikit-learn",
         "pybedtools",
         "pandas",
@@ -95,6 +94,7 @@ setup(
         "pyyaml",
         "pysam",
         "seaborn",
+        "tobias",
         "pytest"
     ],
     zip_safe=False,

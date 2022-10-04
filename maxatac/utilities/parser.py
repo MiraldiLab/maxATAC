@@ -3,11 +3,9 @@ import random
 import os
 from os import getcwd
 
-import MOODS
 from pkg_resources import require
 from yaml import dump
 
-from maxatac.analyses.moods import run_moods
 from maxatac.utilities.system_tools import (get_version,
                                             get_absolute_path,
                                             get_cpu_count,
@@ -98,7 +96,7 @@ def get_parser():
                                 type=str,
                                 default="hg38",
                                 required=False,
-                                help="The reference genome build to download."
+                                help="The reference genome build to use."
                                 )
 
     #############################################
@@ -106,7 +104,7 @@ def get_parser():
     #############################################
     data_parser = subparsers.add_parser("data",
                                         parents=[parent_parser],
-                                        help="Download and install publication data."
+                                        help="Download and install reference data."
                                         )
 
     # Set the default function
@@ -285,10 +283,10 @@ def get_parser():
                                 )
 
     predict_parser.add_argument("-cs", "--chrom_sizes", "--chrom_sizes",
-                              dest="chrom_sizes",
-                              type=str,
-                              help="Chromosome sizes file"
-                              )
+                                dest="chrom_sizes",
+                                type=str,
+                                help="Chromosome sizes file"
+                                )
 
     predict_parser.add_argument("-c", "-chroms", "--chromosomes",
                                 dest="chromosomes",
@@ -549,8 +547,8 @@ def get_parser():
                               dest="blacklist",
                               type=str,
                               help="Blacklist regions to exclude in BED format"
-                              )    
-    
+                              )
+
     train_parser.add_argument("--chrom_sizes",
                               dest="chrom_sizes",
                               type=str,
@@ -669,18 +667,26 @@ def get_parser():
     benchmark_parser.set_defaults(func=run_benchmarking)
 
     # Add arguments to the parser
-    benchmark_parser.add_argument("--prediction",
-                                  dest="prediction",
-                                  type=str,
-                                  required=True,
-                                  help="Prediction bigWig file"
-                                  )
+    # Add arguments to the parser
+    benchmark_prediction_filetype = benchmark_parser.add_mutually_exclusive_group(required=True)
+
+    benchmark_prediction_filetype.add_argument("-bed", "--bed",
+                                               dest="prediction",
+                                               type=str,
+                                               help="The TF name for prediction"
+                                               )
+
+    benchmark_prediction_filetype.add_argument("--bw", "--bigwig", "-bw",
+                                               dest="prediction",
+                                               type=str,
+                                               help="Prediction bigWig file"
+                                               )
 
     benchmark_parser.add_argument("--gold_standard",
                                   dest="gold_standard",
                                   type=str,
                                   required=True,
-                                  help="Gold Standard bigWig file"
+                                  help="Gold Standard file"
                                   )
 
     benchmark_parser.add_argument("--chromosomes",
@@ -863,12 +869,12 @@ def get_parser():
                                  )
 
     variants_parser.add_argument("--genome",
-                              dest="genome",
-                              type=str,
-                              default="hg38",
-                              required=False,
-                              help="The reference genome build to use."
-                              )
+                                 dest="genome",
+                                 type=str,
+                                 default="hg38",
+                                 required=False,
+                                 help="The reference genome build to use."
+                                 )
 
     variants_parser.add_argument("-s", "--sequence",
                                  dest="sequence",
@@ -1084,179 +1090,6 @@ def get_parser():
                                   required=True,
                                   help="Meta file containing Prediction signal and GS path for all cell lines (.tsv format)"
                                   )
-
-    #############################################
-    # MOODS subparser
-    #############################################
-    moods_parser = subparsers.add_parser("moods",
-                                         parents=[parent_parser],
-                                         help="Matches CISBP position weight matrices against DNA sequences"
-                                         )
-
-    # Set the default function
-    moods_parser.set_defaults(func=run_moods)
-
-    moods_parser.add_argument("-v", "--verbosity", action="count", dest="verbosity", default=0,
-                              help='verbose (-vv, -vvv for more)')
-
-    # Add arguments to the parser
-    model_group = moods_parser.add_mutually_exclusive_group(required=True)
-
-    model_group.add_argument('-m', '--matrices',
-                             metavar='M',
-                             nargs='+',
-                             action='store',
-                             dest='matrix_files',
-                             help='matrix files (count/frequency, will be converted to PWM before matching)',
-                             default=[])
-
-    model_group.add_argument('-tf', '--tf',
-                             metavar='TF',
-                             action='store',
-                             dest='TF',
-                             help='TF name',
-                             default=[])
-
-    model_group.add_argument('-S', '--score-matrices',
-                             metavar='M',
-                             nargs='+',
-                             action='store',
-                             dest='lo_matrix_files',
-                             help='matrix files (PWM/other score matrix, will be matched directly)',
-                             default=[])
-
-    # input files
-    moods_parser.add_argument('-s', '--sequences',
-                              metavar='S',
-                              nargs='+',
-                              action='store',
-                              dest='sequence_files',
-                              help='sequence files',
-                              required=True,
-                              default=[])
-
-    # thresholds
-    th_group = moods_parser.add_mutually_exclusive_group(required=True)
-
-    th_group.add_argument('-p', '--p-value',
-                          metavar='p',
-                          action='store',
-                          dest='p_val',
-                          type=float,
-                          help='compute threshold from p-value')
-
-    th_group.add_argument('-t', '--threshold',
-                          metavar='T',
-                          action='store',
-                          dest='t',
-                          type=float,
-                          help='use specified absolute threshold')
-
-    # output
-    out_group = moods_parser.add_argument_group("output (optional)")
-
-    out_group.add_argument('-o', '--outdir',
-                           metavar='outdir',
-                           action='store',
-                           dest='output_dir',
-                           required=True,
-                           help='output directory')
-
-    out_group.add_argument('-prefix', '--prefix',
-                           metavar='prefix',
-                           action='store',
-                           dest='prefix',
-                           required=True,
-                           help='Prefix filename directory')
-
-    out_group.add_argument('--sep',
-                           metavar='S',
-                           action='store',
-                           dest='sep',
-                           default=",",
-                           help='set field separator in out (default ",")')
-
-    # behaviour
-    option_group = moods_parser.add_argument_group("search and model behaviour (optional)")
-
-    option_group.add_argument('-R', '--no-rc',
-                              dest='no_rc',
-                              action="store_true",
-                              help='disable matching versus reverse complement strand')
-
-    option_group.add_argument('--no-snps',
-                              dest='no_snps',
-                              action="store_true",
-                              help='ignore IUPAC symbols coding multiple nucleotides')
-
-    option_group.add_argument('--batch',
-                              dest='batch',
-                              action="store_true",
-                              help='do not recompute thresholds from p-values for each sequence separately (recommended when dealing with lots of short sequences)')
-
-    option_group.add_argument('--bg',
-                              metavar=('pA', 'pC', 'pG', 'pT'),
-                              nargs=4,
-                              action='store',
-                              type=float,
-                              dest='bg',
-                              default=[0.25, 0.25, 0.25, 0.25],
-                              help='background distribution for computing thresholds from p-value with --batch (default is 0.25 for all alleles)')
-
-    option_group.add_argument('--ps',
-                              metavar='p',
-                              action='store',
-                              dest='ps',
-                              type=float,
-                              help='total pseudocount added to each matrix column in log-odds conversion (default = 0.01)',
-                              default=0.01)  # bg
-
-    option_group.add_argument('--log-base',
-                              metavar='x',
-                              action='store',
-                              dest='log_base',
-                              type=float,
-                              help='logarithm base for log-odds conversion (default natural logarithm)')
-
-    option_group.add_argument('--lo-bg',
-                              metavar=('pA', 'pC', 'pG', 'pT'),
-                              nargs=4,
-                              action='store',
-                              type=float,
-                              dest='lo_bg',
-                              default=[0.25, 0.25, 0.25, 0.25],
-                              help='background distribution for log-odds conversion (default is 0.25 for all alleles)')
-
-    option_group.add_argument('--threshold-precision',
-                              metavar='x',
-                              action='store',
-                              dest='threshold_precision',
-                              type=float,
-                              help='specify the precision used for computing the thresholds from p-values (default = {})'.format(
-                                  MOODS.tools.DEFAULT_DP_PRECISION),
-                              default=MOODS.tools.DEFAULT_DP_PRECISION)
-
-    moods_parser.add_argument("--loglevel",
-                              dest="loglevel",
-                              type=str,
-                              default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
-                              choices=LOG_LEVELS.keys(),
-                              help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                              )
-
-    moods_parser.add_argument("-c", "--chroms", "--chromosomes",
-                              dest="chromosomes",
-                              type=str,
-                              nargs="+",
-                              help="Chromosomes for thresholding predictions. \
-                                          Default: 1-22,X,Y"
-                              )
-
-    moods_parser.add_argument("-cs", "--chrom_sizes", "--chromosome_sizes",
-                              dest="chromosome_sizes",
-                              type=str,
-                              help="Input chromosome sizes file. Default is hg38."
-                              )
 
     return general_parser
 

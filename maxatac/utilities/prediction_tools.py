@@ -164,9 +164,6 @@ def create_prediction_regions(chromosomes: list,
     
     >>> roi_df = create_prediction_regions(["chr1"], "hg38.chrom.sizes", "hg38.blacklist.bed")
     """
-    # Create a temp chrom.sizes file for the chromosomes of interest only
-
-    
     # Create a bedtools object that is a windowed genome
     BED_df_bedtool = pybedtools.BedTool().window_maker(g=chrom_sizes, w=region_length, s=step_size)
 

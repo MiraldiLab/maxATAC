@@ -46,6 +46,7 @@ def run_data(args):
                       f"Data will be installed: {args.output} \n" +
                       f"Temporarily downlading data to: {maxatac_repo_dir} \n" +
                       f"Final data will be placed in: {maxatac_final_dir}")
+
         os.system(wget_2bit) # Wget 2bit
 
     logging.error("Finished!")

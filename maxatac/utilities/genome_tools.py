@@ -238,6 +238,7 @@ def chromosome_blacklist_mask(blacklist, chromosome, chromosome_length, nBins=Fa
                                                   chromosome_length,
                                                   numpy=True) != 1  # Convert to boolean array, select areas that are not 1
 
+
 def filter_chrom_sizes(chrom_sizes_path, chromosomes, target_chrom_sizes_file):
     df = pd.read_table(chrom_sizes_path, header=None, names=["chr", "length"])
     

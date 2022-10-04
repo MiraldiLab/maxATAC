@@ -21,7 +21,7 @@ ___
 
 It is best to install maxATAC into a dedicated virtual environment.
 
-This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`, `graphviz`, and `bedGraphToBigWig` in order to run all functions.
+This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`, `graphviz`, and `ucsc-bedGraphToBigWig` in order to run all functions.
 
 > The total install requirements for maxATAC with reference data are ~2 GB.
 
