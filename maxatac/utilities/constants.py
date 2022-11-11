@@ -65,7 +65,7 @@ DEFAULT_VALIDATE_CHRS = ["chr2", "chr19"]
 
 DEFAULT_TEST_CHRS = ["chr1", "chr8"]
 
-DEFAULT_LOG_LEVEL = "error"
+DEFAULT_LOG_LEVEL = "info"
 
 DEFAULT_TRAIN_EPOCHS = 20
 

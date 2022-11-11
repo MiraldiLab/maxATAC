@@ -60,7 +60,7 @@ def run_call_peaks(args):
         # Find correct threshold
         thresh = df.query(f"{cutoff_type} >= @cutoff_val").Standard_Thresh.tolist()[0]
 
-    logging.error(f"Input filename: {args.input_bigwig}" +
+    logging.info(f"Input filename: {args.input_bigwig}" +
                   f"\n Target chroms: {args.chromosomes}" +
                   f"\n Bin size: {args.BIN_SIZE}" +
                   f"\n Cutoff type for Threshold: {args.cutoff_type}" +
@@ -75,7 +75,7 @@ def run_call_peaks(args):
                                 [(args.input_bigwig, chromosome,thresh, args.BIN_SIZE) for chromosome in args.chromosomes]
                                 )
 
-    logging.error("Combining results for all chromosomes.")
+    logging.info("Combining results for all chromosomes.")
     # Concatenate results lists into a dataframe
     results_df = pd.concat(results_list)
 
@@ -91,7 +91,7 @@ def run_call_peaks(args):
     # Convert bedtool object to dataframe
     BED_df = merged_peaks.to_dataframe()
 
-    logging.error(f"Writing results to output {results_filename}.")
+    logging.info(f"Writing results to output {results_filename}.")
 
     # Write dataframe to a bed format file
     BED_df.to_csv(results_filename, 
@@ -99,4 +99,4 @@ def run_call_peaks(args):
                 index=False, 
                 header=False)
 
-    logging.error(f"Done!")
+    logging.info(f"Done!")

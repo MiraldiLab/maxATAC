@@ -126,12 +126,12 @@ def run_thresholding(args):
     # Random Precision
     PR_CURVE_DF['Random_Precision'] = PR_CURVE_DF['Total_Avg_GoldStandard_Bins']/rand_bins
     
-    logging.error("Calculate log2FC for each threshold")   
+    logging.info("Calculate log2FC for each threshold")   
     
     # Log2FC
     PR_CURVE_DF['log2FC_Precision_Random_Precision'] = np.log2(PR_CURVE_DF["Precision"]/PR_CURVE_DF["Random_Precision"])
     
-    logging.error("Calculate F1 Score for each threshold")
+    logging.info("Calculate F1 Score for each threshold")
 
     # F1 Score
     PR_CURVE_DF['F1_Score'] = 2 * (PR_CURVE_DF["Precision"] * PR_CURVE_DF["Recall"]) / (PR_CURVE_DF["Precision"] + PR_CURVE_DF["Recall"])

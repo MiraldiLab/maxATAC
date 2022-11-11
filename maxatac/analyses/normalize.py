@@ -43,7 +43,7 @@ def run_normalization(args):
     # Set up the output filename.
     output_filename = os.path.join(output_dir, args.name + ".bw")
 
-    logging.error("Normalizing" +
+    logging.info("Normalizing" +
                   "\n  Input bigwig file: " + args.signal +
                   "\n  Output filename: " + output_filename +
                   "\n  Output directory: " + output_dir +
@@ -55,13 +55,13 @@ def run_normalization(args):
 
     # If the user provides a max to normalize to, use that value
     if args.max:
-        logging.error("Using provided minimum and maximum values for normalization")
-        logging.error("Minimum value: " + str(args.min) + "\n" + "Maximum value: " + str(args.max))
+        logging.info("Using provided minimum and maximum values for normalization")
+        logging.info("Minimum value: " + str(args.min) + "\n" + "Maximum value: " + str(args.max))
         max_value = args.max
         min_value = args.min
 
     else:
-        logging.error("Calculating stats per chromosome")
+        logging.info("Calculating stats per chromosome")
 
         min_value, max_value, median, mean_value, std_value = get_genomic_stats(bigwig_path=args.signal,
                                                                                 chrom_sizes_dict=chromosome_length_dictionary,
@@ -70,14 +70,14 @@ def run_normalization(args):
                                                                                 name=args.name,
                                                                                 output_dir=output_dir)
 
-        logging.error("Sample Statistics" +
+        logging.info("Sample Statistics" +
                       "\n  Genomic minimum value: " + str(min_value) +
                       "\n  Genomic max value: " + str(max_value) +
                       "\n  Genomic median (non-zero): " + str(median) +
                       "\n  Genomic mean: " + str(mean_value) +
                       "\n  Genomic standard deviation: " + str(std_value))
 
-    logging.error("Normalize and Write BigWig file")
+    logging.info("Normalize and Write BigWig file")
 
     # With the file for input and output open write the header to the output file
     with pyBigWig.open(args.signal) as input_bw, pyBigWig.open(output_filename, "w") as output_bw:
@@ -126,6 +126,6 @@ def run_normalization(args):
     mins, secs = divmod(totalTime, 60)
     hours, mins = divmod(mins, 60)
 
-    logging.error("Total normalization time: %d:%d:%d.\n" % (hours, mins, secs))
+    logging.info("Total normalization time: %d:%d:%d.\n" % (hours, mins, secs))
 
-    logging.error("Results saved to: " + output_dir)
+    logging.info("Results saved to: " + output_dir)

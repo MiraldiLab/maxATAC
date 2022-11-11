@@ -37,7 +37,7 @@ def run_prepare(args):
     # Check if samtools, bedtools, bedgraphtobigwig, and pigz are installed
     check_prepare_packages_installed()
     
-    logging.error(f"Prepare Parameters:\n" +
+    logging.info(f"Prepare Parameters:\n" +
                   f"Input file: {args.input} \n" +
                   f"Input chromosome sizes file: {args.chrom_sizes} \n" +
                   f"Tn5 cut sites will be slopped {args.slop} bps on each side \n" +
@@ -49,10 +49,10 @@ def run_prepare(args):
     
     output_dir = get_dir(args.output_dir)
     
-    logging.error("Generate the normalized signal tracks.")
+    logging.info("Generate the normalized signal tracks.")
 
     if args.input.endswith(".bam"):
-        logging.error("Working on a bulk ATAC-seq BAM file \n" + "Getting the number of reads in the BAM file")
+        logging.info("Working on a bulk ATAC-seq BAM file \n" + "Getting the number of reads in the BAM file")
         
         # Get the read count using pysam
         read_counts = int(pysam.view("-c", "-F", "260", args.input))
@@ -65,7 +65,7 @@ def run_prepare(args):
         scale_factor = (1/read_counts) * args.rpm_factor
         
         if args.skip_dedup:
-            logging.error("Processing BAM to bigwig. Skipping deduplication")
+            logging.info("Processing BAM to bigwig. Skipping deduplication")
  
             # Use subprocess to run bedtools and bedgraphtobigwig
             subprocess.run(["bash", 
@@ -80,7 +80,7 @@ def run_prepare(args):
                             str(scale_factor),
                             "skip"], check=True)
         else:
-            logging.error("Processing BAM to bigwig. Running eduplication")
+            logging.info("Processing BAM to bigwig. Running eduplication")
 
             subprocess.run(["bash", 
                             PREPARE_BULK_SCRIPT,
@@ -95,12 +95,12 @@ def run_prepare(args):
                             "deduplicate"], check=True)
 
     elif args.input.endswith((".tsv", ".tsv.gz")):
-        logging.error("Working on 10X scATAC fragments file \n " + "Converting fragment files to Tn5 sites")
+        logging.info("Working on 10X scATAC fragments file \n " + "Converting fragment files to Tn5 sites")
 
         # Convert a 10X fragments file to Tn5 cut sites
         bed_df = convert_fragments_to_tn5_bed(args.input, ALL_CHRS)
         
-        logging.error("Getting the number of Tn5 cut sites in the fragment file")
+        logging.info("Getting the number of Tn5 cut sites in the fragment file")
 
         # Get the counts of Tn5 cut sites for normalization
         counts = bed_df.shape[0]
@@ -115,7 +115,7 @@ def run_prepare(args):
         
         bed_df.to_csv(tmp_file_path, sep="\t", header=False, index=False)
 
-        logging.error("Slopping Tn5 cut sites and generating RPM normalized bigwig")
+        logging.info("Slopping Tn5 cut sites and generating RPM normalized bigwig")
         
         # Use subprocess to run bedtools and bedgraphtobigwig
         subprocess.run(["bash", 
@@ -132,7 +132,7 @@ def run_prepare(args):
         print("You have not specific a correct input file type. Options: bulk or scatac")
         sys.exit()
 
-    logging.error("Min-max normalize signal tracks")
+    logging.info("Min-max normalize signal tracks")
 
     output_filename = os.path.join(output_dir,
                                f"{args.name}_IS_slop{args.slop}_RP20M.bw")

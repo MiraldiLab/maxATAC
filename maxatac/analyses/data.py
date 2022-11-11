@@ -42,11 +42,11 @@ def run_data(args):
         wget_2bit = f"wget --no-check-certificate https://hgdownload.cse.ucsc.edu/goldenpath/{genome}/bigZips/{genome}.2bit"
 
         ############### Body ###############
-        logging.error(f"Downloading data for: {genome} \n" +
+        logging.info(f"Downloading data for: {genome} \n" +
                       f"Data will be installed: {args.output} \n" +
                       f"Temporarily downlading data to: {maxatac_repo_dir} \n" +
                       f"Final data will be placed in: {maxatac_final_dir}")
 
         os.system(wget_2bit) # Wget 2bit
 
-    logging.error("Finished!")
+    logging.info("Finished!")

@@ -94,7 +94,6 @@ setup(
         "pyyaml",
         "pysam",
         "seaborn",
-        "tobias",
         "pytest"
     ],
     zip_safe=False,

@@ -13,7 +13,7 @@ from maxatac.utilities.system_tools import get_dir, Mute
 with Mute():
     from maxatac.utilities.genome_tools import build_chrom_sizes_dict
     from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, \
-        import_prediction_regions, create_prediction_regions, make_stranded_predictions
+        create_prediction_regions, make_stranded_predictions
     from maxatac.analyses.peaks import run_call_peaks
 
 
@@ -47,14 +47,14 @@ def run_prediction(args):
     # If the user provides the TF name,
     if args.TF:
         args.model = glob.glob(os.path.join(args.DATA_PATH, "models", args.TF, args.TF + "*.h5"))[0]
-        
+
         args.cutoff_file = glob.glob(os.path.join(args.DATA_PATH, "models", args.TF, args.TF + "*.tsv"))[0]
-        
+
     else:
         pass
-    
-    logging.error(f"Using maxATAC model: {args.model} to make predictions")
-    
+
+    logging.info(f"Using maxATAC model: {args.model} to make predictions")
+
     # predict on all chromosomes
     if args.chromosomes[0] == 'all':
         from maxatac.utilities.constants import AUTOSOMAL_CHRS as all_chr
@@ -69,32 +69,21 @@ def run_prediction(args):
     # The function build_chrom_sizes_dict is used to make sure regions fall within chromosome bounds.
     # Create a dictionary of chromosome sizes used to make the bigwig files
     chrom_sizes_dict = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
-    
+
     # Import the regions for prediction.
-    if args.roi:
-        logging.error("Import prediction regions")
-        regions_pool = import_prediction_regions(bed_file=args.roi,
-                                                 chromosomes=args.chromosomes,
-                                                 chrom_sizes_dictionary=chrom_sizes_dict,
-                                                 blacklist=args.blacklist,
-                                                 step_size=args.step_size
-                                                 )
-        
-        # Find the chromosomes for which we can make predictions based on the requested chroms
-        # and the BED regions provided in the ROI file
-        chrom_list = list(set(args.chromosomes).intersection(set(regions_pool["chr"].unique())))
-        
-    else:
-        logging.error("Create prediction regions")
-        regions_pool = create_prediction_regions(chromosomes=args.chromosomes,
-                                                 chrom_sizes=args.chrom_sizes,
-                                                 blacklist=args.blacklist,
-                                                 step_size=args.step_size
-                                                 )
-        
-        chrom_list = args.chromosomes
-    
-    logging.error("Prediction Parameters \n" +
+    logging.info("Create prediction regions")
+    regions_pool = create_prediction_regions(chromosomes=args.chromosomes,
+                                             chrom_sizes=args.chrom_sizes,
+                                             blacklist=args.blacklist,
+                                             step_size=args.step_size,
+                                             peaks=args.roi
+                                             )
+
+    # Find the chromosomes for which we can make predictions based on the requested chroms
+    # and the BED regions provided in the ROI file
+    chrom_list = list(set(args.chromosomes).intersection(set(regions_pool["chr"].unique())))
+
+    logging.info("Prediction Parameters \n" +
                   f"Output filename: {outfile_name_bigwig} \n" +
                   f"Target signal: {args.signal} \n" +
                   f"Sequence data: {args.sequence} \n" +
@@ -116,19 +105,19 @@ def run_prediction(args):
                                                  False,
                                                  chromosome) for chromosome in chrom_list])
 
-    logging.error("Write predictions to a bigwig file")
+    logging.info("Write predictions to a bigwig file")
 
     # Write the predictions to a bigwig file and add name to args
     prediction_bedgraph = pd.concat(forward_strand_predictions)
-    
+
     write_predictions_to_bigwig(prediction_bedgraph,
                                 output_filename=outfile_name_bigwig,
                                 chrom_sizes_dictionary=chrom_sizes_dict,
                                 chromosomes=chrom_list
                                 )
-    
+
     # If a cutoff file is provided, call peaks
-    if args.cutoff_file:
+    if args.cutoff_file and args.skip_call_peaks is False:
         args.input_bigwig = outfile_name_bigwig
 
         # Call peaks using specified cutoffs
@@ -142,4 +131,4 @@ def run_prediction(args):
     mins, secs = divmod(totalTime, 60)
     hours, mins = divmod(mins, 60)
 
-    logging.error("Total Prediction time: %d:%d:%d.\n" % (hours, mins, secs))
+    logging.info("Total Prediction time: %d:%d:%d.\n" % (hours, mins, secs))

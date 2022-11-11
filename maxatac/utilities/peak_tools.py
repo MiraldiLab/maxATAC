@@ -25,7 +25,7 @@ def call_peaks_per_chromosome(bigwig_path, chrom_name, threshold, bin_size=200):
         # Get the number of bins per chromosome
         bin_count = int(int(chrom_length) / int(bin_size))
         
-        logging.error(
+        logging.info(
         "Start loading chromosome " + chrom_name +
         "\n  Input signal: " + bigwig_path +
         "\n  Binning: " + str(bin_count) + " bins * " + str(bin_size) + " bp"

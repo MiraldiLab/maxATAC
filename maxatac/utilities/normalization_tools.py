@@ -42,7 +42,7 @@ def get_genomic_stats(bigwig_path: str,
         genome_values_array = np.zeros(0, dtype=np.float32)
 
         for chromosome in chrom_sizes_dict:
-            logging.error(f"Calculating statistics for {chromosome}")
+            logging.info(f"Calculating statistics for {chromosome}")
             # Get the chromosome values. Convert nan to 0.
             chr_vals = np.nan_to_num(input_bigwig.values(chromosome, 0, input_bigwig.chroms(chromosome), numpy=True))
 
@@ -62,7 +62,7 @@ def get_genomic_stats(bigwig_path: str,
             # Append chrom values to an array with genome-wide values
             genome_values_array = np.append(genome_values_array, chr_vals[blacklist_mask])
 
-        logging.error("Calculating genome-wide statistics.")
+        logging.info("Calculating genome-wide statistics.")
 
         # Create a dataframe from the minmax results
         minmax_results_df = pd.DataFrame(minmax_results)

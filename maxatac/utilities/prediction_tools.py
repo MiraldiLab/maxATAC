@@ -97,9 +97,9 @@ def import_prediction_regions(bed_file: str,
 
     Returns:
         pd.DataFrame: A BED formatted dataframe of maxATAC compatible intevals
-    
+
     Example:
-    
+
     >>> roi_df = import_prediction_regions("test.bed", 1024, ["chr1"], chrom_sizes_dict, "hg38.blacklist.bed")
     """
     df = pd.read_csv(bed_file,
@@ -111,7 +111,7 @@ def import_prediction_regions(bed_file: str,
 
     # Filter for chroms in the desired set
     df = df[df["chr"].isin(chromosomes)]
-    
+
     # Create a bedtool object from dataframe for merging
     df_bedtool = pybedtools.BedTool.from_dataframe(df)
 
@@ -120,7 +120,7 @@ def import_prediction_regions(bed_file: str,
 
     # Merge the bedtool object if they are half the region length away or less
     merged_bedtool = sorted_bedtool.merge(d=int(region_length/2))
-    
+
     # Create a blacklist object form the blacklist bed file
     blacklist_bedtool = pybedtools.BedTool(blacklist)
 
@@ -142,10 +142,11 @@ def import_prediction_regions(bed_file: str,
 
     return df[["chr", "start", "stop"]]
 
-    
+
 def create_prediction_regions(chromosomes: list,
                               chrom_sizes: dict,
                               blacklist: str,
+                              peaks,
                               step_size: int = 256,
                               region_length: int = INPUT_LENGTH):
     """Create whole genome or chromosome prediction regions
@@ -154,6 +155,7 @@ def create_prediction_regions(chromosomes: list,
         chromosomes (list): List of chromosomes to create prediction regions for
         chrom_sizes (dict): A dictionary of chromosome sizes
         blacklist (str): Path to the blacklist BED file
+        peaks (): Path to the bed file of intervals to center predictions on
         step_size (int, optional): The step size to use for sliding windows. Defaults to 256.
         region_length (int, optional): The region length for prediction. Defaults to INPUT_LENGTH.
 
@@ -171,10 +173,23 @@ def create_prediction_regions(chromosomes: list,
     blacklist_bedtool = pybedtools.BedTool(blacklist)
 
     # Remove the blacklisted regions from the windowed genome object
-    blacklisted_df = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
+    blacklisted_windows = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
+
+    final_windows = blacklisted_windows
+
+    tmp_df = blacklisted_windows.to_dataframe()
+
+    print(tmp_df.groupby(["chrom"]).count()["start"])
+
+    if peaks:
+        peaks_bt = pybedtools.BedTool(peaks)
+
+        peak_windows = blacklisted_windows.intersect(peaks_bt, wa=True)
+
+        final_windows = peak_windows
 
     # Create a dataframe from the BedTools object
-    df = blacklisted_df.to_dataframe()
+    df = final_windows.to_dataframe()
 
     # Rename the columns
     df.columns = ["chr", "start", "stop"]
@@ -182,8 +197,15 @@ def create_prediction_regions(chromosomes: list,
     # Filter for specific chroms
     df = df[df["chr"].isin(chromosomes)]
 
+    # Sort intervals and drop duplicates
+    df = df.sort_values(by=["chr", "start", "stop"]).drop_duplicates(keep="first")
+
     # Reset index so that it goes from 0-end in order
     df = df.reset_index(drop=True)
+
+    print(df.groupby(["chr"]).count()["start"])
+
+    gompers = gompers
 
     return df
 
@@ -308,11 +330,11 @@ def make_stranded_predictions(roi_pool: pd.DataFrame,
 
     chr_roi_pool = roi_pool[roi_pool["chr"] == chromosome].copy()
 
-    logging.error("Load pre-trained model")
+    logging.info("Load pre-trained model")
 
     nn_model = load_model(model, compile=False)
 
-    logging.error("Start Prediction Generator")
+    logging.info("Start Prediction Generator")
 
     data_generator = PredictionDataGenerator(signal=signal,
                                              sequence=sequence,
@@ -322,11 +344,11 @@ def make_stranded_predictions(roi_pool: pd.DataFrame,
                                              batch_size=batch_size,
                                              use_complement=use_complement)
     
-    logging.error("Making predictions")
+    logging.info("Making predictions")
 
     predictions = nn_model.predict(data_generator)
   
-    logging.error("Parsing results into pandas dataframe")
+    logging.info("Parsing results into pandas dataframe")
 
     predictions_df = pd.DataFrame(data=predictions, index=None, columns=None)
     

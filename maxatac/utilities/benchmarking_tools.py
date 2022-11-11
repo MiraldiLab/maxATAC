@@ -30,7 +30,8 @@ class ChromosomeAUPRC(object):
                  bin_size,
                  agg_function,
                  results_location,
-                 round_predictions
+                 round_predictions,
+                 plot=False
                  ):
         """
         :param prediction_bw: Path to bigwig file containing maxATAC predictions
@@ -61,7 +62,9 @@ class ChromosomeAUPRC(object):
         self.__import_prediction_array__(round_prediction=round_predictions)
         self.__import_goldstandard_array__()
         self.__AUPRC__()
-        self.__plot()
+
+        if plot:
+            self.__plot()
 
     def __import_prediction_array__(self, round_prediction=6):
         """
@@ -71,7 +74,7 @@ class ChromosomeAUPRC(object):
         :return: prediction_array: A np.array that has values binned according to bin_count and aggregated according
         to agg_function
         """
-        logging.error("Import Predictions Array")
+        logging.info("Import Predictions Array")
 
         # Get the bin stats from the prediction array
         self.prediction_array = np.nan_to_num(np.array(self.prediction_stream.stats(self.chromosome,
@@ -94,7 +97,7 @@ class ChromosomeAUPRC(object):
         :return: goldstandard_array: A np.array has values binned according to bin_count and aggregated according to
         agg_function. random_precision: The random precision of the model based on # of True bins/ # of genomic bins
         """
-        logging.error("Import Gold Standard Array")
+        logging.info("Import Gold Standard Array")
 
         # Get the bin stats from the gold standard array
         self.goldstandard_array = np.nan_to_num(np.array(self.goldstandard_stream.stats(self.chromosome,
@@ -175,13 +178,13 @@ class ChromosomeAUPRC(object):
 
         :return: AUPRC stats as a pandas dataframe
         """
-        logging.error("Calculate precision-recall curve for " + self.chromosome)
+        logging.info("Calculate precision-recall curve for " + self.chromosome)
 
         self.precision, self.recall, self.thresholds = precision_recall_curve(
             self.goldstandard_array[self.blacklist_mask],
             self.prediction_array[self.blacklist_mask])
 
-        logging.error("Making DataFrame from results")
+        logging.info("Making DataFrame from results")
 
         # Create a dataframe from the results
         # Issue 54:
@@ -191,7 +194,7 @@ class ChromosomeAUPRC(object):
         self.PR_CURVE_DF = pd.DataFrame(
             {'Precision': self.precision[:-1], 'Recall': self.recall[:-1], "Threshold": self.thresholds})
 
-        logging.error("Calculate AUPRc for " + self.chromosome)
+        logging.info("Calculate AUPRc for " + self.chromosome)
 
         # Calculate AUPRc
         self.AUPRC = metrics.auc(y=self.precision[:-1], x=self.recall[:-1])
@@ -199,7 +202,7 @@ class ChromosomeAUPRC(object):
         self.PR_CURVE_DF["AUPRC"] = self.AUPRC
 
         # Calculate the total gold standard bins
-        logging.error("Calculate Total GoldStandard Bins")
+        logging.info("Calculate Total GoldStandard Bins")
 
         self.PR_CURVE_DF["Total_GoldStandard_Bins"] = len(np.argwhere(self.goldstandard_array == True))
 
@@ -212,7 +215,7 @@ class ChromosomeAUPRC(object):
         # Log2FC
         self.PR_CURVE_DF['log2FC_AUPRC_Random_AUPRC'] = np.log2(self.PR_CURVE_DF["AUPRC"] / self.PR_CURVE_DF["Random_AUPRC"])
 
-        logging.error("Write results for " + self.chromosome)
+        logging.info("Write results for " + self.chromosome)
 
         # Write the AUPRC stats to a dataframe
         self.PR_CURVE_DF.to_csv(self.results_location, sep="\t", header=True, index=False)

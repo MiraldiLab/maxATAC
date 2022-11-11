@@ -323,6 +323,13 @@ def get_parser():
                                 help="Cutoff file provided in /data/models"
                                 )
 
+    predict_parser.add_argument("-skip_call_peaks", "--skip_call_peaks",
+                                dest="skip_call_peaks",
+                                action="store_true",
+                                default=False,
+                                required=False,
+                                help="Skip calling peaks on prediction tracks"
+                                )
     #############################################
     # Train parser
     #############################################
@@ -689,7 +696,7 @@ def get_parser():
                                   help="Gold Standard file"
                                   )
 
-    benchmark_parser.add_argument("--chromosomes",
+    benchmark_parser.add_argument("-c", "--chroms", "--chromosomes",
                                   dest="chromosomes",
                                   type=str,
                                   nargs="+",
@@ -722,14 +729,14 @@ def get_parser():
                                   help="Round binned values to this number of decimal places"
                                   )
 
-    benchmark_parser.add_argument("--prefix",
+    benchmark_parser.add_argument("-n", "--name", "--prefix",
                                   dest="prefix",
                                   type=str,
                                   required=True,
                                   help="Prefix for the file name"
                                   )
 
-    benchmark_parser.add_argument("--output_directory",
+    benchmark_parser.add_argument("-o", "--output_directory",
                                   dest="output_directory",
                                   type=str,
                                   default="./benchmarking_results",
@@ -750,6 +757,13 @@ def get_parser():
                                   help="The blacklisted regions to exclude in BigWig format"
                                   )
 
+    benchmark_parser.add_argument("-skip_plot", "--skip_plot",
+                                dest="skip_plot",
+                                action="store_true",
+                                default=False,
+                                required=False,
+                                help="Skip PR curve plotting"
+                                )
     #############################################
     # Peaks subparser
     #############################################
