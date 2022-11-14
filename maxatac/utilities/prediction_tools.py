@@ -177,10 +177,6 @@ def create_prediction_regions(chromosomes: list,
 
     final_windows = blacklisted_windows
 
-    tmp_df = blacklisted_windows.to_dataframe()
-
-    print(tmp_df.groupby(["chrom"]).count()["start"])
-
     if peaks:
         peaks_bt = pybedtools.BedTool(peaks)
 
@@ -202,10 +198,6 @@ def create_prediction_regions(chromosomes: list,
 
     # Reset index so that it goes from 0-end in order
     df = df.reset_index(drop=True)
-
-    print(df.groupby(["chr"]).count()["start"])
-
-    gompers = gompers
 
     return df
 
