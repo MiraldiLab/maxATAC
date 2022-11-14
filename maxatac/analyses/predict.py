@@ -61,6 +61,7 @@ def run_prediction(args):
         args.chromosomes = all_chr
 
     # Create the output directory set by the parser
+    logging.debug(f"Make output directory: {args.output_directory}")
     output_directory = get_dir(args.output_directory)
 
     # Output filename for the bigwig predictions file based on the output directory and the prefix. Add the bw extension
@@ -69,6 +70,9 @@ def run_prediction(args):
     # The function build_chrom_sizes_dict is used to make sure regions fall within chromosome bounds.
     # Create a dictionary of chromosome sizes used to make the bigwig files
     chrom_sizes_dict = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
+    logging.debug(f"Chromosome size dictionary: {chrom_sizes_dict}")
+
+    gompers = gompers
 
     # Import the regions for prediction.
     logging.info("Create prediction regions")
