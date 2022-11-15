@@ -59,3 +59,27 @@ def call_peaks_per_chromosome(bigwig_path, chrom_name, threshold, bin_size=200):
                             ])
 
     return pd.DataFrame(BIN_list, columns=["chr", "start", "end", "score"])
+
+
+def get_threshold(cutoff_file, cutoff_type, cutoff_val):
+    # Find Threshold for specified cutoff values
+    df = pd.read_csv(cutoff_file, sep='\t')
+
+    # Get correct label
+    dict = {"Precision": "Monotonic_Avg_Precision",
+            "Recall": "Monotonic_Avg_Recall",
+            "log2FC": "Monotonic_Avg_log2FC",
+            "F1": "Avg_F1"
+            }
+
+    col_name = dict[cutoff_type]
+
+    if col_name == "Avg_F1":
+        # Find correct threshold for maximum F1 Score
+        thresh = df.loc[df['Avg_F1'].idxmax()].Standard_Thresh
+
+    else:
+        # Find correct threshold
+        thresh = df.query(f"{cutoff_type} >= @cutoff_val").Standard_Thresh.tolist()[0]
+
+    return thresh

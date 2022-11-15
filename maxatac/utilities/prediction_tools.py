@@ -24,7 +24,7 @@ def sortChroms(chrom):
         int: Position in list based on predefined order
     """
     order = dict(zip(ALL_CHRS, range(0, len(ALL_CHRS))))
-    return order[chrom] 
+    return order[chrom]
 
 
 def write_predictions_to_bigwig(df: pd.DataFrame,
@@ -57,7 +57,7 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
                                  as_index=False).max()
 
     chromosomes.sort(key=sortChroms)
-    
+
     with dump_bigwig(output_filename) as data_stream:
         # Make the bigwig header using the chrom sizes dictionary
         header = [(x, chrom_sizes_dictionary[x]) for x in chromosomes]
@@ -71,7 +71,7 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
 
             # Bigwig files need sorted intervals as input
             tmp_chrom_df = tmp_chrom_df.sort_values(by=["chr", "start"])
-            
+
             # Write all entries for the chromosome
             data_stream.addEntries(chroms=tmp_chrom_df["chr"].tolist(),
                                    starts=tmp_chrom_df["start"].tolist(),
@@ -119,7 +119,7 @@ def import_prediction_regions(bed_file: str,
     sorted_bedtool = df_bedtool.sort()
 
     # Merge the bedtool object if they are half the region length away or less
-    merged_bedtool = sorted_bedtool.merge(d=int(region_length/2))
+    merged_bedtool = sorted_bedtool.merge(d=int(region_length / 2))
 
     # Create a blacklist object form the blacklist bed file
     blacklist_bedtool = pybedtools.BedTool(blacklist)
@@ -147,8 +147,10 @@ def create_prediction_regions(chromosomes: list,
                               chrom_sizes: dict,
                               blacklist: str,
                               peaks,
+                              windows,
                               step_size: int = 256,
-                              region_length: int = INPUT_LENGTH):
+                              region_length: int = INPUT_LENGTH
+                              ):
     """Create whole genome or chromosome prediction regions
 
     Args:
@@ -156,6 +158,8 @@ def create_prediction_regions(chromosomes: list,
         chrom_sizes (dict): A dictionary of chromosome sizes
         blacklist (str): Path to the blacklist BED file
         peaks (): Path to the bed file of intervals to center predictions on
+        windows (): Path to the bed file of intervals to use for prediction windows. These will be intersected with
+        peaks file if peaks are provided.
         step_size (int, optional): The step size to use for sliding windows. Defaults to 256.
         region_length (int, optional): The region length for prediction. Defaults to INPUT_LENGTH.
 
@@ -166,37 +170,52 @@ def create_prediction_regions(chromosomes: list,
     
     >>> roi_df = create_prediction_regions(["chr1"], "hg38.chrom.sizes", "hg38.blacklist.bed")
     """
-    # Create a bedtools object that is a windowed genome
-    BED_df_bedtool = pybedtools.BedTool().window_maker(g=chrom_sizes, w=region_length, s=step_size)
+    if windows:
+        logging.info(f"Importing user defined prediction windows from {windows}")
+        logging.warning(f"Make sure that the custom windows are {region_length} bp wide and have the same step size.")
+        windows_bedtool = pybedtools.BedTool(windows)
+
+    else:
+        logging.info(f"Creating prediction windows that are {region_length} bp wide with a {step_size} bp step")
+        # Create a bedtools object that is a windowed genome
+        windows_bedtool = pybedtools.BedTool().window_maker(g=chrom_sizes,
+                                                            w=region_length,
+                                                            s=step_size)
 
     # Create a blacklist object form the blacklist bed
+    logging.debug(f"Import blacklist file {blacklist} as BedTool")
     blacklist_bedtool = pybedtools.BedTool(blacklist)
 
     # Remove the blacklisted regions from the windowed genome object
-    blacklisted_windows = BED_df_bedtool.intersect(blacklist_bedtool, v=True)
+    logging.debug(f"Removing windows that overlap blacklist regions.")
+    blacklisted_windows = windows_bedtool.intersect(blacklist_bedtool, v=True)
 
     final_windows = blacklisted_windows
 
     if peaks:
+        logging.info(f"Limiting prediction windows to regions overlapping intervals in peaks file: {peaks}")
+        logging.debug(f"Create BedTool from file: {peaks}")
         peaks_bt = pybedtools.BedTool(peaks)
 
-        peak_windows = blacklisted_windows.intersect(peaks_bt, wa=True)
+        logging.debug(f"Intersect windows with peaks.")
+        peak_windows = blacklisted_windows.intersect(peaks_bt, u=True)
 
         final_windows = peak_windows
 
     # Create a dataframe from the BedTools object
+    logging.debug(f"Convert BedTool of final prediction windows to pandas DataFrame.")
     df = final_windows.to_dataframe()
 
-    # Rename the columns
+    # Rename the column
+    logging.debug(f"Rename columns.")
     df.columns = ["chr", "start", "stop"]
 
     # Filter for specific chroms
+    logging.debug(f"Filter for chromosomes in {chromosomes}")
     df = df[df["chr"].isin(chromosomes)]
 
-    # Sort intervals and drop duplicates
-    df = df.sort_values(by=["chr", "start", "stop"]).drop_duplicates(keep="first")
-
     # Reset index so that it goes from 0-end in order
+    logging.debug(f"Reset index.")
     df = df.reset_index(drop=True)
 
     return df
@@ -240,13 +259,13 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
         Denotes the number of batches per epoch
         """
         if self.predict_roi_df.shape[0] < self.batch_size:
-            num_batches = 1  
-            
+            num_batches = 1
+
         else:
             num_batches = int(self.predict_roi_df.shape[0] / self.batch_size)
-        
+
         return num_batches
-    
+
     def __getitem__(self, index):
         """
         Generate one batch of data
@@ -281,7 +300,7 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
         Get the bigwig values for each ROI in the ROI pool
 
         :param roi_pool: Pool of regions to make predictions on
-        """        
+        """
         # Create the lists to hold the batch data
         inputs_batch = []
 
@@ -316,10 +335,9 @@ def make_stranded_predictions(roi_pool: pd.DataFrame,
                               batch_size: int,
                               use_complement: bool,
                               chromosome: str,
-                              number_intervals: int =32,
-                              input_channels: int =INPUT_CHANNELS,
-                              input_length: int =INPUT_LENGTH):
-
+                              number_intervals: int = 32,
+                              input_channels: int = INPUT_CHANNELS,
+                              input_length: int = INPUT_LENGTH):
     chr_roi_pool = roi_pool[roi_pool["chr"] == chromosome].copy()
 
     logging.info("Load pre-trained model")
@@ -335,15 +353,15 @@ def make_stranded_predictions(roi_pool: pd.DataFrame,
                                              predict_roi_df=chr_roi_pool,
                                              batch_size=batch_size,
                                              use_complement=use_complement)
-    
+
     logging.info("Making predictions")
 
     predictions = nn_model.predict(data_generator)
-  
+
     logging.info("Parsing results into pandas dataframe")
 
     predictions_df = pd.DataFrame(data=predictions, index=None, columns=None)
-    
+
     if use_complement:
         # If reverse + complement used, reverse the columns of the pandas df in order to
         predictions_df = predictions_df[predictions_df.columns[::-1]]

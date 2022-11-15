@@ -131,7 +131,7 @@ def get_parser():
     data_parser.add_argument("--loglevel",
                              dest="loglevel",
                              type=str,
-                             default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                             default="info",
                              choices=LOG_LEVELS.keys(),
                              help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                              )
@@ -188,7 +188,7 @@ def get_parser():
     average_parser.add_argument("--loglevel",
                                 dest="loglevel",
                                 type=str,
-                                default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                default="info",
                                 choices=LOG_LEVELS.keys(),
                                 help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                 )
@@ -253,10 +253,17 @@ def get_parser():
                                       Default: None, predictions are done on the whole chromosome."
                                 )
 
+    predict_parser.add_argument("--windows", "-w",
+                                dest="windows",
+                                required=False,
+                                help="Bed file with ranges to use for windows. These windows must 1,024 bp wide and \
+                                    generated with an uniform step size. These will replace windows generated de novo."
+                                )
+
     predict_parser.add_argument("--loglevel",
                                 dest="loglevel",
                                 type=str,
-                                default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                default="info",
                                 choices=LOG_LEVELS.keys(),
                                 help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                 )
@@ -277,9 +284,10 @@ def get_parser():
 
     predict_parser.add_argument("-n", "--name", "--prefix",
                                 dest="name",
+                                required=True,
                                 type=str,
-                                default="maxatac_predict",
-                                help="Prefix for filename"
+                                help="Sting to use for filename. This should not include extensions. \
+                                      Example: GM12878_CTCF"
                                 )
 
     predict_parser.add_argument("-cs", "--chrom_sizes", "--chrom_sizes",
@@ -330,6 +338,7 @@ def get_parser():
                                 required=False,
                                 help="Skip calling peaks on prediction tracks"
                                 )
+
     #############################################
     # Train parser
     #############################################
@@ -512,7 +521,7 @@ def get_parser():
     train_parser.add_argument("--loglevel",
                               dest="loglevel",
                               type=str,
-                              default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                              default="info",
                               choices=LOG_LEVELS.keys(),
                               help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                               )
@@ -651,7 +660,7 @@ def get_parser():
     normalize_parser.add_argument("--loglevel",
                                   dest="loglevel",
                                   type=str,
-                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                  default="info",
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                   )
@@ -746,7 +755,7 @@ def get_parser():
     benchmark_parser.add_argument("--loglevel",
                                   dest="loglevel",
                                   type=str,
-                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                  default="info",
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                   )
@@ -837,7 +846,7 @@ def get_parser():
     peaks_parser.add_argument("--loglevel",
                               dest="loglevel",
                               type=str,
-                              default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                              default="info",
                               choices=LOG_LEVELS.keys(),
                               help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                               )
@@ -918,7 +927,7 @@ def get_parser():
     variants_parser.add_argument("--loglevel",
                                  dest="loglevel",
                                  type=str,
-                                 default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                 default="info",
                                  choices=LOG_LEVELS.keys(),
                                  help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                  )
@@ -1032,7 +1041,7 @@ def get_parser():
     prepare_parser.add_argument("--loglevel",
                                 dest="loglevel",
                                 type=str,
-                                default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                default="info",
                                 choices=LOG_LEVELS.keys(),
                                 help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                 )
@@ -1087,7 +1096,7 @@ def get_parser():
     threshold_parser.add_argument("--loglevel",
                                   dest="loglevel",
                                   type=str,
-                                  default=LOG_LEVELS[DEFAULT_LOG_LEVEL],
+                                  default="info",
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                   )
