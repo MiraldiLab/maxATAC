@@ -15,7 +15,7 @@ import os
 import pysam
 from maxatac.utilities.system_tools import get_dir, check_prepare_packages_installed
 from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed
-from maxatac.utilities.constants import ALL_CHRS, PREPARE_scATAC_SCRIPT, PREPARE_BULK_SCRIPT
+from maxatac.utilities.constants import PREPARE_scATAC_SCRIPT, PREPARE_BULK_SCRIPT
 from maxatac.analyses.normalize import run_normalization
 
 
@@ -39,6 +39,7 @@ def run_prepare(args):
     
     logging.info(f"Prepare Parameters:\n" +
                   f"Input file: {args.input} \n" +
+                  f"Limiting to chromosomes: {args.chromosomes} \n" + 
                   f"Input chromosome sizes file: {args.chrom_sizes} \n" +
                   f"Tn5 cut sites will be slopped {args.slop} bps on each side \n" +
                   f"Input blacklist file: {args.blacklist_bw} \n" +
@@ -78,7 +79,8 @@ def run_prepare(args):
                             args.chrom_sizes,
                             str(args.slop), 
                             str(scale_factor),
-                            "skip"], check=True)
+                            "skip",
+                            " ".join(args.chromosomes)], check=True)
         else:
             logging.info("Processing BAM to bigwig. Running eduplication")
 
@@ -92,13 +94,14 @@ def run_prepare(args):
                             args.chrom_sizes,
                             str(args.slop), 
                             str(scale_factor),
-                            "deduplicate"], check=True)
+                            "deduplicate",
+                            " ".join(args.chromosomes)], check=True)
 
     elif args.input.endswith((".tsv", ".tsv.gz")):
         logging.info("Working on 10X scATAC fragments file \n " + "Converting fragment files to Tn5 sites")
 
         # Convert a 10X fragments file to Tn5 cut sites
-        bed_df = convert_fragments_to_tn5_bed(args.input, ALL_CHRS)
+        bed_df = convert_fragments_to_tn5_bed(args.input, args.chromosomes)
         
         logging.info("Getting the number of Tn5 cut sites in the fragment file")
 
