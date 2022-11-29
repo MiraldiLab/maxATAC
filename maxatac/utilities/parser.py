@@ -2,8 +2,6 @@ import argparse
 import random
 import os
 from os import getcwd
-
-from pkg_resources import require
 from yaml import dump
 
 from maxatac.utilities.system_tools import (get_version,
@@ -245,7 +243,7 @@ def get_parser():
                                 help="The blacklisted regions to exclude in BED format"
                                 )
 
-    predict_parser.add_argument("--bed", "--peaks", "--regions", "-roi",
+    predict_parser.add_argument("--bed", "--peaks", "--regions", "--roi", "-roi",
                                 dest="roi",
                                 default=False,
                                 required=False,
@@ -290,7 +288,7 @@ def get_parser():
                                       Example: GM12878_CTCF"
                                 )
 
-    predict_parser.add_argument("-cs", "--chrom_sizes", "--chrom_sizes",
+    predict_parser.add_argument("-cs", "-chrom_sizes", "--chrom_sizes", "--chromosome_sizes",
                                 dest="chrom_sizes",
                                 type=str,
                                 help="Chromosome sizes file"
@@ -305,27 +303,20 @@ def get_parser():
                                       Default: All chromosomes chr1-22"
                                 )
 
-    predict_parser.add_argument("-bin", "--bin_size",
-                                dest="BIN_SIZE",
-                                type=int,
-                                default=DEFAULT_BENCHMARKING_BIN_SIZE,
-                                help="Bin size to use for peak calling"
-                                )
-
-    predict_parser.add_argument("-cutoff_type", "--cutoff_type",
+    predict_parser.add_argument("-ct", "-cutoff_type", "--cutoff_type",
                                 dest="cutoff_type",
                                 default="F1",
                                 type=str,
                                 help="Cutoff type (i.e. Precision)"
                                 )
 
-    predict_parser.add_argument("-cutoff_value", "--cutoff_value",
+    predict_parser.add_argument("-cv", "-cutoff_value", "--cutoff_value",
                                 dest="cutoff_value",
                                 type=float,
                                 help="Cutoff value for the cutoff type provided. Not used with F1 score."
                                 )
 
-    predict_parser.add_argument("-cutoff_file", "--cutoff_file",
+    predict_parser.add_argument("-cf", "-cutoff_file", "--cutoff_file",
                                 dest="cutoff_file",
                                 type=str,
                                 help="Cutoff file provided in /data/models"

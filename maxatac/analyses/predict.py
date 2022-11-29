@@ -16,17 +16,19 @@ with Mute():
     from maxatac.utilities.peak_tools import get_threshold
     from maxatac.utilities.prediction_tools import write_predictions_to_bigwig, \
         create_prediction_regions, make_stranded_predictions
-    from maxatac.analyses.peaks import run_call_peaks
 
 
 def run_prediction(args):
     """
-    Predict TF binding with a maxATAC model. The user can provide a bed file of regions to predict on or prediction
-    regions can be created based on the chromosome of interest. The default prediction will predict across all autosomal
-    chromosomes.
+    Predict TF binding with a maxATAC model. The user can provide a bed file of regions to predict on,
+    called windows, or prediction regions can be created based on the chromosome of interest. The default prediction
+    will predict across all autosomal chromosomes.
 
-    BED file requirements for prediction. You must have at least a 3 column file with chromosome, start,
+    Peak file requirements for prediction. You must have at least a 3 column file with chromosome, start,
     and stop coordinates.
+
+    Windows file requirements for prediction. These windows will be directly input into the maxATAC data generator
+    and should be 1,024 bp wide. The window step should be uniform across the chromosome.
 
     The user can decide whether to make only predictions on the forward strand or also make prediction on the reverse
     strand. If the user wants both strand, signal tracks will be produced for the forward, reverse, and mean-combined
@@ -36,12 +38,12 @@ def run_prediction(args):
 
     1) Create directories and set up filenames
     2) Prepare regions for prediction. Either import user defined regions or create regions based on chromosomes list.
-    3) Make predictions on the reference strand. 
-    3) Convert predictions to bigwig format and write results.
+    3) Make predictions.
+    4) Convert predictions to bigwig format and write results.
+    5) Write predictions to an optional BED formated file of regions above a specific threshold.
 
-    Args:
-        output_directory, name, signal, sequence, models, predict_chromosomes, threads, batch_size, roi,
-        chrom_sizes, blacklist, average
+    Args: TF, output_directory, name, signal, sequence, model, threads, batch_size, roi, cutoff_type, cutoff_value,
+    cutoff_file, chrom_sizes, blacklist, average, windows, loglevel, step_size, chromosomes, skip_call_peaks
     """
     # Start Timer
     startTime = timeit.default_timer()
@@ -124,7 +126,7 @@ def run_prediction(args):
     if args.cutoff_file and args.skip_call_peaks is False:
         args.input_bigwig = outfile_name_bigwig
 
-        peaks_filename = os.path.join(output_directory, args.name + "_" + str(args.BIN_SIZE) + "bp.bed")
+        peaks_filename = os.path.join(output_directory, args.name + "_peaks.bed")
 
         thresh = get_threshold(cutoff_file=args.cutoff_file,
                                cutoff_type=args.cutoff_type,

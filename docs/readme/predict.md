@@ -20,17 +20,13 @@ maxatac predict --tf CTCF --signal GM12878.bigwig
 
 The user must provide either the TF name that they want to make predictions for or the h5 model file they desire. If the user provides a TF name, the best model will be used and the correct threshold file will be provided for peak calling.
 
-### `-s, --signal`
+### `-s, --signal, -i`
 
 The ATAC-seq signal bigwig track that will be used to make predictions of TF binding.
 
-### `--genome`
-
-Specify which genome build this task is specified for (i.e. hg38). 
-
 ## Optional Arguments
 
-### `--sequence`
+### `--sequence, --seq`
 
 This argument specifies the path to the 2bit DNA sequence for the genome of interest. maxATAC models are trained with hg38 so you will need the correct `.2bit` file.
 
@@ -46,17 +42,17 @@ The cutoff value for the cutoff type provided. Note precision, recall, and F1-sc
 
 The cutoff file provided in /data/models that corresponds to the average validation performance metrics for the TF model.
 
-### `--output`
+### `-o, --output`
 
 Output directory path. Default: `./prediction_results`
 
-### `--blacklist`
+### `-bl, --blacklist`
 
 The path to a bigwig file that has regions to exclude. Default: maxATAC-defined blacklist.
 
-### `--roi`
+### `--bed, --peaks, --regions, , --roi, -roi`
 
-The path to a bed file that contains the genomic regions to predict TF binding in. These regions should be at least 1024 bp, the maxATAC model input regions.
+The path to a bed file that contains the genomic regions to focus TF predictions on. These peaks will be used to refine the prediction windows. 
 
 ### `--batch_size`
 
@@ -66,15 +62,15 @@ The number of regions to predict on per batch. Default `10000`. Decrease this va
 
 The step size to use for building the prediction intervals. Overlapping prediction bins will be averaged together. Default: `INPUT_LENGTH/4`, where INPUT_LENGTH is the maxATAC model input size of 1,024 bp. 
 
-### `--prefix`
+### `-n, --name, --prefix`
 
 Output filename prefix to use. Default `maxatac_predict`.
 
-### `--chrom_sizes`
+### `-cs, --chrom_sizes, -chrom_sizes, --chromosome_sizes`
 
 The path to the chromosome sizes file. This is used to generate the bigwig signal tracks.
 
-### `--chromosomes`
+### `-c, -chroms, --chromosomes`
 
 The chromosomes to make predictions on. Our models do not currently considered chromosomes X or Y. This means that most of the files will not contain this information. You should not predict in chrX or chrY unless you know your bigwig contains these chromosomes. Default: Autosomal chromosomes 1-22.
 
@@ -82,6 +78,10 @@ The chromosomes to make predictions on. Our models do not currently considered c
 
 This argument is used to set the logging level. Currently, the only working logging level is `ERROR`.
 
-### `-bin, --bin_size`
+### `-w, --windows`
 
-The bin size to use for calling peaks. Default: 200 bp based on the same sized used for benchmarking predictions.
+The windows to use for prediction. These windows must be 1,024 bp wide and have a consistent step size.
+
+### `-skip_call_peaks, --skip_call_peaks`
+
+This will skip calling peaks at the end of predictions. 

@@ -21,15 +21,13 @@ ___
 
 It is best to install maxATAC into a dedicated virtual environment.
 
-This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`, `graphviz`, and `ucsc-bedGraphToBigWig` in order to run all functions.
+This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`, `graphviz`, and `ucsc-bedgraphtobigwig` in order to run all functions.
 
-> The total install requirements for maxATAC with reference data are ~2 GB.
+> The total install data requirements for maxATAC is ~2 GB.
 
 ### Installing with Conda
 
 1. Create a conda environment for maxATAC with `conda create -n maxatac -c bioconda python=3.9 samtools wget bedtools ucsc-bedgraphtobigwig pigz`
-
-> If you get an error installing ucsc-bedgraphtobigwig try `conda install -c bioconda ucsc-bedgraphtobigwig`
 
 > If you get an error regarding graphviz while training a model, re-install graphviz with `conda install graphviz`
 
@@ -40,6 +38,7 @@ This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`,
 4. Download reference data with `maxatac data`
 
 > If you have an error related to pybigwig, reference issues: [96](https://github.com/MiraldiLab/maxATAC/issues/96) and [87](https://github.com/MiraldiLab/maxATAC/issues/87#issue-1139117054)
+
 ### Installing with python virtualenv
 
 1. Create a virtual environment for maxATAC with `virtualenv -p python3.9 maxatac`.
