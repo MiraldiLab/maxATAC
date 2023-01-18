@@ -24,6 +24,10 @@ The user must provide either the TF name that they want to make predictions for 
 
 The ATAC-seq signal bigwig track that will be used to make predictions of TF binding.
 
+### `-n, --name, --prefix`
+
+Output filename prefix to use. Default `maxatac_predict`.
+
 ## Optional Arguments
 
 ### `--sequence, --seq`
@@ -61,10 +65,6 @@ The number of regions to predict on per batch. Default `10000`. Decrease this va
 ### `--step_size`
 
 The step size to use for building the prediction intervals. Overlapping prediction bins will be averaged together. Default: `INPUT_LENGTH/4`, where INPUT_LENGTH is the maxATAC model input size of 1,024 bp. 
-
-### `-n, --name, --prefix`
-
-Output filename prefix to use. Default `maxatac_predict`.
 
 ### `-cs, --chrom_sizes, -chrom_sizes, --chromosome_sizes`
 
