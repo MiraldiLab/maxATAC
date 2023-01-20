@@ -25,7 +25,7 @@ def run_data(args):
     maxatac_final_dir = os.path.join(maxatac_dir, "data")
 
     # Command to clone the data repo
-    clone = "git clone https://github.com/MiraldiLab/maxATAC_data.git"
+    clone = "git clone --depth 1 https://github.com/MiraldiLab/maxATAC_data.git"
 
     os.chdir(maxatac_dir) # Change to the directory where the repo should be cloned
     
@@ -39,7 +39,7 @@ def run_data(args):
 
     for genome in args.genome:
         os.chdir(os.path.join(maxatac_final_dir, genome)) # change to the final data directory
-        wget_2bit = f"wget --no-check-certificate https://hgdownload.cse.ucsc.edu/goldenpath/{genome}/bigZips/{genome}.2bit"
+        wget_2bit = f"wget --no-check-certificate https://hgdownload.cse.ucsc.edu/goldenpath/{genome}/bigZips/{genome}.2bit -O {genome}.2bit"
 
         ############### Body ###############
         logging.info(f"Downloading data for: {genome} \n" +
