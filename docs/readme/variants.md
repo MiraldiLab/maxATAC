@@ -10,11 +10,15 @@ maxatac variants -m ELF1_99.h5 -signal GM12878__slop20bp_RP20M_minmax01.bw -name
 
 ## Required Arguments
 
+### `--genome`
+
+Specify which genome build this task is specified for (i.e. hg38). 
+
 ### `-m, --model`
 
 The trained maxATAC model that will be used to predict TF binding. This is a h5 file produced from `maxatac train`. 
 
-### `--signal`
+### `-i`, `-s`, `--signal`
 
 The ATAC-seq signal bigwig track that will be used to make predictions of TF binding. 
 
@@ -22,13 +26,13 @@ The ATAC-seq signal bigwig track that will be used to make predictions of TF bin
 
 The bed file of nucleotides to change. The first 3 columns should be the coordinates and the fourth column should be the nucleotide to use.
 
-### `-n, --name`
+### `-n`, `--name`, `--prefix`
 
 Output filename prefix to use.
 
 ## Optional Arguments
 
-### `-s, --sequence`
+### `-s`, `--sequence`
 
 This argument specifies the path to the 2bit DNA sequence for the genome of interest. Default: hg38.2bit
 
@@ -36,7 +40,7 @@ This argument specifies the path to the 2bit DNA sequence for the genome of inte
 
 The bed file of intervals to use for prediction windows. Predictions will be limited to these specific regions. Only the first 3 columns of the file will be considered when making the prediction windows. Default: Whole genome prediction. 
 
-### `-o, --output`
+### `-o`, `--output_dir`
 
 Output directory path. Default: `./variantss`
 
@@ -52,10 +56,10 @@ The path to a bigwig file that has regions to exclude. Default: maxATAC defined 
 
 The number of base pairs to overlap the 1,024 bp regions during prediction. This should be in multiples of 256. Default: 256
 
-### `-chroms, --chromosomes`
+### `-c`, `-chroms`, `--chromosomes`
 
 The chromosomes to make predictions on. Default: All chromosomes. chr1-22, X, Y
 
-### `--chrom_sizes`
+### `-cs`, `--chrom_sizes`, `--chromosome_sizes`
 
 The path to the chromosome sizes file. This is used to generate the bigwig signal tracks. Default: hg38.chrom.sizes

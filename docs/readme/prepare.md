@@ -35,18 +35,18 @@ Description of filename parts:
 
 ## Required Arguments
 
-### `-i, --input`
+### `-i`, `--input`
 
 The input file to be processed. The input file can be either:
 
 * `.bam`: Bulk ATAC-seq BAM file.
 * `.tsv`: 10X scATAC fragments file. Must end in `.tsv` or `.tsv.gz`.
 
-### `-o, --output`
+### `-o`, `--output`
 
 The output directory path.
 
-### `-prefix`
+### `-n`, `-name`, `--prefix`, `-prefix`
 
 This argument is used to set the prefix for setting the filenames. 
 
@@ -54,19 +54,19 @@ This argument is used to set the prefix for setting the filenames.
 
 The default values for the optional arguments are based on the testing performed in the maxATAC publication. See the [Methods](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1.article-metrics) of our publication for a detailed explanation of each parameter choice.
 
-### `-skip_dedup, --skip_deduplication`
+### `-skip_dedup`, `--skip_deduplication`
 
 It is important to remove PCR duplicates from your ATAC-seq data if you have not done so already. Include this flag to perform PCR deduplication of the input BAM file if you know that it has not been deduplicated. Skipping this step will speed up data processing. Defualt: False
 
-### `-slop, --slop`
+### `-slop`, `--slop`
 
 The slop size used to smooth sparse Tn5 cut sites' signal. Each Tn5 cut site will be extended +/- the slop size (in bp). Because maxATAC models were trained using slop size of 20bp (a value that approximates the size of Tn5 transposase), **this parameter should not be changed from default (20 bp) when using the trained models provided by maxATAC**. Default: 20 bp.
 
-### `-rpm, --rpm_factor`
+### `-rpm`, `--rpm_factor`
 
 The reads per million (RPM) factor used for read-depth normalization of signal. Most groups use RPM and therefore 1,000,000 as a scaling factor, but maxATAC uses RP20M and therefore 20,000,000 because it is approximately the median sequencing depth of the ATAC-seq data used for training. Changing from the default (20000000) is not problematic for maxATAC prediction, as this track is only used for visualization. (Predictions are made on a min-max-like normalized signal track, also an output from `maxatac prepare`.) Default: 20000000.
 
-### `--blacklist_bed`
+### `--blacklist`
 
 The path to the blacklist bed file. Default: maxATAC defined blacklisted regions for hg38.
 
@@ -74,15 +74,15 @@ The path to the blacklist bed file. Default: maxATAC defined blacklisted regions
 
 The path to the blacklist bigwig file. Default: maxATAC defined blacklist for hg38 as a bigwig file.
 
-### `--chrom_sizes`
+### `-cs`, `--chrom_sizes`, `--chromosome_sizes`
 
 The chromosome sizes file. Default: hg38 chrom sizes.
 
-### `-chroms, --chromosomes`
+### `-c`, `-chroms`, `--chromosomes`
 
 The chromosomes to use for the final output. Default: Autosomal chromosomes chr1-22.
 
-### `-threads`
+### `-t`, `-threads`
 
 The number of threads to use. Default: Get available CPU count.
 

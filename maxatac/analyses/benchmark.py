@@ -39,7 +39,7 @@ def run_benchmarking(args):
     # Build the results filename
     results_filename2 = os.path.join(output_dir, args.prefix + "_" + "r2_spearman_spearman.tsv")
 
-    logging.error(
+    logging.info(
         "Benchmarking" +
         "\n  Prediction file:" + args.prediction +
         "\n  Gold standard file: " + args.gold_standard +
@@ -50,19 +50,20 @@ def run_benchmarking(args):
 
     # Calculate the AUPR using the prediction and gold standard
     for chromosome in args.chromosomes:
-        logging.error("Benchmarking " + chromosome)
+        logging.info("Benchmarking " + chromosome)
         # Build the results filename
         results_filename = os.path.join(output_dir,
                                         args.prefix + "_" + chromosome + "_" + str(args.bin_size) + "bp_PRC.tsv")
 
         ChromosomeAUPRC(args.prediction,
                         args.gold_standard,
-                        args.blacklist,
+                        args.blacklist_bw,
                         chromosome,
                         args.bin_size,
                         args.agg_function,
                         results_filename,
-                        args.round_predictions)
+                        args.round_predictions,
+                        plot=args.skip_plot)
 
     # Measure End Time of Training
     stopTime = timeit.default_timer()
@@ -72,4 +73,4 @@ def run_benchmarking(args):
     mins, secs = divmod(totalTime, 60)
     hours, mins = divmod(mins, 60)
 
-    logging.error("Total Benchmarking time: %d:%d:%d.\n" % (hours, mins, secs))
+    logging.info("Total Benchmarking time: %d:%d:%d.\n" % (hours, mins, secs))

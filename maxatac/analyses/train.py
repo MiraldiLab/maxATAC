@@ -45,7 +45,7 @@ def run_training(args):
     # Start Timer
     startTime = timeit.default_timer()
 
-    logging.error(f"Training Parameters:\n" +
+    logging.info(f"Training Parameters:\n" +
                   f"Architecture: {args.arch} \n" +
                   f"Filename prefix: {args.prefix} \n" +
                   f"Output directory: {args.output} \n" +
@@ -81,7 +81,7 @@ def run_training(args):
                                  weights=args.weights
                                  )
 
-    logging.error("Import training regions")
+    logging.info("Import training regions")
 
     # Import training regions
     train_examples = ROIPool(chroms=args.tchroms,
@@ -105,7 +105,7 @@ def run_training(args):
                                 chrom_sizes_file=args.chrom_sizes
                                 )
     
-    logging.error("Initialize training data generator")
+    logging.info("Initialize training data generator")
 
     # Initialize the training generator
     train_gen = DataGenerator(sequence=args.sequence,
@@ -125,26 +125,26 @@ def run_training(args):
     # Specify max_que_size
     if args.max_queue_size:
         queue_size = int(args.max_queue_size)
-        logging.error("User specified Max Queue Size: " + str(queue_size))
+        logging.info("User specified Max Queue Size: " + str(queue_size))
     else:
         queue_size = args.threads * 2
-        logging.error("Max Queue Size found: " + str(queue_size))
+        logging.info("Max Queue Size found: " + str(queue_size))
 
     # Builds a Enqueuer from a Sequence.
     # Specify multiprocessing
     if args.multiprocessing:
-        logging.error("Training with multiprocessing")
+        logging.info("Training with multiprocessing")
         train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=True)
         train_gen_enq.start(workers=args.threads, max_queue_size=queue_size)
 
     else:
-        logging.error("Training without multiprocessing")
+        logging.info("Training without multiprocessing")
         train_gen_enq = OrderedEnqueuer(seq_train_gen, use_multiprocessing=False)
         train_gen_enq.start(workers=1, max_queue_size=queue_size)
 
     enq_train_gen = train_gen_enq.get()
 
-    logging.error("Initialize validation data generator")
+    logging.info("Initialize validation data generator")
 
     # Initialize the validation generator
     val_gen = DataGenerator(sequence=args.sequence,
@@ -164,18 +164,18 @@ def run_training(args):
     # Builds a Enqueuer from a Sequence.
     # Specify multiprocessing
     if args.multiprocessing:
-        logging.error("Training with multiprocessing")
+        logging.info("Training with multiprocessing")
         val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=True)
         val_gen_enq.start(workers=args.threads, max_queue_size=queue_size)
     else:
-        logging.error("Training without multiprocessing")
+        logging.info("Training without multiprocessing")
         val_gen_enq = OrderedEnqueuer(seq_validate_gen, use_multiprocessing=False)
         val_gen_enq.start(workers=1, max_queue_size=queue_size)
 
     enq_val_gen = val_gen_enq.get()
 
 
-    logging.error("Fit model")
+    logging.info("Fit model")
 
     # Fit the model
     training_history = maxatac_model.nn_model.fit(enq_train_gen,
@@ -195,7 +195,7 @@ def run_training(args):
                                                 verbose=1
                                                 )
 
-    logging.error("Plot and save results")
+    logging.info("Plot and save results")
 
     # Select best model
     best_epoch = model_selection(training_history=training_history,
@@ -219,7 +219,7 @@ def run_training(args):
         validate_examples.write_data(prefix=args.prefix, output_dir=maxatac_model.output_directory,
                                      set_tag="validation")
 
-    logging.error("Results are saved to: " + maxatac_model.results_location)
+    logging.info("Results are saved to: " + maxatac_model.results_location)
     
     # Measure End Time of Training
     stopTime = timeit.default_timer()
@@ -229,6 +229,6 @@ def run_training(args):
     mins, secs = divmod(totalTime, 60)
     hours, mins = divmod(mins, 60)
 
-    logging.error("Total training time: %d:%d:%d.\n" % (hours, mins, secs))
+    logging.info("Total training time: %d:%d:%d.\n" % (hours, mins, secs))
 
     sys.exit()

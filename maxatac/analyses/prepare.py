@@ -1,5 +1,13 @@
-"""Run maxatac prepare for generating normalized signal tracks for prediction
+"""The prepare function converts a .bam file of paired-end sequencing reads to a .bigwig file of Tn5 cut sites
+counts that are normalized for use with maxatac predict and maxatac train. The maxatac prepare
+function requires samtools, bedtools, pigz, and bedGraphToBigWig be installed on your PATH to run.
+
+See:
+https://github.com/MiraldiLab/maxATAC/blob/main/docs/readme/prepare.md#Prepare
+https://github.com/MiraldiLab/maxATAC/wiki/prepare
+https://github.com/MiraldiLab/maxATAC/wiki/ATAC-seq-Data-Processing
 """
+
 import logging
 import sys
 import subprocess
@@ -7,20 +15,19 @@ import os
 import pysam
 from maxatac.utilities.system_tools import get_dir, check_prepare_packages_installed
 from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed
-from maxatac.utilities.constants import ALL_CHRS, PREPARE_scATAC_SCRIPT, PREPARE_BULK_SCRIPT
+from maxatac.utilities.constants import PREPARE_scATAC_SCRIPT, PREPARE_BULK_SCRIPT
 from maxatac.analyses.normalize import run_normalization
 
 
 def run_prepare(args):
-    """Run maxatac prepare for generating normalized signal tracks for prediction
+    """Run maxatac prepare to prepare ATAC-seq signal tracks for prediction
     
     This function will :
     1) Check whether the file is a .tsv/.tsv.gz or .bam file. 
     
         tsv file: 10x scATACseq fragments file
         bam file: bulk ATACseq BAM file
-            If the file is a bam file, a flagstat check for duplicate reads will be performed.
-        
+
     2) Convert reads or fragments to Tn5 cut sites and sequencing depth normalize.
     3) Minmax normalize the RPM normalized bigwig files for maxATAC    
     
@@ -30,21 +37,23 @@ def run_prepare(args):
     # Check if samtools, bedtools, bedgraphtobigwig, and pigz are installed
     check_prepare_packages_installed()
     
-    logging.error(f"Input file: {args.input} \n" +
+    logging.info(f"Prepare Parameters:\n" +
+                  f"Input file: {args.input} \n" +
+                  f"Limiting to chromosomes: {args.chromosomes} \n" + 
                   f"Input chromosome sizes file: {args.chrom_sizes} \n" +
                   f"Tn5 cut sites will be slopped {args.slop} bps on each side \n" +
-                  f"Input blacklist file: {args.blacklist} \n" +
-                  f"Output filename: {args.prefix} \n" +
-                  f"Output directory: {args.output} \n" +
+                  f"Input blacklist file: {args.blacklist_bw} \n" +
+                  f"Output filename: {args.name} \n" +
+                  f"Output directory: {args.output_dir} \n" +
                   f"Using a millions factor of: {args.rpm_factor} \n" +
                   f"Using {args.threads} threads to run job.")
     
-    output_dir = get_dir(args.output)
+    output_dir = get_dir(args.output_dir)
     
-    logging.error("Generate the normalized signal tracks.")
+    logging.info("Generate the normalized signal tracks.")
 
     if args.input.endswith(".bam"):
-        logging.error("Working on a bulk ATAC-seq BAM file \n" + "Getting the number of reads in the BAM file")
+        logging.info("Working on a bulk ATAC-seq BAM file \n" + "Getting the number of reads in the BAM file")
         
         # Get the read count using pysam
         read_counts = int(pysam.view("-c", "-F", "260", args.input))
@@ -57,42 +66,44 @@ def run_prepare(args):
         scale_factor = (1/read_counts) * args.rpm_factor
         
         if args.skip_dedup:
-            logging.error("Processing BAM to bigwig. Skipping deduplication")
+            logging.info("Processing BAM to bigwig. Skipping deduplication")
  
             # Use subprocess to run bedtools and bedgraphtobigwig
             subprocess.run(["bash", 
                             PREPARE_BULK_SCRIPT,
                             args.input, 
-                            args.prefix,
+                            args.name,
                             output_dir,
                             str(args.threads),
-                            args.blacklist_bed,
+                            args.blacklist,
                             args.chrom_sizes,
                             str(args.slop), 
                             str(scale_factor),
-                            "skip"], check=True)
+                            "skip",
+                            " ".join(args.chromosomes)], check=True)
         else:
-            logging.error("Processing BAM to bigwig. Running eduplication")
+            logging.info("Processing BAM to bigwig. Running eduplication")
 
             subprocess.run(["bash", 
                             PREPARE_BULK_SCRIPT,
                             args.input, 
-                            args.prefix,
+                            args.name,
                             output_dir,
                             str(args.threads),
-                            args.blacklist_bed,
+                            args.blacklist,
                             args.chrom_sizes,
                             str(args.slop), 
                             str(scale_factor),
-                            "deduplicate"], check=True)
-                        
+                            "deduplicate",
+                            " ".join(args.chromosomes)], check=True)
+
     elif args.input.endswith((".tsv", ".tsv.gz")):
-        logging.error("Working on 10X scATAC fragments file \n " + "Converting fragment files to Tn5 sites")
+        logging.info("Working on 10X scATAC fragments file \n " + "Converting fragment files to Tn5 sites")
 
         # Convert a 10X fragments file to Tn5 cut sites
-        bed_df = convert_fragments_to_tn5_bed(args.input, ALL_CHRS)
+        bed_df = convert_fragments_to_tn5_bed(args.input, args.chromosomes)
         
-        logging.error("Getting the number of Tn5 cut sites in the fragment file")
+        logging.info("Getting the number of Tn5 cut sites in the fragment file")
 
         # Get the counts of Tn5 cut sites for normalization
         counts = bed_df.shape[0]
@@ -103,11 +114,11 @@ def run_prepare(args):
         scale_factor = (1/counts) * args.rpm_factor
         
         # Create a temp file for the cut site, We will slop and save that file instead
-        tmp_file_path=os.path.join(output_dir, args.prefix + "_CutSites.bed")
+        tmp_file_path=os.path.join(output_dir, args.name + "_CutSites.bed")
         
         bed_df.to_csv(tmp_file_path, sep="\t", header=False, index=False)
 
-        logging.error("Slopping Tn5 cut sites and generating RPM normalized bigwig")
+        logging.info("Slopping Tn5 cut sites and generating RPM normalized bigwig")
         
         # Use subprocess to run bedtools and bedgraphtobigwig
         subprocess.run(["bash", 
@@ -115,8 +126,8 @@ def run_prepare(args):
                         tmp_file_path, 
                         args.chrom_sizes, 
                         str(args.slop), 
-                        args.blacklist_bed,
-                        args.prefix,
+                        args.blacklist,
+                        args.name,
                         output_dir,
                         str(scale_factor)], check=True)
                                 
@@ -124,14 +135,20 @@ def run_prepare(args):
         print("You have not specific a correct input file type. Options: bulk or scatac")
         sys.exit()
 
-    logging.error("Min-max normalize signal tracks")
-    
+    logging.info("Min-max normalize signal tracks")
+
+    output_filename = os.path.join(output_dir,
+                               f"{args.name}_IS_slop{args.slop}_RP20M.bw")
+
+    # assert that the file was created
+    assert os.path.exists(output_filename)
+
     # Set the argument names to match those that are expected by run_normalization
     # TODO find a better way to implement the normalization from inside this script
     args.signal = os.path.join(output_dir, 
-                               f"{args.prefix}_IS_slop{args.slop}_RP20M.bw")
+                               f"{args.name}_IS_slop{args.slop}_RP20M.bw")
     
-    args.prefix = f"{args.prefix}_IS_slop{args.slop}_RP20M_minmax01"
+    args.name = f"{args.name}_IS_slop{args.slop}_RP20M_minmax01"
     args.method = "min-max"
     args.min = 0
     args.max = False

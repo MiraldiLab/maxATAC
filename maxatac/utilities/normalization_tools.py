@@ -7,19 +7,32 @@ from scipy import stats
 
 from maxatac.utilities.genome_tools import chromosome_blacklist_mask
 
-def get_genomic_stats(bigwig_path: str, chrom_sizes_dict: dict, blacklist_path: str, max_percentile: int, prefix: str):
+
+def get_genomic_stats(bigwig_path: str,
+                      chrom_sizes_dict: dict,
+                      blacklist_path: str,
+                      max_percentile: int,
+                      name: str,
+                      output_dir: str):
     """Find the genomic minimum and maximum values in the chromosomes of interest
 
+    Additional statistics for standard deviation, mean, and median are calculated genome-wide.
+
     Args:
+        output_dir (str): Output directory
         bigwig_path (str): Path to the input bigwig file
         chrom_sizes_dict (dict): A dictionary of chromosome sizes filtered for the chroms of interest
-        blacklist_path (str): Path to the input blacklist file
+        blacklist_path (str): Path to the input blacklist file in bigwig format
         max_percentile (int): Percentile value to use as the max for normalization
-        prefix (str): File prefix
+        name (str): File prefix
 
     Returns:
         Any: Genomic minimum and maximum values
     """
+    # Create filename for the stats txt output
+    chromosome_stats = os.path.join(output_dir, name + "_chromosome_min_max.txt")
+    genome_stats = os.path.join(output_dir, name + "_genome_stats.txt")
+
     # Open bigwig file
     with pyBigWig.open(bigwig_path) as input_bigwig:
         # Create an empty list to store results
@@ -29,6 +42,7 @@ def get_genomic_stats(bigwig_path: str, chrom_sizes_dict: dict, blacklist_path: 
         genome_values_array = np.zeros(0, dtype=np.float32)
 
         for chromosome in chrom_sizes_dict:
+            logging.info(f"Calculating statistics for {chromosome}")
             # Get the chromosome values. Convert nan to 0.
             chr_vals = np.nan_to_num(input_bigwig.values(chromosome, 0, input_bigwig.chroms(chromosome), numpy=True))
 
@@ -48,6 +62,8 @@ def get_genomic_stats(bigwig_path: str, chrom_sizes_dict: dict, blacklist_path: 
             # Append chrom values to an array with genome-wide values
             genome_values_array = np.append(genome_values_array, chr_vals[blacklist_mask])
 
+        logging.info("Calculating genome-wide statistics.")
+
         # Create a dataframe from the minmax results
         minmax_results_df = pd.DataFrame(minmax_results)
 
@@ -55,7 +71,7 @@ def get_genomic_stats(bigwig_path: str, chrom_sizes_dict: dict, blacklist_path: 
         minmax_results_df.columns = ["chromosome", "min", "max", "median"]
 
         # Write genome stats to text file
-        minmax_results_df.to_csv(str(prefix) + "_chromosome_min_max.txt", sep="\t", index=False)
+        minmax_results_df.to_csv(chromosome_stats, sep="\t", index=False)
 
         # Find the max value based on percentile
         max_value = np.percentile(genome_values_array[genome_values_array > 0], max_percentile)
@@ -67,21 +83,18 @@ def get_genomic_stats(bigwig_path: str, chrom_sizes_dict: dict, blacklist_path: 
         # Find the median value
         median_value = np.median(genome_values_array[genome_values_array > 0])
 
-        # Find the median_absolute_deviation
-        median_absolute_deviation = stats.median_absolute_deviation(genome_values_array[genome_values_array > 0])
-
         # Find the min value based on genome min.
         min_value = minmax_results_df["min"].min()
 
-        with open(prefix + '_genome_stats.txt', 'w') as f:
+        with open(genome_stats, 'w') as f:
             f.write("Genomic minimum value: " + str(min_value) +
                     "\nGenomic max value: " + str(max_value) +
                     "\nGenomic median (non-zero): " + str(median_value) +
-                    "\nGenomic median absolute deviation (non-zero): " + str(median_absolute_deviation) +
                     "\nGenomic mean: " + str(mean_value) +
                     "\nGenomic standard deviation: " + str(std_value))
 
-        return min_value, max_value, median_value, median_absolute_deviation, mean_value, std_value
+        return min_value, max_value, median_value, mean_value, std_value
+
 
 def minmax_normalize_array(array: np.array, min_value: int, max_value: int, clip: bool=False):
     """MinMax normalize the numpy array based on the genomic min and max
@@ -105,19 +118,6 @@ def minmax_normalize_array(array: np.array, min_value: int, max_value: int, clip
         normalized_array = np.clip(normalized_array, 0, 1)
 
     return normalized_array
-
-
-def median_mad_normalize_array(array, median, mad):
-    """
-    Median-mad normalize the numpy array based on the genomic median and median absolute deviation
-
-    :param mad:
-    :param median:
-    :param array: Input array of bigwig values
-
-    :return: Median-mad normalized array
-    """
-    return (array - median) / mad
 
 
 def zscore_normalize_array(array, mean, std_dev):

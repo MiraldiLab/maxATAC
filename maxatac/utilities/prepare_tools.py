@@ -1,4 +1,8 @@
+"""
+prepare_tools.py: This file contains code used by the maxatac prepare function
+"""
 import pandas as pd
+
 
 def convert_fragments_to_tn5_bed(fragments_tsv: str, chroms: list):
     """Convert 10X scATAC fragments file to Tn5 insertion sites bed
@@ -11,17 +15,18 @@ def convert_fragments_to_tn5_bed(fragments_tsv: str, chroms: list):
         
     Examples:
     
-    >>> bed_file = convert_fragments_to_tn5_bed(Granja_frags.tsv, ["chr1", "chr2"])
+    >>> bed_file = convert_fragments_to_tn5_bed("Granja_frags.tsv", ["chr1", "chr2"])
     """
     
     # Import fragments tsv as a dataframe
     df = pd.read_table(fragments_tsv,
                        sep="\t",
                        header=None,
-                       usecols=[0,1,2,3],
+                       usecols=[0, 1, 2, 3],
                        names=["chr", "start", "stop", "barcode"]
                        )
-    
+
+    # Filter chromosomes to those in the list
     df = df[df["chr"].isin(chroms)]
     
     # subset starts
@@ -35,8 +40,12 @@ def convert_fragments_to_tn5_bed(fragments_tsv: str, chroms: list):
     
     # Subtract a 1 bp interval to represent the cut site. Reference miralidlab wiki page for scATAC-seq analysis
     df_ends["start"] = df_ends["stop"].copy() - 1
-    
+
+    # Concat the start and end positions into a single dataframe
     df_cat = pd.concat([df_starts, df_ends])
+
+    # Reset the index
+    df_cat.reset_index(inplace=True, drop=True)
 
     # If split is True, return two dataframes, one for each end of the fragment    
     return df_cat[["chr", "start", "stop", "barcode"]]

@@ -24,7 +24,7 @@ def run_variants(args):
         # Define the ends of the chroms for windowing functions
         chr_dict = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
 
-        logging.error("Import prediction regions")
+        logging.info("Import prediction regions")
         regions_df = import_prediction_regions(bed_file=args.roi,
                                                  chromosomes=args.chromosomes,
                                                  chrom_sizes_dictionary=chr_dict,
@@ -38,7 +38,7 @@ def run_variants(args):
         chrom_list = list(set(args.chromosomes).intersection(set(regions_df["chr"])))
 
     else:
-        logging.error("Create prediction regions")
+        logging.info("Create prediction regions")
         bed_df = create_prediction_regions(chromosomes=args.chromosomes,
                                            chrom_sizes=args.chrom_sizes,
                                            blacklist=args.blacklist,
@@ -49,7 +49,7 @@ def run_variants(args):
 
         chrom_list = args.chromosomes
 
-    logging.error(f"Making sequence specific predictions for: {args.input_bigwig} \n" +
+    logging.info(f"Making sequence specific predictions for: {args.input_bigwig} \n" +
                   f"Writing files with name: {args.name} \n" +
                   f"Output bigwig: {output_bw} \n" +
                   f"Output bedgraph: {output_bg} \n" +

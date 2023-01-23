@@ -13,7 +13,7 @@ import glob
 
 from maxatac.architectures.dcnn import get_dilated_cnn
 from maxatac.utilities.constants import BP_RESOLUTION, BATCH_SIZE, CHR_POOL_SIZE, INPUT_LENGTH, INPUT_CHANNELS, \
-    BP_ORDER, TRAIN_SCALE_SIGNAL, BLACKLISTED_REGIONS, DEFAULT_CHROM_SIZES
+    BP_ORDER, TRAIN_SCALE_SIGNAL
 from maxatac.utilities.genome_tools import load_bigwig, load_2bit, get_one_hot_encoded, build_chrom_sizes_dict
 from maxatac.utilities.system_tools import get_dir, remove_tags, replace_extension
 
@@ -157,7 +157,8 @@ def DataGenerator(
 
     if n_rand > 0:
         # Generate the training random regions pool
-        train_random_regions_pool = RandomRegionsPool(chroms=build_chrom_sizes_dict(chroms, DEFAULT_CHROM_SIZES),
+        # TODO: Check this instance of args in line 161, needed or not? training worked with it.
+        train_random_regions_pool = RandomRegionsPool(chroms=build_chrom_sizes_dict(chroms, args.DEFAULT_CHROM_SIZES),
                                                     chrom_pool_size=CHR_POOL_SIZE,
                                                     region_length=INPUT_LENGTH,
                                                     preferences=False  # can be None
@@ -568,6 +569,9 @@ class ROIPool(object):
             meta_file: Path to meta file
             prefix: Prefix for saving output file
             output_directory: Output directory
+            blacklist: Regions to avoid using for training in BED format
+            region_length: Length of the Region
+            chrom_sizes_file: File of chrom sizes
             shuffle: Whether to shuffle the input ROI file
             tag: Tag to use for writing the file
         """
