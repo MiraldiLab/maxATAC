@@ -16,7 +16,7 @@ maxatac predict --tf CTCF --signal GM12878.bigwig
 
 ## Required Arguments
 
-### `-tf, --tf_name` or `-m, --model`
+### `-tf, --tf, --tf_name` or `-m, --model`
 
 The user must provide either the TF name that they want to make predictions for or the h5 model file they desire. If the user provides a TF name, the best model will be used and the correct threshold file will be provided for peak calling.
 
@@ -24,7 +24,7 @@ The user must provide either the TF name that they want to make predictions for 
 
 The ATAC-seq signal bigwig track that will be used to make predictions of TF binding.
 
-### `-n, --name, --prefix`
+### `--prefix`
 
 Output filename prefix to use. Default `maxatac_predict`.
 
