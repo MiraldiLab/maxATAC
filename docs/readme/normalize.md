@@ -14,11 +14,11 @@ maxatac normalize -i GM12878_RP20M.bw -name GM12878_minmax -o ./test --method mi
 
 ## Required Arguments
 
-### `-i`, `--signal`
+### `--signal`
 
 The input bigwig file to be normalized.
 
-### `-n`, `--name`, `--prefix`
+### `--prefix`
 
 The name used to build the output filename. This can be any string.
 
@@ -64,7 +64,7 @@ Define the chromosome sizes file. The current default file are the chromosome si
 
 The path to the blacklist bigwig file. This file is used to remove all the regions that are considered to have high technical noise. Default: maxATAC publication-defined blacklist.
 
-### `-o`, `--output`, `--output_dir`
+### `--output`
 
 Define the output directory. If the output directory is not supplied a directory called `./normalize` will be created in the current working directory.
 
