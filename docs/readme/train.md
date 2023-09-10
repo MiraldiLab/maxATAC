@@ -12,6 +12,8 @@ The `train` function will train a maxATAC model using the supplied ATAC-seq and 
 | `CHIP_Peaks`       | Path to ChIP-seq peak bed file       |
 | `Train_Test_Label` | Train or Test label                  |
 
+**Note: maxATAC was built with version 2.5.0 of tensorflow -- newer versions of tensorflow may not be compatible. Therefore, if you experience errors in running `train`, check the version of tensorflow installed in your environment.
+
 ## Approach
 
 The meta file described above is used to locate all the input files for all the training data.
