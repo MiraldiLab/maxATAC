@@ -54,10 +54,6 @@ Output directory path. Default: `./prediction_results`
 
 The path to a bigwig file that has regions to exclude. Default: maxATAC-defined blacklist.
 
-### `--bed, --peaks, --regions, , --roi, -roi`
-
-The path to a bed file that contains the genomic regions to focus TF predictions on. These peaks will be used to refine the prediction windows. 
-
 ### `--batch_size`
 
 The number of regions to predict on per batch. Default `10000`. Decrease this value if you are having memory issues.
