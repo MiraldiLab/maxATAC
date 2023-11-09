@@ -2,7 +2,7 @@ import logging
 import sys
 import timeit
 
-from keras.utils.data_utils import OrderedEnqueuer
+from tensorflow.keras.utils import OrderedEnqueuer
 
 from maxatac.utilities.constants import TRAIN_MONITOR, INPUT_LENGTH
 from maxatac.utilities.system_tools import Mute
