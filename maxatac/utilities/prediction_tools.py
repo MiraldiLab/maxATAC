@@ -316,9 +316,9 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
                 # Get the matric of values for the entry
                 input_matrix = get_input_matrix(signal_stream=signal_stream,
                                                 sequence_stream=sequence_stream,
-                                                chromosome=row[0],
-                                                start=int(row[1]),
-                                                end=int(row[2]),
+                                                chromosome=row.iloc[0],
+                                                start=int(row.iloc[1]),
+                                                end=int(row.iloc[2]),
                                                 use_complement=self.use_complement,
                                                 reverse_matrix=self.use_complement)
 
