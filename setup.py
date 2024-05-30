@@ -80,7 +80,7 @@ setup(
         ]
     ),
     install_requires=[
-        "tensorflow",
+        "tensorflow==2.14.0",
         "tensorboard",
         "biopython",
         "py2bit",

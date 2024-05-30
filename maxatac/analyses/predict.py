@@ -102,7 +102,7 @@ def run_prediction(args):
                  f"Output filename: {outfile_name_bigwig}"
                  )
 
-    with Pool(int(multiprocessing.cpu_count())) as p:
+    with Pool(args.threads) as p:
         forward_strand_predictions = p.starmap(make_stranded_predictions,
                                                [(regions_pool,
                                                  args.signal,
