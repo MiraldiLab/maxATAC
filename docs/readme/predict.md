@@ -5,7 +5,7 @@ The `predict` function will use a maxATAC model to predict TF binding in a new c
 ## Example
 
 ```bash
-maxatac predict --models CTCF.h5 --signal GM12878.bigwig
+maxatac predict --model CTCF.h5 --signal GM12878.bigwig
 ```
 
 or
