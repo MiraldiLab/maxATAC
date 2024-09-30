@@ -42,7 +42,7 @@ For every TF model, one cell type and 2 chromosomes are held out for independent
 ## Example
 
 ```bash
-maxatac train --arch DCNN_V2 --sequence hg38.2bit --meta_file CTCF_meta.tsv --output ./CTCF_DCNN --prefix CTCF_DCNN --shuffle_cell_type --rev_comp
+maxatac train --genome hg38 --arch DCNN_V2 --sequence hg38.2bit --meta_file CTCF_meta.tsv --output ./CTCF_DCNN --prefix CTCF_DCNN --shuffle_cell_type --rev_comp
 ```
 
 ## Required Arguments
