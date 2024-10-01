@@ -47,18 +47,18 @@ maxatac train --genome hg38 --arch DCNN_V2 --sequence hg38.2bit --meta_file CTCF
 ```
 
 ## Required Arguments
-### `--genome`
-
-Specify which genome build this task is specified for (i.e. hg38). 
 ### `--sequence`
 
 This argument specifies the path to the 2bit DNA sequence for the genome of interest
 
 ### `--meta_file`
 
-This argument specifies the path to the meta file that describes the training data available. This meta file described above.
+This argument specifies the path to the meta file that describes the training data available. This meta file is described above.
 
 ## Optional Arguments
+### `--genome`
+
+Specify which genome build this task is specified for (i.e. hg38). 
 
 ### `--prefix`
 
@@ -66,16 +66,15 @@ This argument is reserved for the prefix used to build the output filename. This
 
 ### `--train_roi`
 
-This argument is used to input the bed file that you want to use to define the training regions of interest. If you set this option you will randomly select regions from this file for training instead of using the meta data to build the training data pool. 
+This argument is used to input the BED file that you want to use to define the training regions of interest. If you set this option, you will randomly select regions from this file for training instead of using the meta data to build the training data pool. 
 
 ### `--validate_roi`
 
-This argument is used to input the bed file that you want to use to define the validation regions of interest. If you set this option you will randomly select regions from this file for validation instead of using the meta data to build the validation data pool.
+This argument is used to input the BED file that you want to use to define the validation regions of interest. If you set this option, you will randomly select regions from this file for validation instead of using the meta data to build the validation data pool.
 
 ### `--target_scale_factor`
 
 The scaling factor for scaling model targets signal. Used only for quantitative models. Default: `1`
-
 
 ### `--output_activation`
 
@@ -83,63 +82,63 @@ The output activation to use for the model. No other options are considered in t
 
 ### `--chroms`
 
-The list of chromosomes to limit the study to. These include the training and validation chromosomes. Default: ```["chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX"]```
+The list of chromosomes to limit the study to. These include the training and validation chromosomes. Default: ```["chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22", "chrX"]```.
 
 ### `--tchroms`
 
-The list of chromosomes to use for training only. Default: ```["chr3", "chr4", "chr5", "chr6", "chr7", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr20", "chr21", "chr22"]```
+The list of chromosomes to use for training only. Default: ```["chr3", "chr4", "chr5", "chr6", "chr7", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr20", "chr21", "chr22"]```.
 
 ### `--vchroms`
 
-The list of chromosomes to use for validation only. Default: ```["chr2", "chr19"]```
+The list of chromosomes to use for validation only. Default: ```["chr2", "chr19"]```.
 
 ### `--arch`
 
-The architecture to use for the neural network. Default: `DCNN_V2`
+The architecture to use for the neural network. maxATAC-v1.0.6 supported architectures include `DCNN_V2, RES_DCNN_V2, MM_DCNN_V2 and MM_Res_DCNN_V2`. Default: `DCNN_V2`.
 
 ### `--rand_ratio`
 
-The proportion of random regions to use per training and validation batch. This corresponds to the number of regions that are randomly selected form the genome as opposed to being created based on the ATAC-seq or ChIP-seq peaks. Default: `0`
+The proportion of random regions to use per training and validation batch. This corresponds to the number of regions that are randomly selected form the genome as opposed to being created based on the ATAC-seq or ChIP-seq peaks. Default: `0`.
 
 ### `--seed`
 
-The seed to use for the model in case of reproducibility. Default: `random.randint(1, 99999)`
+The seed to use for the model in case of reproducibility. Default: `random.randint(1, 99999)`.
 
 ### `--weights`
 
-The weights to use to initialize a model. Default: `do not initialize with weights`
+The weights to use for initializing a model prior to training. Default: `do not initialize with weights`.
 
 ### `--epochs`
 
-The number of epochs to train the model for. Default: `20`
+The number of epochs to train the model for. Default: `20`.
 
 ### `--batches`
 
-The number of batches to use per stochastic gradient descent step. Default: `100`
+The number of batches to use per stochastic gradient descent step. Default: `100`.
 
 ### `--batch_size`
 
-The number of examples to use per training batch. Default: `1000`
+The number of examples to use per training batch. Default: `1000`.
 
 ### `--val_batch_size`
 
-The number of examples to use per validation batch. Default `1000`
+The number of examples to use per validation batch. Default `1000`.
 
 ### `--output`
 
-The output directory name to save results to. Default: `./training_results`
+The output directory name to save results to. Default: `./training_results`.
 
 ### `--plot`
 
-Whether to plot the model structure or training history. Default: `True`
+Whether to plot the model structure or training history. Default: `True`.
 
 ### `--dense`
 
-Used if you want to use a dense layer at the end of the neural network. Default: `False`
+Used if you want to use a dense layer at the end of the neural network. Default: `False`.  
 
 ### `--threads`
 
-Use to change the number of threads used per job. Default: `get available`
+Use to change the number of threads used per job. Default: `get available`.
 
 ### `--loglevel`
 
@@ -147,9 +146,23 @@ This argument is used to set the logging level. Currently, the only working logg
 
 ### `--rev_comp`
 
-If rev_comp_train, then use the reverse complement sequence in addition to the reference sequence. Default: `False`
+If rev_comp is `True`, then use the reverse complement sequence in addition to the reference sequence. Default: `False`.
 
 ### `--shuffle_cell_type`
 
-If shuffle_cell_type, then shuffle training ROI cell type label. This is related to "pan-cell" training as described in the maxATAC manuscript. Default: `True`
+If shuffle_cell_type is `True`, then shuffle training ROI cell type label. This is related to "pan-cell" training as described in the maxATAC manuscript. Default: `True`.
+
+### `--multiprocessing`
+
+If set, this option supports parallelization of training. Default: `False`.
+
+### `--max_queue_size`
+
+### `--blacklist`
+
+The path to a BED file that has regions to exclude.
+
+### `--chrom_sizes`
+
+The path to the chromosome sizes file.
 
