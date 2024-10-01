@@ -17,6 +17,7 @@ The `train` function will train a maxATAC model using the supplied ATAC-seq and 
 ## Approach
 
 The meta file described above is used to locate all the input files for all the training data.
+**Note: all files specified in the meta file should be in unzipped format.
 
 General Steps:
 
