@@ -18,7 +18,7 @@ maxatac predict --tf CTCF --signal GM12878.bigwig
 
 ### `-tf, --tf_name` or `-m, --model`
 
-The user must provide either the TF name that they want to make predictions for OR the h5 model file they desire (note that these are mutually exclusive). If the user provides a TF name, the best model will be used and the correct threshold file will be provided for peak calling.
+The user must provide either the TF name that they want to make predictions for OR the h5 model file they desire. If the user provides a TF name, the best model will be used and the correct threshold file will be provided for peak calling.
 
 ### `-s, --signal, -i`
 
