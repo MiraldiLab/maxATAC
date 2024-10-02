@@ -94,7 +94,7 @@ The list of chromosomes to use for validation only. Default: ```["chr2", "chr19"
 
 ### `--arch`
 
-The architecture to use for the neural network. maxATAC-v1.0.6 supported architectures include `DCNN_V2, RES_DCNN_V2, MM_DCNN_V2 and MM_Res_DCNN_V2`. Default: `DCNN_V2`.
+The architecture to use for the neural network. Default: `DCNN_V2`.
 
 ### `--rand_ratio`
 
