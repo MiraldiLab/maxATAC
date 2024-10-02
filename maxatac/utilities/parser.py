@@ -330,6 +330,12 @@ def get_parser():
                                 help="Skip calling peaks on prediction tracks"
                                 )
 
+    predict_parser.add_argument("--threads",
+                              dest="threads",
+                              type=int,
+                              default=24,
+                              help="Number of processes to run prediction in parallel. Default: 24"
+                              )
     #############################################
     # Train parser
     #############################################

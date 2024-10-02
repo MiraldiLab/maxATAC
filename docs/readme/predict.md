@@ -85,3 +85,7 @@ The windows to use for prediction. These windows must be 1,024 bp wide and have 
 ### `-skip_call_peaks, --skip_call_peaks`
 
 This will skip calling peaks at the end of predictions. 
+
+### `--threads`
+
+Set number of parallel threads in prediction tasks. If GPUs are used, set this value to be the number of GPUs used for the task. Default: 24.   
