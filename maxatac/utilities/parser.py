@@ -240,7 +240,7 @@ def get_parser():
     predict_parser.add_argument("-bl", "--blacklist",
                                 dest="blacklist",
                                 type=str,
-                                help="The blacklisted regions to exclude in BED format"
+                                help="The blacklisted regions to exclude in bigWig format"
                                 )
 
     predict_parser.add_argument("--bed", "--peaks", "--regions", "--roi", "-roi",
@@ -284,7 +284,7 @@ def get_parser():
                                 dest="name",
                                 required=True,
                                 type=str,
-                                help="Sting to use for filename. This should not include extensions. \
+                                help="String to use for filename. This should not include extensions. \
                                       Example: GM12878_CTCF"
                                 )
 
@@ -478,7 +478,7 @@ def get_parser():
                               dest="prefix",
                               type=str,
                               default="maxatac_model",
-                              help="Output prefix. Default: weights"
+                              help="Output prefix. Default: maxatac_model"
                               )
 
     train_parser.add_argument("--output",
