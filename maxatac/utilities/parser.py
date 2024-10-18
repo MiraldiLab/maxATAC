@@ -757,12 +757,12 @@ def get_parser():
                                   help="The blacklisted regions to exclude in BigWig format"
                                   )
 
-    benchmark_parser.add_argument("-skip_plot", "--skip_plot",
-                                dest="skip_plot",
+    benchmark_parser.add_argument("-plot", "--plot",
+                                dest="plot",
                                 action="store_true",
                                 default=False,
                                 required=False,
-                                help="Skip PR curve plotting"
+                                help="Plot the PR curve."
                                 )
     #############################################
     # Peaks subparser
