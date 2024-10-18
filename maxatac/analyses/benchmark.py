@@ -63,7 +63,7 @@ def run_benchmarking(args):
                         args.agg_function,
                         results_filename,
                         args.round_predictions,
-                        plot=args.skip_plot)
+                        plot=args.plot)
 
     # Measure End Time of Training
     stopTime = timeit.default_timer()
