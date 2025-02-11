@@ -10,21 +10,21 @@ maxatac benchmark --prediction GM12878_CTCF_chr1.bw --gold_standard GM12878_CTCF
 
 ## Required Arguments
 
-### `--prediction`
+### `-bed, --bed, -bw, --bw, --bigwig`
 
-The input bigwig file of transcription factor binding predictions. This file can also be any bigwig signal track that you want to compare against a gold standard.
+The input file of transcription factor binding predictions (in either BED or bigWig format). This file can also be any BED/bigWig signal track that you want to compare against a gold standard.
 
 ### `--gold_standard`
 
-The input gold standard bigwig file. This file needs to be a binary signal track that has 1 corresponding to TFBS (e.g., from ChIP-seq) and 0 in positions with no TFBS.
+The input gold standard bigWig file. This file needs to be a binary signal track that has 1 corresponding to TFBS (e.g., from ChIP-seq) and 0 in positions with no TFBS.
 
-### `--prefix`
+### `-n, --name, --prefix`
 
-The output filename prefix to use. Default: `maxatac_benchmark`
+The output filename prefix to use. Default: `maxatac_benchmark`.
 
 ## Optional Arguments
 
-### `--chromosomes`
+### `-c, --chroms, --chromosomes`
 
 The chromosomes to benchmark the predictions for. Default: `chr1` is the held out test chromosome.
 
@@ -40,16 +40,20 @@ See the [pyBigWig documentation](https://github.com/deeptools/pyBigWig#compute-s
 
 ### `--round_predictions`
 
-This flag will set the precision of the predictions signal track. Provide an integer that represents the number of floats before rounding. Currently, the predictions go from `0 - .0000000001`. Default: `9` is the limit of precision from TensorFlow.
+This flag will set the precision of the prediction signal track. Provide an integer that represents the number of floats before rounding. Currently, the predictions go from `0 - .0000000001`. Default: `9` is the limit of precision from TensorFlow.
 
-### `--output_directory`
+### `-o, --output_directory`
 
-The output directory to write the results to. Default: `./prediction_results`
+The output directory to write the results to. Default: `./prediction_results`.
 
 ### `--blacklist_bw`
 
-The path to the blacklist bigwig signal track of regions that should be excluded. Default: `hg38_maxatac_blacklist.bed` which contains regions that are specific to ATAC-seq.
+The path to the blacklist bigWig signal track of regions that should be excluded. Default: `hg38_maxatac_blacklist.bed`, which contains regions that are specific to ATAC-seq.
 
 ### `--loglevel`
 
 This argument is used to set the logging level. Currently, the only working logging level is `ERROR`.
+
+### `-skip_plot`
+
+If set, this argument prevents plotting of the associated precision-recall curve.
