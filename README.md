@@ -53,7 +53,7 @@ This version requires python 3.9, `bedtools`, `samtools`, `pigz`, `wget`, `git`,
 
 ### Downloading required reference data
 
-In order to run the maxATAC models that were described in the [maxATAC pre-print](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1), the following files are required to be downloaded from the [maxATAC_data](https://github.com/MiraldiLab/maxATAC_data) repository and installed in the correct directory:
+To run the maxATAC models described in [Cazares et al. (2023) PLoS Comp Bio](https://journals.plos.org/ploscompbiol/article?id=10.1371/journal.pcbi.1010863), the following files are required to be downloaded from the [maxATAC_data](https://github.com/MiraldiLab/maxATAC_data) repository and installed in the correct directory:
 
 * hg38 reference genome `.2bit` file
 * hg38 chromosome sizes file
