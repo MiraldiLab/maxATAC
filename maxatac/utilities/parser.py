@@ -175,6 +175,14 @@ def get_parser():
                                 default=AUTOSOMAL_CHRS,
                                 help="Chromosomes for averaging. Default: 1-22"
                                 )
+    
+  average_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="The reference genome build to use."
+                               )
 
     average_parser.add_argument("-o", "--output", "--output_dir",
                                 dest="output_dir",
@@ -222,6 +230,13 @@ def get_parser():
                                 type=str,
                                 help="Genome sequence 2bit file."
                                 )
+
+    predict_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="The reference genome build to use.")
 
     predict_parser.add_argument("-i", "-s", "--signal",
                                 dest="signal",
@@ -600,8 +615,16 @@ def get_parser():
                                   type=str,
                                   nargs="+",
                                   default=AUTOSOMAL_CHRS,
-                                  help="Chromosomes for normalization. Default: 1-22"
+                                  help="Chromosomes for normalization. Default: 1-22 from the hg38 genome"
                                   )
+
+    normalize_parser.add_argument("--genome",
+                                  dest="genome",
+                                  type=str,
+                                  default="hg38",
+                                  required=False,
+                                  help="The reference genome build to use."
+                                )
 
     normalize_parser.add_argument("-o", "--output", "--output_dir",
                                   dest="output_dir",
@@ -721,6 +744,13 @@ def get_parser():
                                   help="Aggregation function to use for combining results into bins: \
                                         max, mean, min"
                                   )
+
+    benchmark_parser.add_argument("--genome",
+                                  dest="genome",
+                                  type=str,
+                                  default="hg38",
+                                  required=False,
+                                  help="The reference genome build to use.")
 
     benchmark_parser.add_argument("--round_predictions",
                                   dest="round_predictions",
@@ -1013,6 +1043,14 @@ def get_parser():
                                 nargs="+",
                                 default=AUTOSOMAL_CHRS,
                                 help="The chromosomes to include in the final output."
+                                )
+
+    prepare_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="The reference genome build to use."
                                 )
 
     prepare_parser.add_argument("-t", "-threads", "--threads",
