@@ -262,3 +262,45 @@ def plot_chromosome_scores_dist(input_bigwig, chrom_name, region_start, region_s
         chr_vals = input_bw.values(chrom_name, region_start, region_stop, numpy=True)
 
     plt.hist(chr_vals[chr_vals > 0])
+
+# Create a multi-paneled plot to display the threshold calibration statistics (as seen in the maxATAC_data repository).
+def plot_threshold_calibration_stats(thresholds, precision, recall, log2fc, f1, file_location, prefix, 
+                                     suffix = "_validationPerformance_vs_thresholdCalibration", ext = ".png", style = "ggplot"):
+    plt.style.use(style)
+    fig, axs = plt.subplots(nrows = 2, ncols = 2, figsize = (15, 12))
+    
+    # Subfigure 1: validation precision v. threshold values
+    axs[0, 0].plot(thresholds, precision, c = "black", lw = 3)
+    axs[0, 0].set_title("chr2 Validation Precision v. Thresholds", size = "medium")
+    axs[0, 0].set_xlabel("Threshold", size = "medium")
+    axs[0, 0].set_xlim([0.0, 1.0])
+    axs[0, 0].set_ylabel("Validation Precision", size = "medium")
+    axs[0, 0].legend(["Monotonic Median Precision"], loc = "upper left")
+    
+    # Subfigure 2: validation log2(FC) v. threshold values
+    axs[0, 1].plot(thresholds, log2fc, c = "black", lw = 3)
+    axs[0, 1].set_title("chr2 Validation log2(FC) v. Thresholds", size = "medium")
+    axs[0, 1].set_xlabel("Threshold", size = "medium")
+    axs[0, 1].set_xlim([0.0, 1.0])
+    axs[0, 1].set_ylabel("Validation log2(FC)", size = "medium")
+    axs[0, 1].legend(["Monotonic Median log2(FC)"], loc = "lower left")
+    
+    # Subfigure 3: validation recall v. threshold values
+    axs[1, 0].plot(thresholds, recall, c = "black", lw = 3)
+    axs[1, 0].set_title("chr2 Validation Recall v. Thresholds", size = "medium")
+    axs[1, 0].set_xlabel("Threshold", size = "medium")
+    axs[1, 0].set_xlim([0.0, 1.0])
+    axs[1, 0].set_ylabel("Validation Recall", size = "medium")
+    axs[1, 0].legend(["Monotonic Median Recall"], loc = "upper right")
+    
+    # Subfigure 4: validation F1 score v. threshold values
+    axs[1, 1].plot(thresholds, f1, c = "black", lw = 3)
+    axs[1, 1].set_title("chr2 Validation F1 Score v. Thresholds", size = "medium")
+    axs[1, 1].set_xlabel("Threshold", size = "medium")
+    axs[1, 1].set_xlim([0.0, 1.0])
+    axs[1, 1].set_ylabel("Validation F1 Score", size = "medium")
+    axs[1, 1].legend(["Median F1 Score"], loc = "upper right")
+
+    # Save the figure.
+    fig.suptitle(prefix + " chr2 Validation Performance v. Threshold Calibration")
+    fig.savefig(replace_extension(file_location, prefix + '_' + suffix + ext), bbox_inches = "tight", dpi = 320)
