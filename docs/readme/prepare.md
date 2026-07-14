@@ -64,11 +64,11 @@ The path to the blacklist bigWig file. Default: maxATAC-defined blacklist for hg
 
 ### `-c`, `-chroms`, `--chromosomes`
 
-The chromosomes to use for the final output. Default: Human autosomal chromosomes chr1-22. Note: this argument MUST be specified in conjunction with `--genome` if the input BAM file was aligned to a genome build other than hg38.
+The chromosomes to use for the final output. Default: Human autosomal chromosomes chr1-22. Note: this argument MUST be specified in conjunction with `--genome` and `--chrom_sizes` if the input BAM file was aligned to a genome build other than hg38.
 
 ### `-cs`, `--chrom_sizes`, `--chromosome_sizes`
 
-The chromosome sizes file. Default: hg38 chrom sizes.
+The chromosome sizes file. Default: hg38 chrom sizes. Note: this argument MUST be specified in conjunction with `--genome` and `--chromosomes` if the input BAM file was aligned to a genome build other than hg38.
 
 ### --genome
 
