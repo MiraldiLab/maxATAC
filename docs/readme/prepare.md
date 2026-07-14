@@ -72,7 +72,7 @@ The chromosome sizes file. Default: hg38 chrom sizes. Note: this argument MUST b
 
 ### --genome
 
-The genome build that was used for alignment of the input BAM file. Default: hg38. 
+The genome build that was used for alignment of the input file. Default: hg38. 
 
 ### `--loglevel`
 
