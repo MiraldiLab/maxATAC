@@ -46,7 +46,7 @@ This flag determines whether to clip the values that are above the max value use
 
 Define the chromosome sizes file. The current default file are the chromosome sizes for hg38. Note: this argument MUST be specified in conjunction with `--genome` and `--chromosomes` if the input file was aligned to a genome build other than hg38.
 
-### --genome
+### `--genome`
 
 The genome build that was used for alignment of the input file. Default: hg38. 
 
