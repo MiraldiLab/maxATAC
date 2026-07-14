@@ -16,7 +16,7 @@ maxatac normalize -i GM12878_RP20M.bw -name GM12878_minmax -o ./test --method mi
 
 ### `-i`, `--signal`
 
-The input bigwig file to be normalized.
+The input bigWig file to be normalized.
 
 ### `-n`, `--name`, `--prefix`
 
@@ -36,7 +36,7 @@ Define the chromosomes that are normalized. Only the chromosomes in this list wi
 chr1, chr2, chr3, chr4, chr5, chr6, chr7, chr8, chr9, chr10, chr11, chr12, chr13, chr14, chr15, chr16, chr17, chr18, chr19, chr20, chr21, chr22
 ```
 
-Note: this argument MUST be specified in conjunction with `--genome` and `--chrom_sizes` if the input BAM file was aligned to a genome build other than hg38.
+Note: this argument MUST be specified in conjunction with `--genome` and `--chrom_sizes` if the input file was aligned to a genome build other than hg38.
 
 ### `--clip`
 
@@ -44,7 +44,7 @@ This flag determines whether to clip the values that are above the max value use
 
 ### `-cs`, `--chrom_sizes`, `--chromosome_sizes`
 
-Define the chromosome sizes file. The current default file are the chromosome sizes for hg38. Note: this argument MUST be specified in conjunction with `--genome` and `--chromosomes` if the input BAM file was aligned to a genome build other than hg38.
+Define the chromosome sizes file. The current default file are the chromosome sizes for hg38. Note: this argument MUST be specified in conjunction with `--genome` and `--chromosomes` if the input file was aligned to a genome build other than hg38.
 
 ### --genome
 
