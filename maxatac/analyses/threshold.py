@@ -90,8 +90,8 @@ def run_thresholding(args):
     df = pd.DataFrame({'Precision': precision, 'Recall': recall, "Threshold": np.insert(thresholds, 0, 0)})
     
     
-    P = np.maximum.accumulate((np.array(df.Precision)))
-    R = np.minimum.accumulate((np.array(df.Recall)))
+    P = np.minimum.accumulate((np.array(df.Precision)))
+    R = np.maximum.accumulate((np.array(df.Recall)))
     
     PR_CURVE_DF = pd.DataFrame({'Precision': P, 'Recall': R, "Threshold": np.insert(thresholds, 0, 0)})
     
