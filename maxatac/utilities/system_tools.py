@@ -4,7 +4,7 @@ import os
 import sys
 import subprocess
 from os import path, getcwd, makedirs, error, walk, environ
-from maxatac.utilities.constants import CPP_LOG_LEVEL
+from maxatac.utilities.constants import CPP_LOG_LEVEL, maxatac_data_path
 from re import match
 from multiprocessing import cpu_count
 
@@ -204,9 +204,6 @@ def update_reference_genome_paths(args):
 
     """
     logging.info(f"Generating Paths for genome build: {args.genome} \n")
-
-    # build maxatac data path
-    maxatac_data_path = os.path.join(os.path.expanduser('~'), "opt", "maxatac", "data")
 
     # build genome specific paths
     blacklist_path = os.path.join(maxatac_data_path,
