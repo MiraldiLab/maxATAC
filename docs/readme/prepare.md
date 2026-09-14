@@ -54,6 +54,34 @@ This argument is used to set the prefix for setting the filenames.
 
 The default values for the optional arguments are based on the testing performed in the maxATAC publication. See the [Methods](https://www.biorxiv.org/content/10.1101/2022.01.28.478235v1.article-metrics) of our publication for a detailed explanation of each parameter choice.
 
+### `--blacklist`
+
+The path to the blacklist BED file. Default: maxATAC-defined blacklisted regions for hg38.
+
+### `--blacklist_bw`
+
+The path to the blacklist bigWig file. Default: maxATAC-defined blacklist for hg38 as a bigWig file.
+
+### `-c`, `-chroms`, `--chromosomes`
+
+The chromosomes to use for the final output. Default: Human autosomal chromosomes chr1-22. Note: this argument MUST be specified in conjunction with `--genome` and `--chrom_sizes` if the input file was aligned to a genome build other than hg38.
+
+### `-cs`, `--chrom_sizes`, `--chromosome_sizes`
+
+The chromosome sizes file. Default: hg38 chrom sizes. Note: this argument MUST be specified in conjunction with `--genome` and `--chromosomes` if the input file was aligned to a genome build other than hg38.
+
+### --genome
+
+The genome build that was used for alignment of the input file. Default: hg38. 
+
+### `--loglevel`
+
+The log level to use for printing messages.
+
+### `-rpm`, `--rpm_factor`
+
+The reads per million (RPM) factor used for read-depth normalization of signal. Most groups use RPM and therefore 1,000,000 as a scaling factor, but maxATAC uses RP20M and therefore 20,000,000 because it is approximately the median sequencing depth of the ATAC-seq data used for training. Changing from the default (20000000) is not problematic for maxATAC prediction, as this track is only used for visualization. (Predictions are made on a min-max-like normalized signal track, also an output from `maxatac prepare`.) Default: 20000000.
+
 ### `-skip_dedup`, `--skip_deduplication`
 
 It is important to remove PCR duplicates from your ATAC-seq data if you have not done so already. Include this flag to perform PCR deduplication of the input BAM file if you know that it has not been deduplicated. Skipping this step will speed up data processing. Defualt: False
@@ -62,30 +90,6 @@ It is important to remove PCR duplicates from your ATAC-seq data if you have not
 
 The slop size used to smooth sparse Tn5 cut sites' signal. Each Tn5 cut site will be extended +/- the slop size (in bp). Because maxATAC models were trained using slop size of 20bp (a value that approximates the size of Tn5 transposase), **this parameter should not be changed from default (20 bp) when using the trained models provided by maxATAC**. Default: 20 bp.
 
-### `-rpm`, `--rpm_factor`
-
-The reads per million (RPM) factor used for read-depth normalization of signal. Most groups use RPM and therefore 1,000,000 as a scaling factor, but maxATAC uses RP20M and therefore 20,000,000 because it is approximately the median sequencing depth of the ATAC-seq data used for training. Changing from the default (20000000) is not problematic for maxATAC prediction, as this track is only used for visualization. (Predictions are made on a min-max-like normalized signal track, also an output from `maxatac prepare`.) Default: 20000000.
-
-### `--blacklist`
-
-The path to the blacklist bed file. Default: maxATAC defined blacklisted regions for hg38.
-
-### `--blacklist_bw`
-
-The path to the blacklist bigwig file. Default: maxATAC defined blacklist for hg38 as a bigwig file.
-
-### `-cs`, `--chrom_sizes`, `--chromosome_sizes`
-
-The chromosome sizes file. Default: hg38 chrom sizes.
-
-### `-c`, `-chroms`, `--chromosomes`
-
-The chromosomes to use for the final output. Default: Autosomal chromosomes chr1-22.
-
 ### `-t`, `-threads`
 
 The number of threads to use. Default: Get available CPU count.
-
-### `--loglevel`
-
-The log level to use for printing messages.
