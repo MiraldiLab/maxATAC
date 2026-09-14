@@ -143,7 +143,10 @@ def run_thresholding(args):
     PR_CURVE_DF.columns = 	['Monotonic_Precision', 'Monotonic_Recall', 'Threshold', 'Monotonic_log2FC', 'Monotonic_F1']
     PR_CURVE_DF.to_csv(results_filename, sep="\t", header=True, index=False)
     
-    
+    logging.info("Plot the validation statistics v. threshold values.")
+    plot_threshold_calibration_stats(PR_CURVE_DF_THRESHOLD['Standard_Threshold'], PR_CURVE_DF_THRESHOLD['Monotonic_Median_Precision'], 
+                                     PR_CURVE_DF_THRESHOLD['Monotonic_Median_Recall'], PR_CURVE_DF_THRESHOLD['Monotonic_Median_log2FC'],
+                                     PR_CURVE_DF_THRESHOLD['F1_Score'], output_dir, args.prefix)
     
     
 
