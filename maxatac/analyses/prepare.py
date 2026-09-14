@@ -154,6 +154,7 @@ def run_prepare(args):
     args.max = False
     args.max_percentile = 99
     args.clip = False
+    args.max_zooms = 5
     
     # Minmax normalize signal tracks
     run_normalization(args)
