@@ -119,7 +119,8 @@ def run_prediction(args):
     write_predictions_to_bigwig(prediction_bedgraph,
                                 output_filename=outfile_name_bigwig,
                                 chrom_sizes_dictionary=chrom_sizes_dict,
-                                chromosomes=chrom_list
+                                chromosomes=chrom_list,
+                                max_zooms = args.max_zooms
                                 )
 
     # If a cutoff file is provided, call peaks
@@ -159,7 +160,6 @@ def run_prediction(args):
                   sep="\t",
                   index=False,
                   header=False)
-
 
     # Measure end time of training
     stopTime = timeit.default_timer()

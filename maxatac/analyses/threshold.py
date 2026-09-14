@@ -140,7 +140,7 @@ def run_thresholding(args):
     del PR_CURVE_DF['Random_Precision']
     
 
-    PR_CURVE_DF.columns = 	['Monotonic_Precision', 'Monotonic_Recall', 'Threshold', 'Monotonic_log2FC', 'Monotonic_F1']
+    PR_CURVE_DF.columns = ['Monotonic_Avg_Precision', 'Monotonic_Avg_Recall', 'Standard_Thresh', 'Monotonic_Avg_log2FC', 'Avg_F1']
     PR_CURVE_DF.to_csv(results_filename, sep="\t", header=True, index=False)
     
     
