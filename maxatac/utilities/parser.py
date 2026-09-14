@@ -175,6 +175,14 @@ def get_parser():
                                 default=AUTOSOMAL_CHRS,
                                 help="Chromosomes for averaging. Default: 1-22"
                                 )
+    
+  average_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="The reference genome build to use."
+                               )
 
     average_parser.add_argument("--genome",
                                 dest="genome",
@@ -254,6 +262,13 @@ def get_parser():
                                 required=False,
                                 help="The number of zoom levels that should be computed for the output bigWig file."
                                )
+
+    predict_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="The reference genome build to use.")
 
     predict_parser.add_argument("-i", "-s", "--signal",
                                 dest="signal",
@@ -639,24 +654,16 @@ def get_parser():
                                   type=str,
                                   nargs="+",
                                   default=AUTOSOMAL_CHRS,
-                                  help="Chromosomes for normalization. Default: 1-22"
-                                 )
-    
+                                  help="Chromosomes for normalization. Default: 1-22 from the hg38 genome"
+                                  )
+
     normalize_parser.add_argument("--genome",
                                   dest="genome",
                                   type=str,
                                   default="hg38",
                                   required=False,
-                                  help="The reference genome build to which the input file was aligned."
-                                 )
-
-    normalize_parser.add_argument("--max_zooms",
-                                  dest="max_zooms",
-                                  type=int,
-                                  default=5,
-                                  required=False,
-                                  help="The number of zoom levels that should be computed for the normalized bigWig file."
-                                 )
+                                  help="The reference genome build to use."
+                                )
 
     normalize_parser.add_argument("-o", "--output", "--output_dir",
                                   dest="output_dir",
