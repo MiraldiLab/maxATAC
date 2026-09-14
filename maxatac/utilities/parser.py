@@ -175,14 +175,6 @@ def get_parser():
                                 default=AUTOSOMAL_CHRS,
                                 help="Chromosomes for averaging. Default: 1-22"
                                 )
-    
-  average_parser.add_argument("--genome",
-                                dest="genome",
-                                type=str,
-                                default="hg38",
-                                required=False,
-                                help="The reference genome build to use."
-                               )
 
     average_parser.add_argument("--genome",
                                 dest="genome",
@@ -262,13 +254,6 @@ def get_parser():
                                 required=False,
                                 help="The number of zoom levels that should be computed for the output bigWig file."
                                )
-
-    predict_parser.add_argument("--genome",
-                                dest="genome",
-                                type=str,
-                                default="hg38",
-                                required=False,
-                                help="The reference genome build to use.")
 
     predict_parser.add_argument("-i", "-s", "--signal",
                                 dest="signal",
