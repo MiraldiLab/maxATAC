@@ -40,8 +40,10 @@ class MaxATACModel(object):
                  dense=False,
                  target_scale_factor=TRAIN_SCALE_SIGNAL,
                  output_activation="sigmoid",
+                 quant=False,
                  interpret=False,
-                 interpret_cell_type=""
+                 interpret_cell_type="",
+                 loss="cross_entropy"
                  ):
         """
         Initialize the maxATAC model with the input parameters and architecture
@@ -52,7 +54,9 @@ class MaxATACModel(object):
         :param prefix: Prefix to use for filename
         :param threads: Number of threads to use
         :param meta_path: Path to the meta file associated with the run
+        :param quant: Whether to perform quantitative predictions
         :param output_activation: The activation function to use in the output layer
+        :param target_scale_factor: The scale factor to use for quantitative data
         :param dense: Whether to use a dense layer on output
         :param weights: Input weights to use for model
         :param interpret: Boolean for whether this is training or interpretation
@@ -70,7 +74,9 @@ class MaxATACModel(object):
         self.output_activation = output_activation
         self.dense = dense
         self.weights = weights
+        self.quant = quant
         self.target_scale_factor = target_scale_factor
+        self.loss = loss
 
         # Set the random seed for the model
         random.seed(seed)
@@ -100,9 +106,11 @@ class MaxATACModel(object):
         # Get the neural network model based on the specified model architecture
         if self.arch == "DCNN_V2":
             return get_dilated_cnn(output_activation=self.output_activation,
+                                   quant=self.quant,
                                    target_scale_factor=self.target_scale_factor,
                                    dense_b=self.dense,
-                                   weights=self.weights
+                                   weights=self.weights,
+                                   loss=self.loss
                                    )
         else:
             sys.exit("Model Architecture not specified correctly. Please check")
@@ -115,11 +123,13 @@ def DataGenerator(
         cell_type_list,
         rand_ratio,
         chroms,
+        quant=False,
         bp_resolution=BP_RESOLUTION,
         target_scale_factor=1,
         batch_size=BATCH_SIZE,
         shuffle_cell_type=False,
-        rev_comp_train=False
+        rev_comp_train=False,
+        chrom_sizes=False
 
 ):
     """
@@ -140,6 +150,8 @@ def DataGenerator(
     :param roi_pool: The pool of regions to use centered on peaks
     :param cell_type_list: The training cell lines to use
     :param rand_ratio: The number of random examples to use per batch
+    :param quant: Whether to use quantitative predictions
+    :param target_scale_factor: Scaling factor to use for scaling target values (quantitative specific)
     :param chroms: The training chromosomes
     :param bp_resolution: The resolution of the predictions to use
     :param batch_size: The number of examples to use per batch of training
@@ -158,7 +170,7 @@ def DataGenerator(
     if n_rand > 0:
         # Generate the training random regions pool
         # TODO: Check this instance of args in line 161, needed or not? training worked with it.
-        train_random_regions_pool = RandomRegionsPool(chroms=build_chrom_sizes_dict(chroms, args.DEFAULT_CHROM_SIZES),
+        train_random_regions_pool = RandomRegionsPool(chroms=build_chrom_sizes_dict(chroms, chrom_sizes),
                                                     chrom_pool_size=CHR_POOL_SIZE,
                                                     region_length=INPUT_LENGTH,
                                                     preferences=False  # can be None
@@ -171,6 +183,7 @@ def DataGenerator(
                                        n_rand=n_rand,
                                        regions_pool=train_random_regions_pool,
                                        bp_resolution=bp_resolution,
+                                       quant_train=quant,
                                        target_scale_factor=target_scale_factor,
                                        rev_comp_train=rev_comp_train
                                        )
@@ -182,6 +195,7 @@ def DataGenerator(
                                n_roi=n_roi,
                                cell_type_list=cell_type_list,
                                bp_resolution=bp_resolution,
+                               quant_train=quant,
                                target_scale_factor=target_scale_factor,
                                shuffle_cell_type=shuffle_cell_type,
                                rev_comp_train=rev_comp_train
@@ -217,7 +231,9 @@ def get_input_matrix(signal_stream,
                      cols=INPUT_LENGTH,
                      bp_order=BP_ORDER,
                      use_complement=False,
-                     reverse_matrix=False
+                     reverse_matrix=False,
+                     ablation_type="none",
+                     ablation_value=0.0
                      ):
     """
     Get a matrix of values from the corresponding genomic position. You can supply whether you want to use the
@@ -233,25 +249,37 @@ def get_input_matrix(signal_stream,
     :param end: end
     :param use_complement: use complement strand for training
     :param reverse_matrix: reverse the input matrix
+    :param ablation_type: "none", "signal", or "sequence". "signal" replaces the ATAC-seq signal
+        channel with ablation_value; "sequence" dinucleotide-shuffles the DNA sequence channels.
+    :param ablation_value: fixed value used for the signal channel when ablation_type == "signal"
 
     :return: a matrix (rows x cols) of values from the input bigwig files
     """
 
     input_matrix = np.zeros((rows, cols))
+
+    # Get the sequence from the interval of interest
+    target_sequence = Seq(sequence_stream.sequence(chromosome, start, end))
+
+    if use_complement:
+        # Get the complement of the sequence
+        target_sequence = target_sequence.complement()
+
+    if ablation_type == "sequence":
+        from ushuffle import shuffle
+        # Dinucleotide-shuffle the sequence once, then one-hot encode the same shuffled
+        # sequence for every channel below
+        target_sequence = Seq(shuffle(str(target_sequence).encode(), 2).decode())
+
     for n, bp in enumerate(bp_order):
-        # Get the sequence from the interval of interest
-        target_sequence = Seq(sequence_stream.sequence(chromosome, start, end))
-
-        if use_complement:
-            # Get the complement of the sequence
-            target_sequence = target_sequence.complement()
-
         # Get the one hot encoded sequence
         input_matrix[n, :] = get_one_hot_encoded(target_sequence, bp)
 
-    signal_array = np.array(signal_stream.values(chromosome, start, end))
-
-    input_matrix[4, :] = signal_array
+    if ablation_type == "signal":
+        input_matrix[4, :] = np.full(cols, ablation_value)
+    else:
+        signal_array = np.array(signal_stream.values(chromosome, start, end))
+        input_matrix[4, :] = signal_array
 
     # If reverse_matrix then reverse the matrix. This changes the left to right orientation.
     if reverse_matrix:
@@ -265,13 +293,17 @@ def get_target_matrix(binding_stream,
                       start,
                       end,
                       rev_comp,
-                      bp_resolution):
+                      quant,
+                      bp_resolution,
+                      target_scale_factor):
     # Some bigwig files do not have signal for some chromosomes because they do not have peaks
     # in those regions
     # Our workaround for issue#42 is to provide a zero matrix for that position
     try:
         # Get the target matrix
         target_vector = np.array(binding_stream.values(chromosome, start, end)).T
+        if target_vector.shape[0] == 0:
+            target_vector = np.zeros(INPUT_LENGTH)
 
     except:
         # TODO change length of array
@@ -290,9 +322,14 @@ def get_target_matrix(binding_stream,
     # Split the data up into 32 x 32 bp bins.
     split_targets = np.array(np.split(target_vector, n_bins, axis=0))
 
-    # TODO we might want to test what happens if we change the
-    bin_sums = np.sum(split_targets, axis=1)
-    bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+    if quant:
+        bin_vector = np.mean(split_targets, axis=1)  # Perhaps we can change np.mean to np.median.
+        bin_vector = bin_vector * target_scale_factor
+
+    else:
+        # TODO we might want to test what happens if we change the
+        bin_sums = np.sum(split_targets, axis=1)
+        bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
 
     return bin_vector
 
@@ -303,6 +340,7 @@ def create_roi_batch(sequence,
                      n_roi,
                      cell_type_list,
                      bp_resolution=1,
+                     quant_train=False,
                      target_scale_factor=1,
                      shuffle_cell_type=False,
                      rev_comp_train=False
@@ -381,16 +419,44 @@ def create_roi_batch(sequence,
                 # Append the sample to the inputs batch.
                 inputs_batch.append(input_matrix)
 
-                # Get the target matrix of values
-                target_matrix = get_target_matrix(binding_stream=binding_stream,
-                                                  chromosome=chrom_name,
-                                                  start=start,
-                                                  end=end,
-                                                  rev_comp=rev_comp,
-                                                  bp_resolution=bp_resolution)
+                if quant_train:
+                    quant = True
+                    scale_factor = target_scale_factor
 
-                # Append the sample to the target batch
-                targets_batch.append(target_matrix)
+                    # Get the target matrix of values
+                    target_matrix = get_target_matrix(binding_stream=binding_stream,
+                                                      chromosome=chrom_name,
+                                                      start=start,  # suspected typo was seq_start
+                                                      end=end,  # suspected typo was seq_end
+                                                      rev_comp=rev_comp,
+                                                      quant=quant,
+                                                      bp_resolution=bp_resolution,
+                                                      target_scale_factor=scale_factor)
+
+                    # Append the sample to the target batch
+                    targets_batch.append(target_matrix)
+
+
+                else:
+                    quant = False
+                    scale_factor = target_scale_factor
+
+                    # Get the target matrix of values
+                    target_matrix = get_target_matrix(binding_stream=binding_stream,
+                                                      chromosome=chrom_name,
+                                                      start=start, #suspected typo was seq_start
+                                                      end=end, #suspected typo was seq_end
+                                                      rev_comp=rev_comp,
+                                                      quant=quant,
+                                                      bp_resolution=bp_resolution,
+                                                      target_scale_factor=scale_factor)
+
+                    # Append the sample to the target batch
+                    targets_batch.append(target_matrix)
+
+#        if quant_train:
+#            targets_batch = np.array(targets_batch)
+#            targets_batch = targets_batch * target_scale_factor
 
         yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
@@ -402,6 +468,7 @@ def create_random_batch(
         n_rand,
         regions_pool,
         bp_resolution=1,
+        quant_train=False,
         target_scale_factor=1,
         rev_comp_train=False
 ):
@@ -445,16 +512,44 @@ def create_random_batch(
 
                 inputs_batch.append(input_matrix)
 
-                # Get the target matrix of values
-                target_matrix = get_target_matrix(binding_stream=binding_stream,
-                                                  chromosome=chrom_name,
-                                                  start=seq_start,
-                                                  end=seq_end,
-                                                  rev_comp=rev_comp,
-                                                  bp_resolution=bp_resolution)
+                if quant_train:
+                    quant = True
+                    scale_factor = target_scale_factor
 
-                # Append the sample to the target batch
-                targets_batch.append(target_matrix)
+                    # Get the target matrix of values
+                    target_matrix = get_target_matrix(binding_stream=binding_stream,
+                                                      chromosome=chrom_name,
+                                                      start=seq_start,
+                                                      end=seq_end,
+                                                      rev_comp=rev_comp,
+                                                      quant=quant,
+                                                      bp_resolution=bp_resolution,
+                                                      target_scale_factor=scale_factor)
+
+                    # Append the sample to the target batch
+                    targets_batch.append(target_matrix)
+
+
+                else:
+                    quant = False
+                    scale_factor = target_scale_factor
+
+                    # Get the target matrix of values
+                    target_matrix = get_target_matrix(binding_stream=binding_stream,
+                                                      chromosome=chrom_name,
+                                                      start=seq_start,
+                                                      end=seq_end,
+                                                      rev_comp=rev_comp,
+                                                      quant=quant,
+                                                      bp_resolution=bp_resolution,
+                                                      target_scale_factor=scale_factor)
+
+                    # Append the sample to the target batch
+                    targets_batch.append(target_matrix)
+
+#        if quant_train:
+#            targets_batch = np.array(targets_batch)
+#            targets_batch = targets_batch * target_scale_factor
 
         yield np.array(inputs_batch), np.array(targets_batch)  # change to yield
 
@@ -806,5 +901,30 @@ def model_selection(training_history, output_dir):
 
     # Write the location of the best model to a file
     out.to_csv(output_dir + "/" + "best_epoch.txt", sep='\t', index=None, header=None)
+
+    return epoch
+
+def model_selection_v2(training_history, output_dir):
+    """
+    This function will take the training history and output the best model based on the dice coefficient value.
+    """
+    # Create a dataframe from the history object
+    df = pd.DataFrame(training_history.history)
+
+    df["train_val_loss_diff_abs"] = [abs(x) for x in df["val_loss"] - df["loss"]]
+    df["train_val_loss_maximum"] = [
+        max(x, y) for x, y in zip(df["val_loss"], df["loss"])
+    ]
+    df["train_val_loss_diff_abs_ratio"] = (
+        df["train_val_loss_diff_abs"] / df["train_val_loss_maximum"]
+    )
+    val_loss_min_idx = df["val_loss"].idxmin()
+    epoch = df.iloc[val_loss_min_idx:]["train_val_loss_diff_abs_ratio"].idxmin() + 1
+
+    # Get the realpath to the best model
+    out = pd.DataFrame([glob.glob(output_dir + "/*" + str(epoch) + ".h5")], columns=["Best_Model_Path"])
+
+    # Write the location of the best model to a file
+    out.to_csv(output_dir + "/" + "best_epoch.txt", sep="\t", index=None, header=None)
 
     return epoch

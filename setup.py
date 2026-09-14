@@ -29,7 +29,7 @@ def get_version():
     Returns package version
     """
 
-    version = "1.0.6"                                       # default version
+    version = "1.9.2"                                       # default version
     try:
         with open(GIT_VERSION_FILE, "r") as input_stream:   # try to get version info from file
             version = input_stream.read()
@@ -40,7 +40,7 @@ def get_version():
         version = get_git_tag()                             # try to get version info from the closest tag
     except Exception:
         try:
-            version = "1.0.6"          # try to get version info from commit date
+            version = "1.9.2"          # try to get version info from commit date
         except Exception:
             pass
 
@@ -94,7 +94,9 @@ setup(
         "pyyaml",
         "pysam",
         "seaborn",
-        "pytest"
+        "pytest",
+        "tqdm",
+        "ushuffle"
     ],
     zip_safe=False,
     scripts=["maxatac/bin/maxatac"],

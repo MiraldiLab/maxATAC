@@ -229,7 +229,9 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
                  input_channels: int = INPUT_CHANNELS,
                  input_length: int = INPUT_LENGTH,
                  batch_size=32,
-                 use_complement=False
+                 use_complement=False,
+                 ablation_type="none",
+                 ablation_value=0.0
                  ):
         """
         Initialize the training generator. This is a keras sequence class object. It is used
@@ -242,6 +244,8 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
         :param predict_roi_df: Dataframe that contains the BED intervals to predict on
         :param batch_size: Size of each training batch or # of examples per batch
         :param use_complement: Whether to use the forward or reverse (complement) strand
+        :param ablation_type: "none", "signal", or "sequence" ablation of the input matrix
+        :param ablation_value: fixed value used for the signal channel when ablation_type == "signal"
         """
         self.batch_size = batch_size
         self.predict_roi_df = predict_roi_df
@@ -251,6 +255,8 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
         self.input_channels = input_channels
         self.input_length = input_length
         self.use_complement = use_complement
+        self.ablation_type = ablation_type
+        self.ablation_value = ablation_value
 
         self.predict_roi_df.reset_index(inplace=True, drop=True)
 
@@ -320,7 +326,9 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
                                                 start=int(row.iloc[1]),
                                                 end=int(row.iloc[2]),
                                                 use_complement=self.use_complement,
-                                                reverse_matrix=self.use_complement)
+                                                reverse_matrix=self.use_complement,
+                                                ablation_type=self.ablation_type,
+                                                ablation_value=self.ablation_value)
 
                 # Append the matrix of values to the batch list
                 inputs_batch.append(input_matrix)
@@ -337,7 +345,9 @@ def make_stranded_predictions(roi_pool: pd.DataFrame,
                               chromosome: str,
                               number_intervals: int = 32,
                               input_channels: int = INPUT_CHANNELS,
-                              input_length: int = INPUT_LENGTH):
+                              input_length: int = INPUT_LENGTH,
+                              ablation_type: str = "none",
+                              ablation_value: float = 0.0):
     chr_roi_pool = roi_pool[roi_pool["chr"] == chromosome].copy()
 
     logging.info("Load pre-trained model")
@@ -352,7 +362,9 @@ def make_stranded_predictions(roi_pool: pd.DataFrame,
                                              input_length=input_length,
                                              predict_roi_df=chr_roi_pool,
                                              batch_size=batch_size,
-                                             use_complement=use_complement)
+                                             use_complement=use_complement,
+                                             ablation_type=ablation_type,
+                                             ablation_value=ablation_value)
 
     logging.info("Making predictions")
 

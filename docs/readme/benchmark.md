@@ -6,6 +6,7 @@ The `benchmark` function can be used to calculate the area under the precision r
 
 ```bash
 maxatac benchmark --prediction GM12878_CTCF_chr1.bw --gold_standard GM12878_CTCF_ENCODE_IDR.bw --chromosomes chr1 --bin_size 200
+maxatac benchmark --prediction primary.bw --alternative_prediction secondary.bw --prediction_combine_operation max --gold_standard GM12878_CTCF_ENCODE_IDR.bw --chromosomes chr1 --bin_size 200
 ```
 
 ## Required Arguments
@@ -34,9 +35,13 @@ The size of the bin to use for aggregating the single base-pair predictions. Def
 
 ### `--agg`
 
-The method to use for aggregating the single base-pair predictions into larger bins. Options include `max`, `min`, and `mean`. Default: `max` score found in the window.
+The method to use for aggregating the single base-pair predictions into larger bins. Options include `max`, `min`, `mean`, and `sum`. Default: `max` score found in the window.
 
 See the [pyBigWig documentation](https://github.com/deeptools/pyBigWig#compute-summary-information-on-a-range) for more details.
+
+### `--agg_threshold`
+
+When `--agg sum` is selected, the summed value is divided by the bin size and then converted to a binary label. Bins with values greater than or equal to this threshold become `1.0`; all others become `0.0`. Default: `0.5`.
 
 ### `--round_predictions`
 
@@ -53,3 +58,12 @@ The path to the blacklist bigwig signal track of regions that should be excluded
 ### `--loglevel`
 
 This argument is used to set the logging level. Currently, the only working logging level is `ERROR`.
+
+### `--whitelist_bw`
+
+The path to a whitelist bigwig signal track of regions that should be included. When provided, benchmarking is restricted to bins that overlap the whitelist track (in addition to blacklist exclusion).
+
+
+### Optional alternate prediction bigWig
+
+You can provide `--alternative_prediction` to benchmark a second prediction bigWig together with the primary `--prediction` input. Before downstream metrics are computed, the benchmark command extracts the binned values from both files and combines them per bin. Use `--prediction_combine_operation mean` to average bins when both files provide a value, or `--prediction_combine_operation max` to keep the larger value. If only one file provides a value for a bin, that available value is used.

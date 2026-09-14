@@ -198,6 +198,8 @@ def update_reference_genome_paths(args):
     Build path names based on the input reference genome. This function will take an input args Namespace object
     and create a path names based on the input reference genome.
 
+    Paths supplied on the command line are kept; the genome bundle only fills in unset ones.
+
     Args: args Namespace object containing the arguments from the parser
 
     Returns:    an augmented args parser
@@ -219,11 +221,11 @@ def update_reference_genome_paths(args):
 
     sequence_path = os.path.join(maxatac_data_path, f"{args.genome}/{args.genome}.2bit")  # sequence 2bit
 
-    # normalize paths
-    args.blacklist = blacklist_path
-    args.blacklist_bw = blacklist_bigwig_path
-    args.chrom_sizes = chrom_sizes_path
-    args.sequence = sequence_path
+    # normalize paths. getattr because not every subparser defines every one of these.
+    args.blacklist = getattr(args, "blacklist", None) or blacklist_path
+    args.blacklist_bw = getattr(args, "blacklist_bw", None) or blacklist_bigwig_path
+    args.chrom_sizes = getattr(args, "chrom_sizes", None) or chrom_sizes_path
+    args.sequence = getattr(args, "sequence", None) or sequence_path
     args.DATA_PATH = maxatac_data_path
 
     return args

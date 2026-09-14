@@ -1,6 +1,6 @@
-![maxATAC_logo](https://user-images.githubusercontent.com/47329147/137503708-86d000ef-d6d4-4f75-99aa-39f8aab6dec5.png)
+<img width="2364" height="1253" alt="quant-logo_2" src="https://github.com/user-attachments/assets/32b3fa9f-8e5f-4455-8408-b322d5578d71" />
 
-# maxATAC: genome-scale transcription-factor binding prediction from ATAC-seq with deep neural networks
+# quant-maxATAC: genome-scale transcription-factor binding prediction from ATAC-seq with deep neural networks
 
 [![Downloads](https://static.pepy.tech/personalized-badge/maxatac?period=total&units=international_system&left_color=black&right_color=blue&left_text=Downloads)](https://pepy.tech/project/maxatac) ![PyPI version](https://badge.fury.io/py/maxatac.svg)
 

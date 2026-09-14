@@ -8,7 +8,7 @@ The peaks function takes as input a bigwig signal track and will output bins tha
 
 ## Example
 
-`maxatac peaks -i GM12878_CTCF.bw -o ./peaks -bin 32 -cutoff_file ARID3A_validationPerformance_vs_thresholdCalibration.tsv`
+`maxatac peaks -i GM12878_CTCF.bw -o ./peaks -bin 32 -cutoff_file ARID3A_cross_celltype.tsv`
 
 ## Required Arguments
 
@@ -18,23 +18,22 @@ The input maxATAC bigwig file.
 
 ### `"-cutoff_file", "--cutoff_file"`
 
-The cutoff file provided in /data/models that corresponds to the average validation performance metrics for the TF model. 
+The threshold calibration table written by `maxatac threshold`, provided in /data/models for the TF model. It maps each target metric value to the prediction score threshold that achieves it.
 
 ## Optional Arguments
 Note on abbreviations: 
 
 * F1 = F1-score
-* log2FC = Log2( Precision : Random Precision))
 
 ### `"-cutoff_type", "--cutoff_type"`
 
-The cutoff type (i.e. `Precision`, `Recall`, `F1`, `log2FC`). Default: F1.
+The metric whose calibration grid is used to pick the threshold (`Precision`, `Recall`, or `F1`). Default: F1.
 
 ### `"-cutoff_value", "--cutoff_value"`
 
-The cutoff value for the cutoff type provided. Note precision, recall, and F1-scores range 0-1, while better-than-random log2FC scores range from 0 to infinity. Example: .7
+The cutoff value for the cutoff type provided; precision, recall, and F1-scores range 0-1. Example: .7. Optional for F1, where omitting it selects the threshold with the highest F1.
 
-### `"-prefix", "--prefix"`
+### `"-n", "--name", "-prefix", "--prefix"`
 
 The prefix to use for the output file name.
 

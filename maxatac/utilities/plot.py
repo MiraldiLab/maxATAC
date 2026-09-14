@@ -157,7 +157,7 @@ def export_loss_mse_coeff(history, tf, TCL, RR, ARC, file_location, suffix="_mod
     ax4.set_xlabel("Epoch")
     ax4.legend(["Training", "Validation"], loc="upper left")
 
-    t_y = history.history['precision']
+    '''t_y = history.history['precision']
     t_x = [int(i) for i in range(1, len(t_y) + 1)]
 
     v_y = history.history["val_precision"]
@@ -191,6 +191,7 @@ def export_loss_mse_coeff(history, tf, TCL, RR, ARC, file_location, suffix="_mod
     ax6.set_xlabel("Epoch")
     ax6.legend(["Training", "Validation"], loc="upper left")
     #
+    '''
     t_y = history.history['pearson']
     t_x = [int(i) for i in range(1, len(t_y) + 1)]
 
@@ -255,6 +256,59 @@ def export_prc(precision, recall, file_location, title="Precision Recall Curve",
     )
 
     plt.close("all")
+
+
+def plot_threshold_calibration_stats(median_curve, cell_type_curves, file_location, prefix,
+                                     suffix="_validationPerformance_vs_thresholdCalibration", ext=".png", style="ggplot"):
+    """
+    Multi-panel plot of Precision, log2(FC), Recall, and F1 vs. Threshold. Each cell type
+    is drawn in color from its own per-metric curve; the median-across-cell-type curve
+    is drawn in black on the Precision/Recall/F1 panels.
+
+    median_curve: DataFrame with Metric/Precision/Recall/Threshold/log2FC/F1 columns.
+    cell_type_curves: list of {'name': str, 'curves': {'Precision': DataFrame,
+      'Recall': DataFrame, 'F1': DataFrame}}.
+    """
+    plt.style.use(style)
+    fig, axs = plt.subplots(nrows=2, ncols=2, figsize=(15, 12))
+
+    # (axis, column, label, median_curve Metric for the black line; None = no black line)
+    panels = [
+        (axs[0, 0], "Precision", "Precision", "Precision"),
+        (axs[0, 1], "log2FC", "log2(FC)", None),
+        (axs[1, 0], "Recall", "Recall", "Recall"),
+        (axs[1, 1], "F1", "F1 Score", "F1"),
+    ]
+
+    n_curves = max(len(cell_type_curves), 1)
+    colors = plt.cm.rainbow(np.linspace(0, 1, n_curves))
+
+    max_threshold = median_curve["Threshold"].max()
+    if cell_type_curves:
+        max_threshold = max(
+            max_threshold,
+            max(curve_df["Threshold"].max() for ct in cell_type_curves for curve_df in ct["curves"].values())
+        )
+
+    for ax, col, label, metric_filter in panels:
+        metric_key = metric_filter if metric_filter is not None else "Precision"
+        for color, ct in zip(colors, cell_type_curves):
+            ct_curve = ct["curves"][metric_key]
+            ax.plot(ct_curve["Threshold"], ct_curve[col], c=color, lw=1.2, alpha=0.85, label=ct["name"])
+        if metric_filter is not None:
+            panel_median = median_curve[median_curve["Metric"] == metric_filter].sort_values("Threshold")
+            ax.plot(panel_median["Threshold"], panel_median[col], c="black", lw=3, label="Median")
+        ax.set_title(f"chr2 Validation {label} v. Thresholds", size="medium")
+        ax.set_xlabel("Threshold", size="medium")
+        ax.set_xlim([0.0, max_threshold])
+        ax.set_ylabel(f"Validation {label}", size="medium")
+
+    # Single shared legend below the grid
+    handles, labels = axs[0, 0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=min(len(labels), 6), fontsize=9, bbox_to_anchor=(0.5, -0.02))
+
+    fig.suptitle(prefix + " chr2 Validation Performance v. Threshold Calibration")
+    fig.savefig(replace_extension(file_location, prefix + '_' + suffix + ext), bbox_inches="tight", dpi=320)
 
 
 def plot_chromosome_scores_dist(input_bigwig, chrom_name, region_start, region_stop):

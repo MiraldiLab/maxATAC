@@ -112,3 +112,6 @@ snakemake/dag.svg
 .idea/misc.xml
 .idea/maxATAC.iml
 .DS_Store
+
+# Readme Swp file
+*.INSTALL.md.swp

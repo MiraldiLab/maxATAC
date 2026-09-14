@@ -142,3 +142,53 @@ def arcsinh_normalize_array(array):
     :return: Arcsinh normalized array
     """
     return np.arcsinh(array)
+
+def log2_normalize_array(array):
+    """
+    log2() normalize the numpy array
+
+    :param array: Input array of bigwig values
+
+    :return: log2 normalized array
+    """
+    return np.log2(array) + 1
+
+def log1p_normalize_array(array):
+    """
+    log1p()normalize the numpy array
+
+    :param array: Input array of bigwig values
+
+    :return: Return the natural logarithm of one plus the input array, element-wise. Calculates log(1 + x).
+    """
+    return np.log1p(array)
+
+def sqrt_normalize_array(array):
+    """
+    Square Root normalize the numpy array
+
+    :param array: Input array of bigwig values
+
+    :return: Square root normalized array
+    """
+    return np.sqrt(array)
+
+def three_fourth_normalize_array(array):
+    """
+    Square Root normalize the numpy array
+
+    :param array: Input array of bigwig values
+
+    :return: array raised to the (3/4) power
+    """
+    return array**(3/4)
+
+def three_eighths_normalize_array(array):
+    """
+    Square Root normalize the numpy array
+
+    :param array: Input array of bigwig values
+
+    :return: array raised to the (3/8) power
+    """
+    return array**(3/8)

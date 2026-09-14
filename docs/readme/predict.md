@@ -36,15 +36,15 @@ This argument specifies the path to the 2bit DNA sequence for the genome of inte
 
 ### `"-cutoff_type", "--cutoff_type"`
 
-The cutoff type (i.e. `Precision`, `Recall`, `F1`, `log2FC`). (F1 = F1-score, and log2FC = Log2( Precision : Random Precision)). Default: F1.
+The metric whose calibration grid is used to pick the threshold (`Precision`, `Recall`, or `F1`). Default: F1.
 
 ### `"-cutoff_value", "--cutoff_value"`
 
-The cutoff value for the cutoff type provided. Note precision, recall, and F1-scores range 0-1, while better-than-random log2FC scores range from 0 to infinity. Example: .7
+The cutoff value for the cutoff type provided; precision, recall, and F1-scores range 0-1. Example: .7. Optional for F1, where omitting it selects the threshold with the highest F1.
 
 ### `-cutoff_file, --cutoff_file`
 
-The cutoff file provided in /data/models that corresponds to the average validation performance metrics for the TF model.
+The threshold calibration table written by `maxatac threshold`, provided in /data/models for the TF model. It maps each target metric value to the prediction score threshold that achieves it. Resolved automatically from `--TF`.
 
 ### `-o, --output`
 

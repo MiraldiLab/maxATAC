@@ -36,9 +36,11 @@ from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          DEFAULT_ROUND,
                                          DEFAULT_TEST_CHRS,
                                          DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
+                                         DEFAULT_BENCHMARKING_AGGREGATION_THRESHOLD,
                                          DEFAULT_BENCHMARKING_BIN_SIZE,
                                          ALL_CHRS,
-                                         AUTOSOMAL_CHRS
+                                         AUTOSOMAL_CHRS,
+                                         OUTPUT_ACTIVATION
                                          )
 
 
@@ -77,7 +79,7 @@ def get_parser():
     # Parent (general) parser
     parent_parser = argparse.ArgumentParser(add_help=False)
 
-    general_parser = argparse.ArgumentParser(description="Neural networks for predicting TF binding using ATAC-seq")
+    general_parser = argparse.ArgumentParser(description="Neural networks for predicting TF binding using ATAC-seq",allow_abbrev=False)
 
     # Add subparsers to the general parser and require that one is provided
     subparsers = general_parser.add_subparsers()
@@ -161,6 +163,15 @@ def get_parser():
                                 required=True,
                                 help="Output filename base. The extension .bw will be added to the name."
                                 )
+
+    average_parser.add_argument("-q", "--quant",
+                                dest="quant",
+                                action='store_true',
+                                required=False,
+                                help="Input quant files for averaging, restricts to two decimal points."
+                                )
+
+
     # Add optional arguments to the parser
     average_parser.add_argument("-cs", "--chrom_sizes", "--chromosome_sizes",
                                 dest="chromosome_sizes",
@@ -191,6 +202,13 @@ def get_parser():
                                 help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                 )
 
+    average_parser.add_argument("--decimal_points",
+                                dest="decimal_points",
+                                type=int,
+                                default=2,
+                                help="For quant file averaging, this parameter will round all values to the set value of decimals."
+                                )
+
     #############################################
     # Predict subparser
     #############################################
@@ -217,6 +235,14 @@ def get_parser():
                        help="Trained maxATAC model .h5 file."
                        )
 
+    predict_parser.add_argument("--quant",
+                                dest="quant",
+                                action='store_true',
+                                default=False,
+                                help="NOT IMPLEMENTED for predict: accepted but ignored. Quantitative \
+                                      prediction follows from the model provided via --tf_name/--model."
+                                )
+
     predict_parser.add_argument("--seq", "--sequence",
                                 dest="sequence",
                                 type=str,
@@ -228,6 +254,25 @@ def get_parser():
                                 type=str,
                                 required=True,
                                 help="Input ATACseq bigwig file."
+                                )
+
+    predict_parser.add_argument("--ablation_type",
+                                dest="ablation_type",
+                                type=str,
+                                choices=["none", "signal", "sequence"],
+                                default="none",
+                                help="Ablate part of the input before prediction. 'signal' replaces the "
+                                     "ATAC-seq signal channel with a fixed value (see --ablation_value); "
+                                     "'sequence' dinucleotide-shuffles the DNA sequence channels. "
+                                     "Default: none (no ablation)."
+                                )
+
+    predict_parser.add_argument("--ablation_value",
+                                dest="ablation_value",
+                                type=float,
+                                default=0.0,
+                                help="Fixed value to substitute into the ATAC-seq signal channel when "
+                                     "--ablation_type signal is used. Default: 0.0"
                                 )
 
     predict_parser.add_argument("-o", "--output",
@@ -307,19 +352,25 @@ def get_parser():
                                 dest="cutoff_type",
                                 default="F1",
                                 type=str,
-                                help="Cutoff type (i.e. Precision)"
+                                choices=["Precision", "Recall", "F1"],
+                                help="Metric whose calibration grid is used to pick the peak calling \
+                                      threshold. Default: F1"
                                 )
 
     predict_parser.add_argument("-cv", "-cutoff_value", "--cutoff_value",
                                 dest="cutoff_value",
                                 type=float,
-                                help="Cutoff value for the cutoff type provided. Not used with F1 score."
+                                help="Cutoff value for the cutoff type provided. Optional for F1, where \
+                                      omitting it selects the threshold with the highest F1."
                                 )
 
     predict_parser.add_argument("-cf", "-cutoff_file", "--cutoff_file",
                                 dest="cutoff_file",
                                 type=str,
-                                help="Cutoff file provided in /data/models"
+                                help="Threshold calibration table written by `maxatac threshold`, used to \
+                                      turn --cutoff_type/--cutoff_value into a peak calling threshold. \
+                                      Resolved from the bundled table in /data/models when --tf_name is \
+                                      used. Without it, peak calling is skipped."
                                 )
 
     predict_parser.add_argument("-skip_call_peaks", "--skip_call_peaks",
@@ -342,6 +393,28 @@ def get_parser():
     train_parser.set_defaults(func=run_training)
 
     # Add arguments to the parser
+    train_parser.add_argument("--quant",
+                              dest="quant",
+                              action='store_true',
+                              default=False,
+                              help="This argument should be set to true to build models based on quantitative data"
+                              )
+
+    train_parser.add_argument("--loss",
+                              dest="loss",
+                              type=str,
+                              default="cross_entropy",
+                              help="This argument should be set depending on binary models or quantitative models (cross entropy, mse)"
+                              )
+
+    train_parser.add_argument("--target_scale_factor",
+                              dest="target_scale_factor",
+                              type=float,
+                              required=False,
+                              default=1,
+                              help="Scaling factor for scaling model targets. Use only for Quant models"
+                              )
+
     train_parser.add_argument("--genome",
                               dest="genome",
                               type=str,
@@ -383,8 +456,10 @@ def get_parser():
                               dest="output_activation",
                               type=str,
                               required=False,
-                              default="sigmoid",
-                              help="Activation function used for model output layer. Default: sigmoid"
+                              default=OUTPUT_ACTIVATION,
+                              help="Activation function used for model output layer (any Keras activation name, "
+                                   "e.g. sigmoid for binary models, softplus for --quant models). "
+                                   "Default: " + OUTPUT_ACTIVATION
                               )
 
     train_parser.add_argument("--chroms",
@@ -638,7 +713,7 @@ def get_parser():
                                   dest="method",
                                   type=str,
                                   default="min-max",
-                                  help="The method to use for normalization"
+                                  help="The method to use for normalization. Choose from min-max, zscore, arcsinh, log2, log1p, sqrt, three_fourths, or three_eighths"
                                   )
 
     normalize_parser.add_argument("--max_percentile",
@@ -689,11 +764,52 @@ def get_parser():
                                                help="Prediction bigWig file"
                                                )
 
+    benchmark_parser.add_argument("--alternative_prediction",
+                                  dest="alternative_prediction",
+                                  type=str,
+                                  default=None,
+                                  help="Optional second prediction bigWig file to combine with the primary prediction before benchmarking"
+                                  )
+
+    benchmark_parser.add_argument("--prediction_combine_operation",
+                                  dest="prediction_combine_operation",
+                                  type=str,
+                                  choices=["mean", "max"],
+                                  default="mean",
+                                  help="How to combine bins from the primary and alternative prediction bigWig files when both provide a value. Default: mean"
+                                  )
+
+    benchmark_parser.add_argument("--quant_gold_standard",
+                                  dest="quant_gold_standard",
+                                  type=str,
+                                  help="Quantitative Gold Standard file"
+                                  )
+
+    benchmark_parser.add_argument("--quant_gs_null",
+                                  dest="quant_gs_null",
+                                  type=str,
+                                  help="Null quantitative gold standard file (average of all TF_CT bw files per TF)"
+                                  )
+
     benchmark_parser.add_argument("--gold_standard",
                                   dest="gold_standard",
                                   type=str,
                                   required=True,
                                   help="Gold Standard file"
+                                  )
+
+    benchmark_parser.add_argument("--peak_based",
+                                  dest="peak_based",
+                                  action='store_true',
+                                  default=False,
+                                  help="Whether use peak-based Gold Standard instead of bin-based"
+                                  )
+
+    benchmark_parser.add_argument("--quant",
+                                  dest="quant",
+                                  action='store_true',
+                                  default=False,
+                                  help="This argument should be set to true for models based on quantitative data"
                                   )
 
     benchmark_parser.add_argument("-c", "--chroms", "--chromosomes",
@@ -719,7 +835,15 @@ def get_parser():
                                   type=str,
                                   default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
                                   help="Aggregation function to use for combining results into bins: \
-                                        max, mean, min"
+                                        max, mean, min, sum"
+                                  )
+
+    benchmark_parser.add_argument("--agg_threshold",
+                                  dest="agg_threshold",
+                                  type=float,
+                                  default=DEFAULT_BENCHMARKING_AGGREGATION_THRESHOLD,
+                                  help="Threshold used when --agg sum is selected. The summed value is divided by the \
+                                        bin size and binarized to 1.0 when it is greater than or equal to this value."
                                   )
 
     benchmark_parser.add_argument("--round_predictions",
@@ -757,13 +881,29 @@ def get_parser():
                                   help="The blacklisted regions to exclude in BigWig format"
                                   )
 
+    benchmark_parser.add_argument("--whitelist_bw",
+                                  dest="whitelist_bw",
+                                  type=str,
+                                  default=None,
+                                  help="The whitelisted regions to include in BigWig format"
+                                  )
+
+    benchmark_parser.add_argument("--plot",
+                                  dest="plot",
+                                  action="store_true",
+                                  default=False,
+                                  required=False,
+                                  help="Plot PR curve"
+                                  )
+
+    # Deprecated upstream flag kept as a no-op so older command lines still parse (plotting is off by default)
     benchmark_parser.add_argument("-skip_plot", "--skip_plot",
-                                dest="skip_plot",
-                                action="store_true",
-                                default=False,
-                                required=False,
-                                help="Skip PR curve plotting"
-                                )
+                                  dest="skip_plot",
+                                  action="store_true",
+                                  default=False,
+                                  required=False,
+                                  help=argparse.SUPPRESS
+                                  )
     #############################################
     # Peaks subparser
     #############################################
@@ -776,8 +916,8 @@ def get_parser():
     peaks_parser.set_defaults(func=run_call_peaks)
 
     # Add arguments to the parser
-    peaks_parser.add_argument("-prefix", "--prefix",
-                              dest="prefix",
+    peaks_parser.add_argument("-n", "--name", "-prefix", "--prefix",
+                              dest="name",
                               type=str,
                               required=False,
                               help="Output prefix filename. Defaults: remove .bw extension."
@@ -791,7 +931,7 @@ def get_parser():
                               )
 
     peaks_parser.add_argument("-o", "--output",
-                              dest="output",
+                              dest="output_directory",
                               type=str,
                               default="./peaks",
                               help="Output directory."
@@ -808,13 +948,16 @@ def get_parser():
                               dest="cutoff_type",
                               default="F1",
                               type=str,
-                              help="Cutoff type (i.e. Precision). Default: F1"
+                              choices=["Precision", "Recall", "F1"],
+                              help="Metric whose calibration grid is used to pick the peak calling \
+                                    threshold. Default: F1"
                               )
 
     peaks_parser.add_argument("-cutoff_value", "--cutoff_value",
                               dest="cutoff_value",
                               type=float,
-                              help="Cutoff value for the cutoff type provided"
+                              help="Cutoff value for the cutoff type provided. Optional for F1, where \
+                                    omitting it selects the threshold with the highest F1."
                               )
 
     peaks_parser.add_argument("-cutoff_file", "--cutoff_file",
@@ -1105,6 +1248,17 @@ def get_parser():
                                   help="Meta file containing Prediction signal and GS path for all cell lines (.tsv format)"
                                   )
 
+    threshold_parser.add_argument("--aggregation",
+                                  dest="aggregation",
+                                  type=str,
+                                  default="pooled",
+                                  choices=["pooled", "median"],
+                                  help="How to combine cell types into one calibration curve. 'pooled' (default) "
+                                       "concatenates every cell type's bins together into one curve. 'median' takes "
+                                       "the per-bin median Prediction/GoldStandard across cell types first, then "
+                                       "computes the curve on that (GoldStandard requires majority cell-type agreement)."
+                                  )
+
     return general_parser
 
 
@@ -1152,9 +1306,10 @@ def parse_arguments(argsl, cwd_abs_path=None):
                 "chroms", "keep", "epochs", "batches", "max_queue_size",
                 "prefix", "plot", "lrate", "decay", "bin",
                 "minimum", "test_cell_lines", "rand_ratio",
-                "train_tf", "arch", "batch_size", "save_roi",
+                "train_tf", "arch", "quant","batch_size", "save_roi",
                 "val_batch_size", "target_scale_factor", "blacklist", "chrom_sizes",
-                "output_activation", "dense", "shuffle_cell_type", "rev_comp", "genome"
+                "output_activation", "dense", "shuffle_cell_type", "rev_comp", "genome", "loss", "pred_gs_meta",
+                "peak_based"
             ],
             cwd_abs_path
         )

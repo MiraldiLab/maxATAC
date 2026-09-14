@@ -2,14 +2,14 @@ import logging
 import sys
 import timeit
 
-from tensorflow.keras.utils import OrderedEnqueuer
+from tensorflow.python.keras.utils.data_utils import OrderedEnqueuer
 
 from maxatac.utilities.constants import TRAIN_MONITOR, INPUT_LENGTH
 from maxatac.utilities.system_tools import Mute
 
 with Mute():
     from maxatac.utilities.callbacks import get_callbacks
-    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, SeqDataGenerator, model_selection
+    from maxatac.utilities.training_tools import DataGenerator, MaxATACModel, ROIPool, SeqDataGenerator, model_selection, model_selection_v2
     from maxatac.utilities.plot import export_binary_metrics, export_loss_mse_coeff, export_model_structure
 
 
@@ -76,9 +76,12 @@ def run_training(args):
                                  prefix=args.prefix,
                                  threads=args.threads,
                                  meta_path=args.meta_file,
+                                 quant=args.quant,
                                  output_activation=args.output_activation,
+                                 target_scale_factor=args.target_scale_factor,
                                  dense=args.dense,
-                                 weights=args.weights
+                                 weights=args.weights,
+                                 loss=args.loss
                                  )
 
     logging.info("Import training regions")
@@ -114,9 +117,11 @@ def run_training(args):
                               cell_type_list=maxatac_model.cell_types,
                               rand_ratio=args.rand_ratio,
                               chroms=args.tchroms,
+                              quant=args.quant,
                               batch_size=args.batch_size,
                               shuffle_cell_type=args.shuffle_cell_type,
-                              rev_comp_train=args.rev_comp
+                              rev_comp_train=args.rev_comp,
+                              chrom_sizes=args.chrom_sizes
                               )
 
     # Create keras.utils.sequence object from training generator
@@ -153,9 +158,11 @@ def run_training(args):
                             cell_type_list=maxatac_model.cell_types,
                             rand_ratio=args.rand_ratio,
                             chroms=args.vchroms,
+                            quant=args.quant,
                             batch_size=args.batch_size,
                             shuffle_cell_type=args.shuffle_cell_type,
-                            rev_comp_train=args.rev_comp
+                            rev_comp_train=args.rev_comp,
+                            chrom_sizes=args.chrom_sizes
                             )
 
     # Create keras.utils.sequence object from validation generator
@@ -198,11 +205,18 @@ def run_training(args):
     logging.info("Plot and save results")
 
     # Select best model
-    best_epoch = model_selection(training_history=training_history,
-                                 output_dir=maxatac_model.output_directory)
+
+    # Binary models keep the maxATAC v1 rule (max val_dice_coef); quant models use the loss-based rule
+    if args.quant:
+        best_epoch = model_selection_v2(training_history=training_history,
+                                        output_dir=maxatac_model.output_directory)
+    else:
+        best_epoch = model_selection(training_history=training_history,
+                                     output_dir=maxatac_model.output_directory)
 
     # If plot then plot the model structure and training metrics
     if args.plot:
+        quant = args.quant
         tf = maxatac_model.train_tf
         TCL = '_'.join(maxatac_model.cell_types)
         ARC = args.arch
@@ -210,7 +224,10 @@ def run_training(args):
 
         export_model_structure(maxatac_model.nn_model, maxatac_model.results_location)
 
-        export_binary_metrics(training_history, tf, RR, ARC, maxatac_model.results_location, best_epoch)
+        if not quant:
+            export_binary_metrics(training_history, tf, RR, ARC, maxatac_model.results_location, best_epoch)
+        else:
+            export_loss_mse_coeff(training_history, tf, TCL, RR, ARC, maxatac_model.results_location)
 
     # If save_roi save the ROI files
     if args.save_roi:

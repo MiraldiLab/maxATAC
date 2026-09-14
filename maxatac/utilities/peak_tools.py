@@ -61,25 +61,62 @@ def call_peaks_per_chromosome(bigwig_path, chrom_name, threshold, bin_size=200):
     return pd.DataFrame(BIN_list, columns=["chr", "start", "end", "score"])
 
 
+CUTOFF_TYPES = ("Precision", "Recall", "F1")
+
+
 def get_threshold(cutoff_file, cutoff_type, cutoff_val):
-    # Find Threshold for specified cutoff values
+    """Look up the prediction-score threshold calibrated to a target metric value.
+
+    Args:
+        cutoff_file (str): Threshold calibration table written by `maxatac threshold`
+            (`<prefix>_cross_celltype.tsv` or a per-sample `<sample>.tsv`), with columns
+            Metric/Bin/Precision/Recall/Threshold/F1.
+        cutoff_type (str): Which metric's bin grid to look the threshold up on.
+            One of Precision, Recall, F1.
+        cutoff_val (float): Target value on that metric's grid. Optional for F1, where
+            omitting it selects the threshold with the highest F1.
+
+    Returns:
+        float: The threshold to apply to prediction scores.
+    """
     df = pd.read_csv(cutoff_file, sep='\t')
 
-    # Get correct label
-    dict = {"Precision": "Monotonic_Avg_Precision",
-            "Recall": "Monotonic_Avg_Recall",
-            "log2FC": "Monotonic_Avg_log2FC",
-            "F1": "Avg_F1"
-            }
+    if "Metric" not in df.columns:
+        raise ValueError(
+            f"{cutoff_file} is not a threshold calibration table: no 'Metric' column. "
+            "Legacy Standard_Thresh tables are no longer supported; regenerate the table "
+            "with `maxatac threshold`."
+        )
 
-    col_name = dict[cutoff_type]
+    if cutoff_type not in CUTOFF_TYPES:
+        raise ValueError(f"Unknown cutoff type {cutoff_type}. Choose one of {', '.join(CUTOFF_TYPES)}.")
 
-    if col_name == "Avg_F1":
-        # Find correct threshold for maximum F1 Score
-        thresh = df.loc[df['Avg_F1'].idxmax()].Standard_Thresh
+    rows = df[df["Metric"] == cutoff_type]
+
+    if rows.empty:
+        raise ValueError(f"{cutoff_file} has no {cutoff_type} rows to calibrate a threshold against.")
+
+    if cutoff_type == "F1" and cutoff_val is None:
+        selected = rows.loc[rows["F1"].idxmax()]
 
     else:
-        # Find correct threshold
-        thresh = df.query(f"{cutoff_type} >= @cutoff_val").Standard_Thresh.tolist()[0]
+        if cutoff_val is None:
+            raise ValueError(f"A cutoff value is required for cutoff type {cutoff_type}.")
 
-    return thresh
+        # Ceiling on the bin grid: the lowest bin that still meets the requested value.
+        reachable = rows[rows["Bin"] >= cutoff_val].sort_values("Bin")
+
+        if reachable.empty:
+            raise ValueError(
+                f"{cutoff_file} does not reach {cutoff_type} {cutoff_val}; "
+                f"its highest {cutoff_type} bin is {rows['Bin'].max()}."
+            )
+
+        selected = reachable.iloc[0]
+
+    logging.info(f"Threshold calibrated on {cutoff_type} bin {selected['Bin']}: {selected['Threshold']}" +
+                 f"\n Achieved Precision: {selected['Precision']}" +
+                 f"\n Achieved Recall: {selected['Recall']}" +
+                 f"\n Achieved F1: {selected['F1']}")
+
+    return float(selected["Threshold"])

@@ -77,6 +77,9 @@ def run_averaging(args):
             # After looping through the files average the values
             chrom_vals = chrom_vals / number_input_bigwigs
 
+            if args.quant:
+                chrom_vals = np.round(chrom_vals, args.decimal_points)
+
             logging.info(f"Writing average values for chromosome: {chrom_name}")
 
             # Write the entries to the bigwig for this chromosome. Current resolution is at 1 bp.

@@ -2,7 +2,6 @@ import logging
 from scipy import stats
 from maxatac.utilities.system_tools import Mute
 
-
 with Mute():
     import tensorflow as tf
     from tensorflow.keras import backend as K
@@ -18,31 +17,13 @@ with Mute():
     )
     from tensorflow.keras.models import Model
     from tensorflow.keras.optimizers import Adam
+    from tensorflow.keras.losses import MeanSquaredError
 
     from maxatac.utilities.constants import KERNEL_INITIALIZER, INPUT_LENGTH, INPUT_CHANNELS, INPUT_FILTERS, \
         INPUT_KERNEL_SIZE, INPUT_ACTIVATION, OUTPUT_FILTERS, OUTPUT_KERNEL_SIZE, FILTERS_SCALING_FACTOR, DILATION_RATE, \
         OUTPUT_LENGTH, CONV_BLOCKS, PADDING, POOL_SIZE, ADAM_BETA_1, ADAM_BETA_2, DEFAULT_ADAM_LEARNING_RATE, \
-        DEFAULT_ADAM_DECAY
+        DEFAULT_ADAM_DECAY, LOSS
 
-
-def loss_function(
-        y_true,
-        y_pred,
-        y_pred_min=0.0000001,  # 1e-7
-        y_pred_max=0.9999999,  # 1 - 1e-7
-        y_true_min=-0.5
-):
-    y_true = K.flatten(y_true)
-    y_pred = tf.clip_by_value(
-        K.flatten(y_pred),
-        y_pred_min,
-        y_pred_max
-    )
-    losses = tf.boolean_mask(
-        tensor=-y_true * K.log(y_pred) - (1 - y_true) * K.log(1 - y_pred),
-        mask=K.greater_equal(y_true, y_true_min)
-    )
-    return tf.reduce_mean(input_tensor=losses)
 
 def pearson(y_true, y_pred):
     import scipy.stats as measures
@@ -60,10 +41,6 @@ def pearson(y_true, y_pred):
     
     score = r_num / r_den
     return score
-'''
-def pearson(y_true, y_pred):
-    return (tf.contrib.metrics.streaming_pearson_correlation(y_pred, y_true))
-'''
 
 def spearman(y_true, y_pred):
     from scipy.stats import spearmanr
@@ -204,9 +181,11 @@ def get_dilated_cnn(
         pool_size=POOL_SIZE,
         adam_beta_1=ADAM_BETA_1,
         adam_beta_2=ADAM_BETA_2,
+        quant=False,
         target_scale_factor=1,
         dense_b=False,
-        weights=None
+        weights=None,
+        loss=LOSS
 ):
     """
     If weights are provided they will be loaded into created model
@@ -275,22 +254,115 @@ def get_dilated_cnn(
         output_layer = Dense(output_length, activation=output_activation, kernel_initializer='glorot_uniform')(
             output_layer)
 
+#    if quant and output_activation in ["sigmoid"]:
+#        output_layer = Lambda(lambda x: x * target_scale_factor, name='Target_Scale_Layer')(output_layer)
+
 
     logging.debug("Added outputs layer: " + "\n - " + str(output_layer))
+
+    logging.info("Output Activation Function used: " + "\n - " + str(output_activation))
 
     # Model
     model = Model(inputs=[input_layer], outputs=[output_layer])
 
-    model.compile(
-        optimizer=Adam(
-            lr=adam_learning_rate,
-            beta_1=adam_beta_1,
-            beta_2=adam_beta_2,
-            decay=adam_decay
-        ),
-        loss=loss_function,
-        metrics=[dice_coef]
-    )
+    if not quant:
+        # Selecting the Loss Function
+        from maxatac.utilities.losses import cross_entropy
+
+        if loss != "cross_entropy":
+            logging.info("No loss function selected, selecting default loss function of cross entropy")
+            loss = "cross_entropy"
+
+        loss_function = cross_entropy()
+
+        logging.info("You have selected to use the following Loss Function: " + "\n - " + str(loss))
+
+        model.compile(
+            optimizer=Adam(
+                learning_rate=adam_learning_rate,
+                beta_1=adam_beta_1,
+                beta_2=adam_beta_2,
+                weight_decay=adam_decay
+            ),
+            loss=loss_function,
+            metrics=[dice_coef]
+        )
+    else:
+        # Selecting the Loss Function
+        if loss == "mse":
+            from maxatac.utilities.losses import mse
+            loss_function = mse()
+
+        elif loss == "pearsonr_mse":
+            from maxatac.utilities.losses import pearsonr_mse
+            loss_function = pearsonr_mse()
+
+        elif loss == "pearsonr_poisson":
+            from maxatac.utilities.losses import pearsonr_poisson
+            loss_function = pearsonr_poisson()
+
+        elif loss == "poisson":
+            from maxatac.utilities.losses import poisson
+            loss_function = poisson()
+
+        elif loss == "multinomialnll":
+            from maxatac.utilities.losses import multinomialnll
+            loss_function = multinomialnll()
+
+        elif loss == "multinomialnll_mse":
+            from maxatac.utilities.losses import multinomialnll_mse
+            loss_function = multinomialnll_mse()
+
+        elif loss == "multinomialnll_mse_reg":
+            from maxatac.utilities.losses import multinomialnll_mse_reg
+            loss_function = multinomialnll_mse_reg()
+
+        elif loss == "basenjipearsonr":
+            from maxatac.utilities.losses import basenjipearsonr
+            loss_function = basenjipearsonr()
+
+        elif loss == "r2":
+            from maxatac.utilities.losses import r2
+            loss_function = r2()
+        elif loss == "multinomialnll_mse_bpnet":
+            from maxatac.utilities.losses import multinomialnll_mse_bpnet
+            loss_function = multinomialnll_mse_bpnet()
+
+        elif loss == "poissonnll":
+            from maxatac.utilities.losses import poissonnll
+            loss_function = poissonnll()
+
+        elif loss == "kl_divergence":
+            from maxatac.utilities.losses import kl_divergence
+            loss_function = kl_divergence()
+
+        elif loss == "cauchy_lf":
+            from maxatac.utilities.losses import cauchy_lf
+            loss_function = cauchy_lf()
+
+        else:
+            from maxatac.utilities.losses import mse
+            loss = "mse"
+            loss_function = mse()
+            logging.info("No loss function selected, selecting default quantitative loss function of MSE")
+
+
+        logging.info("You have selected to use the following Loss Function: " + "\n - " + str(loss))
+
+        model.compile(
+            optimizer=Adam(
+                learning_rate=adam_learning_rate,
+                beta_1=adam_beta_1,
+                beta_2=adam_beta_2,
+                weight_decay=adam_decay
+            ),
+            run_eagerly=True, # TODO: for debugging loss fn remove
+            loss=loss_function,
+            metrics=[loss_function, coeff_determination, pearson, spearman] #mse
+            # tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall(),
+            # Can not use Precision and Recall metrics with quant models and a softplus activation since values will
+            # go greater than 1, will kick back an error
+        )
 
     logging.debug("Model compiled")
 
