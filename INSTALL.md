@@ -1,4 +1,7 @@
-# maxATAC: a suite of user-friendly, deep neural network models for transcription factor binding prediction from ATAC-seq
+# quant-maxATAC: deep neural network models for quantitative transcription factor binding prediction from ATAC-seq
+
+<!-- TODO: `pip install maxatac` installs the binary maxATAC v1 release from PyPI. Replace the git install commands
+below with the PyPI package name/version once quant-maxATAC is published. The docker image below is also v1. -->
 
 ## Install Instructions
 
@@ -27,7 +30,7 @@ wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit
 
 > If you get an error installing ucsc-bedgraphtobigwig try `conda install -c bioconda ucsc-bedgraphtobigwig`
 
-2. Install maxATAC with `pip install maxatac`
+2. Install quant-maxATAC with `pip install git+https://github.com/MiraldiLab/quant-maxATAC.git@quant`
 
 3. Test installation with `maxatac -h`
 
@@ -39,7 +42,7 @@ wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit
 
 2. Install required packages and make sure they are on your PATH: samtools, bedtools, bedGraphToBigWig, wget, git, pigz.
 
-3. Install maxatac with `pip install maxatac`
+3. Install quant-maxATAC with `pip install git+https://github.com/MiraldiLab/quant-maxATAC.git@quant`
 
 4. Test installation with `maxatac -h`
 

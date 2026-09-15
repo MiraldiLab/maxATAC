@@ -2,6 +2,8 @@
 
 The `prepare` function will convert a BAM file to Tn5 cut sites that are smoothed with a specific slop size. The files are converted to bigwig signal tracks and then min-max normalized. The `maxatac prepare` function requires `samtools`, `bedtools`, `pigz`, and `bedGraphToBigWig` be installed on your PATH to run.
 
+The ATAC-seq input is prepared identically for quantitative and binary models: the `*_minmax01.bw` output is the signal track used by `maxatac predict` and as `ATAC_Signal_File` in the `maxatac train` meta file.
+
 ## Examples
 
 ### Bulk ATAC-seq
@@ -56,7 +58,7 @@ The default values for the optional arguments are based on the testing performed
 
 ### `-skip_dedup`, `--skip_deduplication`
 
-It is important to remove PCR duplicates from your ATAC-seq data if you have not done so already. Include this flag to perform PCR deduplication of the input BAM file if you know that it has not been deduplicated. Skipping this step will speed up data processing. Defualt: False
+It is important to remove PCR duplicates from your ATAC-seq data. By default `maxatac prepare` deduplicates the input BAM file; include this flag to **skip** deduplication if you know the BAM has already been deduplicated, which speeds up processing. Default: False (deduplication is performed)
 
 ### `-slop`, `--slop`
 
@@ -88,4 +90,4 @@ The number of threads to use. Default: Get available CPU count.
 
 ### `--loglevel`
 
-The log level to use for printing messages.
+Logging level (`fatal`, `error`, `warning`, `info`, `debug`). Default: `info`.

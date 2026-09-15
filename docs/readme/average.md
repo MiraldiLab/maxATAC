@@ -1,6 +1,10 @@
 # Average
 
-The `average` function will average multiple bigwig files into a single bigwig file.
+The `average` function will average multiple bigwig files into a single bigwig file. Typical uses:
+
+* Averaging replicate ATAC-seq signal tracks before prediction.
+* Building the **null-model track** for the quantitative benchmark (`maxatac benchmark --quant_gs_null`): the average of the quantitative ChIP-seq gold standard tracks across all cell types for a TF.
+* Averaging quantitative prediction tracks (e.g. across models or replicates).
 
 ## Example
 
@@ -16,6 +20,12 @@ Example command using all flags:
 maxatac average -i *.bw -n IMR-90 -o ./test -c chr1 -cs hg38.chrom.sizes
 ```
 
+Building a per-TF null model from quantitative ChIP-seq tracks, rounded to 2 decimals:
+
+```bash
+maxatac average --quant --decimal_points 2 -i CTCF_*_signal.bw -n CTCF_signal_all_celltypes_avg
+```
+
 ## Required Arguments
 
 ### `-i`
@@ -27,6 +37,14 @@ The input bigwig files. You could use a `*.bw` wildcard to make a list of bigwig
 The name string used to build the output filename. The extension `.bw` will be added to the filename.
 
 ## Optional Arguments
+
+### `-q`, `--quant`
+
+Round the averaged values to `--decimal_points` decimals. Intended for quantitative prediction or ChIP-seq signal tracks, where full float precision inflates the output bigwig without adding information. Default: `False` (no rounding)
+
+### `--decimal_points`
+
+The number of decimals to round to when `--quant` is set. Default: `2`
 
 ### `-cs`, `--chrom_sizes`, `--chromosome_sizes`
 
@@ -46,4 +64,4 @@ The output directory. If the output directory is not supplied the file will be c
 
 ### `--loglevel`
 
-Set the logging level. Currently, the only working logging level is `ERROR`.
+Logging level (`fatal`, `error`, `warning`, `info`, `debug`). Default: `info`.

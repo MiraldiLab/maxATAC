@@ -105,16 +105,26 @@ TRAIN_SCALE_SIGNAL = (0.9, 1.15)  # min max scaling ranges
 DEFAULT_MIN_PREDICTION = 0.001  # min prediction value to be reported in the output
 DEFAULT_ROUND = 9
 DEFAULT_PREDICTION_BATCH_SIZE = 10000
-OUTPUT_ACTIVATION = "softplus"  # quant default; binary models pass --output_activation sigmoid explicitly
+# Output-layer activation resolved from --quant in parse_arguments unless --output_activation is given
+BINARY_OUTPUT_ACTIVATION = "sigmoid"
+QUANT_OUTPUT_ACTIVATION = "softplus"
+OUTPUT_ACTIVATION = QUANT_OUTPUT_ACTIVATION  # kept for backwards compatibility
 
 # Benchmarking Constants
 DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION = "max"
 DEFAULT_BENCHMARKING_AGGREGATION_THRESHOLD = 0.5
 DEFAULT_BENCHMARKING_BIN_SIZE = 200
 
-# Factor for scaling Targets for quant models.
-QUANT_TARGET_SCALE_FACTOR = 10
+# Default factor for scaling targets of quant models (--target_scale_factor)
+QUANT_TARGET_SCALE_FACTOR = 1
 
 INPUT_CHANNELS = 5
 TRAIN_MONITOR = "val_loss"
-LOSS = "cross_entropy"
+
+# Loss functions (see maxatac/utilities/losses.py); resolved from --quant in parse_arguments unless --loss is given
+BINARY_LOSS = "cross_entropy"
+QUANT_LOSS = "mse"
+QUANT_LOSSES = ["mse", "pearsonr_mse", "pearsonr_poisson", "poisson", "multinomialnll", "multinomialnll_mse",
+                "multinomialnll_mse_reg", "basenjipearsonr", "r2", "multinomialnll_mse_bpnet", "poissonnll",
+                "kl_divergence", "cauchy_lf"]
+LOSS = BINARY_LOSS

@@ -1,50 +1,57 @@
 # Peaks
 
-The `peaks` will take a maxATAC prediction `.bw` signal track and call intervals of TFBS that meet a given confidence threshold. These TFBS intervals will be output as BED intervals that can be visualized and used for downstream analysis.
+The `peaks` function takes a quant-maxATAC prediction `.bw` signal track and calls intervals of TFBS whose score meets a calibrated threshold. These TFBS intervals are written as a BED file that can be visualized and used for downstream analysis.
 
-The peaks function takes as input a bigwig signal track and will output bins that are above a given threshold. 
+The threshold is looked up in a calibration table written by [`maxatac threshold`](./threshold.md) (`<prefix>_cross_celltype.tsv`), which maps precision, recall and F1 values to prediction-score thresholds. For quantitative models the thresholds are on the predicted-signal scale, so the table must have been calibrated on predictions from the same (or an equivalently scaled) model. Tables from binary maxATAC v1 (`*_validationPerformance_vs_thresholdCalibration.tsv`) are no longer accepted; regenerate them with `maxatac threshold`.
 
-
+`maxatac predict` runs this step automatically when a calibration table is available; `maxatac peaks` lets you re-call peaks with a different cutoff or bin size without re-predicting.
 
 ## Example
 
-`maxatac peaks -i GM12878_CTCF.bw -o ./peaks -bin 32 -cutoff_file ARID3A_cross_celltype.tsv`
+```bash
+maxatac peaks -i GM12878_CTCF.bw -o ./peaks -bin 32 -cutoff_file CTCF_cross_celltype.tsv -cutoff_type Precision -cutoff_value 0.7
+```
+
+## Output
+
+`<prefix>_<bin_size>bp.bed`: bins with a max score ≥ the threshold, merged into intervals. Column 4 holds the max score of the merged bins.
 
 ## Required Arguments
 
-### `"-i", "--input_bigwig"`
+### `-i, --input_bigwig`
 
-The input maxATAC bigwig file.
+The input quant-maxATAC prediction bigwig file.
 
-### `"-cutoff_file", "--cutoff_file"`
+### `-cutoff_file, --cutoff_file`
 
-The threshold calibration table written by `maxatac threshold`, provided in /data/models for the TF model. It maps each target metric value to the prediction score threshold that achieves it.
+The threshold calibration table written by `maxatac threshold`, provided in `/data/models/<TF>/` for the distributed TF models. It maps each target metric value to the prediction score threshold that achieves it.
 
 ## Optional Arguments
-Note on abbreviations: 
 
-* F1 = F1-score
+### `-cutoff_type, --cutoff_type`
 
-### `"-cutoff_type", "--cutoff_type"`
+The metric whose calibration grid is used to pick the threshold (`Precision`, `Recall`, or `F1`). Default: `F1`.
 
-The metric whose calibration grid is used to pick the threshold (`Precision`, `Recall`, or `F1`). Default: F1.
+### `-cutoff_value, --cutoff_value`
 
-### `"-cutoff_value", "--cutoff_value"`
+The cutoff value for the cutoff type provided; precision, recall, and F1-scores range 0-1. Example: `.7`. Optional for `F1`, where omitting it selects the threshold with the highest F1. The lowest calibration bin that still meets the requested value is used.
 
-The cutoff value for the cutoff type provided; precision, recall, and F1-scores range 0-1. Example: .7. Optional for F1, where omitting it selects the threshold with the highest F1.
+### `-n, --name, -prefix, --prefix`
 
-### `"-n", "--name", "-prefix", "--prefix"`
+The prefix to use for the output file name. Default: the input bigwig filename without `.bw`.
 
-The prefix to use for the output file name.
+### `-bin, --bin_size`
 
-### `"-bin", "--bin_size"`
+The bin size (TFBS interval length) used for calling peaks. Default: `32` bp, the resolution of the maxATAC models.
 
-The bin size (TFBS interval length) used for calling peaks. Default: 32 bp, based on the benchmarking intervals predictions. 32 bp, the resolution of the maxATAC models, is also a good option. 
+### `-o, --output`
 
-### `"-o", "--output"`
+The path to the output directory to write the BED file. Default: `./peaks`
 
-The path to the output directory to write the bed.
+### `-chromosomes`
 
-### `"--chromosomes"`
+The chromosomes to limit peak calling to. Default: autosomal chromosomes chr1-22.
 
-The chromosomes to limit peak calling to. Default: Autosomal chromosomes that are used in training and evaluation.
+### `--loglevel`
+
+Logging level (`fatal`, `error`, `warning`, `info`, `debug`). Default: `info`.

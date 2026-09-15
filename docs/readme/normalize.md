@@ -2,14 +2,25 @@
 
 The `normalize` function will normalize an input bigwig file based on the following approaches:
 
-* `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some-user defined range. The max value can be calculated as (1) the absolute max value across the genome (traditional definition of min-max) or (2) you can set a percentile cutoff to use as the max value. Option 2 improved robustness to outlying high ATAC-seq signal and maxATAC prediction accuracy. Specifically, we use the 99th-percentile max value instead of the absolute max value, and, given important performance ramifications, is the default.
+* `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some user-defined range. The max value can be calculated as (1) the absolute max value across the genome (traditional definition of min-max) or (2) you can set a percentile cutoff to use as the max value. Option 2 improved robustness to outlying high ATAC-seq signal and maxATAC prediction accuracy. Specifically, we use the 99th-percentile max value instead of the absolute max value, and, given important performance ramifications, is the default. This is the normalization applied to the **ATAC-seq input** by `maxatac prepare`.
 * `zscore`: Set the mean value to 0 with a standard deviation of 1.
-* `arcsinh`: Transform the values using an inverse hyperbolic sin transformation (arcsinh)
+* Variance-stabilizing transforms, provided for preparing **quantitative ChIP-seq target tracks** for `--quant` training and benchmarking:
+  * `arcsinh`: inverse hyperbolic sine, `arcsinh(x)`
+  * `log2`: `log2(x) + 1`
+  * `log1p`: natural log of one plus the value, `log(1 + x)`
+  * `sqrt`: square root, `x^(1/2)`
+  * `three_fourths`: `x^(3/4)`
+  * `three_eighths`: `x^(3/8)`
+
+<!-- TODO: state which transform (if any) was applied to the ChIP-seq signal used as targets for the released
+quant models, so users can prepare matching gold standards. -->
+
+In every method, blacklisted regions are set to 0 in the output.
 
 ## Example
 
 ```bash
-maxatac normalize -i GM12878_RP20M.bw -name GM12878_minmax -o ./test --method min-max --max_percentile 99
+maxatac normalize -i GM12878_RP20M.bw -n GM12878_minmax -o ./test --method min-max --max_percentile 99
 ```
 
 ## Required Arguments
@@ -20,17 +31,13 @@ The input bigwig file to be normalized.
 
 ### `-n`, `--name`, `--prefix`
 
-The name used to build the output filename. This can be any string.
+The name used to build the output filename. This can be any string; `.bw` is appended.
 
 ## Optional Arguments
 
 ### `--method`
 
-The method to use for normalization. Default: `min-max`
-
-* `min-max`: Find the genomic min and max values, then scale them between `[0,1]` or some user-defined range. The max value can be calculated as (1) the absolute max value across the genome (traditional definition of min-max) or (2) you can set a percentile cutoff to use as the max value. Option 2 improved robustness to outlying high ATAC-seq signal and maxATAC prediction accuracy. Specifically, we use the 99th-percentile max value instead of the absolute max value, and, given important performance ramifications, is the default.
-* `zscore`: Set the mean value to 0 with a standard deviation of 1.
-* `arcsinh`: Transform the values using an inverse hyperbolic sin transformation (arcsinh)
+The method to use for normalization: `min-max`, `zscore`, `arcsinh`, `log2`, `log1p`, `sqrt`, `three_fourths` or `three_eighths` (see above). Default: `min-max`
 
 ### `--max_percentile`
 
@@ -46,7 +53,7 @@ The maximum value for `min-max` normalization. Default: `False`, so that max is 
 
 ### `--clip`
 
-This flag determines whether to clip the values that are above the max value used in `min-max` normalization or to leave them as their real value. Default: `False`
+Flag. Clip values above the max used in `min-max` normalization to 1 instead of leaving them above 1. Default: `False`
 
 ### `-c`, `--chroms`, `--chromosomes`
 
@@ -66,8 +73,8 @@ The path to the blacklist bigwig file. This file is used to remove all the regio
 
 ### `-o`, `--output`, `--output_dir`
 
-Define the output directory. If the output directory is not supplied a directory called `./normalize` will be created in the current working directory.
+Define the output directory. Default: the current working directory.
 
 ### `--loglevel`
 
-Set the logging level. Currently, the only working logging level is `ERROR`.
+Logging level (`fatal`, `error`, `warning`, `info`, `debug`). Default: `info`.

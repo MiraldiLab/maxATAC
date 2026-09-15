@@ -40,7 +40,12 @@ from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          DEFAULT_BENCHMARKING_BIN_SIZE,
                                          ALL_CHRS,
                                          AUTOSOMAL_CHRS,
-                                         OUTPUT_ACTIVATION
+                                         BINARY_OUTPUT_ACTIVATION,
+                                         QUANT_OUTPUT_ACTIVATION,
+                                         BINARY_LOSS,
+                                         QUANT_LOSS,
+                                         QUANT_LOSSES,
+                                         QUANT_TARGET_SCALE_FACTOR
                                          )
 
 
@@ -79,7 +84,9 @@ def get_parser():
     # Parent (general) parser
     parent_parser = argparse.ArgumentParser(add_help=False)
 
-    general_parser = argparse.ArgumentParser(description="Neural networks for predicting TF binding using ATAC-seq",allow_abbrev=False)
+    general_parser = argparse.ArgumentParser(description="quant-maxATAC: deep neural networks predicting quantitative TF ChIP-seq signal "
+                                                     "from ATAC-seq signal and DNA sequence",
+                                         allow_abbrev=False)
 
     # Add subparsers to the general parser and require that one is provided
     subparsers = general_parser.add_subparsers()
@@ -168,7 +175,8 @@ def get_parser():
                                 dest="quant",
                                 action='store_true',
                                 required=False,
-                                help="Input quant files for averaging, restricts to two decimal points."
+                                help="Round the averaged values to --decimal_points decimals (default 2). Intended for "
+                                     "quantitative prediction or ChIP-seq signal tracks."
                                 )
 
 
@@ -206,7 +214,7 @@ def get_parser():
                                 dest="decimal_points",
                                 type=int,
                                 default=2,
-                                help="For quant file averaging, this parameter will round all values to the set value of decimals."
+                                help="Number of decimals to round the averaged values to when --quant is set. Default: 2"
                                 )
 
     #############################################
@@ -235,12 +243,13 @@ def get_parser():
                        help="Trained maxATAC model .h5 file."
                        )
 
+    # Deprecated no-op kept so older command lines still parse: whether a prediction is
+    # quantitative follows from the model given via --tf_name/--model, not from a flag.
     predict_parser.add_argument("--quant",
                                 dest="quant",
                                 action='store_true',
                                 default=False,
-                                help="NOT IMPLEMENTED for predict: accepted but ignored. Quantitative \
-                                      prediction follows from the model provided via --tf_name/--model."
+                                help=argparse.SUPPRESS
                                 )
 
     predict_parser.add_argument("--seq", "--sequence",
@@ -329,7 +338,7 @@ def get_parser():
                                 dest="name",
                                 required=True,
                                 type=str,
-                                help="Sting to use for filename. This should not include extensions. \
+                                help="String to use for filename. This should not include extensions. \
                                       Example: GM12878_CTCF"
                                 )
 
@@ -367,10 +376,11 @@ def get_parser():
     predict_parser.add_argument("-cf", "-cutoff_file", "--cutoff_file",
                                 dest="cutoff_file",
                                 type=str,
-                                help="Threshold calibration table written by `maxatac threshold`, used to \
-                                      turn --cutoff_type/--cutoff_value into a peak calling threshold. \
-                                      Resolved from the bundled table in /data/models when --tf_name is \
-                                      used. Without it, peak calling is skipped."
+                                help="Threshold calibration table (<prefix>_cross_celltype.tsv) written by \
+                                      `maxatac threshold`, used to turn --cutoff_type/--cutoff_value into a \
+                                      peak calling threshold on the prediction-score scale. Resolved from the \
+                                      bundled table in /data/models when --tf_name is used; an explicit path \
+                                      always wins. Without it, peak calling is skipped."
                                 )
 
     predict_parser.add_argument("-skip_call_peaks", "--skip_call_peaks",
@@ -397,22 +407,29 @@ def get_parser():
                               dest="quant",
                               action='store_true',
                               default=False,
-                              help="This argument should be set to true to build models based on quantitative data"
+                              help="Train a quantitative model: targets are the mean ChIP-seq signal per 32 bp bin "
+                                   "(times --target_scale_factor) and a regression loss is used. Without this "
+                                   "flag a binary (0/1 per bin, cross-entropy) model is trained."
                               )
 
     train_parser.add_argument("--loss",
                               dest="loss",
                               type=str,
-                              default="cross_entropy",
-                              help="This argument should be set depending on binary models or quantitative models (cross entropy, mse)"
+                              default=None,
+                              choices=[BINARY_LOSS] + QUANT_LOSSES,
+                              help="Loss function. Binary models only support " + BINARY_LOSS + ". Quantitative "
+                                   "(--quant) models accept: " + ", ".join(QUANT_LOSSES) + ". "
+                                   "Default: " + BINARY_LOSS + " for binary models, " + QUANT_LOSS + " for --quant models."
                               )
 
     train_parser.add_argument("--target_scale_factor",
                               dest="target_scale_factor",
                               type=float,
                               required=False,
-                              default=1,
-                              help="Scaling factor for scaling model targets. Use only for Quant models"
+                              default=QUANT_TARGET_SCALE_FACTOR,
+                              help="Multiplier applied to the per-bin mean ChIP-seq signal used as the training target "
+                                   "(--quant models only). Predictions come out on the same scaled units, so "
+                                   "benchmark gold standards must be scaled identically. Default: " + str(QUANT_TARGET_SCALE_FACTOR)
                               )
 
     train_parser.add_argument("--genome",
@@ -456,10 +473,10 @@ def get_parser():
                               dest="output_activation",
                               type=str,
                               required=False,
-                              default=OUTPUT_ACTIVATION,
-                              help="Activation function used for model output layer (any Keras activation name, "
-                                   "e.g. sigmoid for binary models, softplus for --quant models). "
-                                   "Default: " + OUTPUT_ACTIVATION
+                              default=None,
+                              help="Activation function used for model output layer (any Keras activation name). "
+                                   "Default: " + BINARY_OUTPUT_ACTIVATION + " for binary models, "
+                                   + QUANT_OUTPUT_ACTIVATION + " for --quant models."
                               )
 
     train_parser.add_argument("--chroms",
@@ -494,8 +511,9 @@ def get_parser():
                               type=str,
                               required=False,
                               default="DCNN_V2",
-                              help="Specify the model architecture. Currently support DCNN_V2, RES_DCNN_V2, "
-                                   "MM_DCNN_V2 and MM_Res_DCNN_V2 "
+                              choices=["DCNN_V2"],
+                              help="Specify the model architecture. Currently only DCNN_V2 is supported. "
+                                   "Default: DCNN_V2"
                               )
 
     train_parser.add_argument("--rand_ratio",
@@ -553,7 +571,7 @@ def get_parser():
                               dest="prefix",
                               type=str,
                               default="maxatac_model",
-                              help="Output prefix. Default: weights"
+                              help="Output prefix for the model (.h5) and log files. Default: maxatac_model"
                               )
 
     train_parser.add_argument("--output",
@@ -581,7 +599,7 @@ def get_parser():
                               dest="threads",
                               type=int,
                               default=get_cpu_count(),
-                              help="Number of processes to run training in parallel. Default: 1"
+                              help="Number of processes to run training in parallel. Default: available CPU count"
                               )
 
     train_parser.add_argument("--loglevel",
@@ -703,17 +721,21 @@ def get_parser():
 
     normalize_parser.add_argument("--clip",
                                   dest="clip",
-                                  type=bool,
-                                  required=False,
+                                  action="store_true",
                                   default=False,
-                                  help="Whether to clip minmax values to the range 0,1"
+                                  help="Clip min-max normalized values to the range [0, 1]. Default: False"
                                   )
 
     normalize_parser.add_argument("--method",
                                   dest="method",
                                   type=str,
                                   default="min-max",
-                                  help="The method to use for normalization. Choose from min-max, zscore, arcsinh, log2, log1p, sqrt, three_fourths, or three_eighths"
+                                  choices=["min-max", "zscore", "arcsinh", "log2", "log1p", "sqrt",
+                                           "three_fourths", "three_eighths"],
+                                  help="The method to use for normalization. min-max is the ATAC-seq input "
+                                       "normalization used by maxATAC; the variance-stabilizing transforms "
+                                       "(arcsinh, log2, log1p, sqrt, three_fourths, three_eighths) are provided "
+                                       "for preparing quantitative ChIP-seq target tracks. Default: min-max"
                                   )
 
     normalize_parser.add_argument("--max_percentile",
@@ -755,7 +777,7 @@ def get_parser():
     benchmark_prediction_filetype.add_argument("-bed", "--bed",
                                                dest="prediction",
                                                type=str,
-                                               help="The TF name for prediction"
+                                               help="Prediction file in BED format"
                                                )
 
     benchmark_prediction_filetype.add_argument("--bw", "--bigwig", "-bw",
@@ -782,34 +804,44 @@ def get_parser():
     benchmark_parser.add_argument("--quant_gold_standard",
                                   dest="quant_gold_standard",
                                   type=str,
-                                  help="Quantitative Gold Standard file"
+                                  help="Quantitative gold standard bigWig (e.g. ChIP-seq signal on the same scale as "
+                                       "the model targets). Required with --quant."
                                   )
 
     benchmark_parser.add_argument("--quant_gs_null",
                                   dest="quant_gs_null",
                                   type=str,
-                                  help="Null quantitative gold standard file (average of all TF_CT bw files per TF)"
+                                  help="Null-model bigWig for the quantitative gold standard, typically the average of "
+                                       "the quantitative gold standard tracks across all cell types for the TF "
+                                       "(build it with `maxatac average --quant`). R2_pred = 1 - SSE(prediction) / "
+                                       "SSE(null). Required with --quant."
                                   )
 
     benchmark_parser.add_argument("--gold_standard",
                                   dest="gold_standard",
                                   type=str,
                                   required=True,
-                                  help="Gold Standard file"
+                                  help="Binary gold standard bigWig (1 = TF bound, 0 = unbound). Used for the "
+                                       "precision-recall benchmark; with --quant it only supplies chromosome sizes."
                                   )
 
     benchmark_parser.add_argument("--peak_based",
                                   dest="peak_based",
                                   action='store_true',
                                   default=False,
-                                  help="Whether use peak-based Gold Standard instead of bin-based"
+                                  help="Compute the precision-recall curve on gold-standard peak membership (a peak "
+                                       "counts as recovered once any of its bins is predicted) instead of per bin. "
+                                       "Binary benchmark only."
                                   )
 
     benchmark_parser.add_argument("--quant",
                                   dest="quant",
                                   action='store_true',
                                   default=False,
-                                  help="This argument should be set to true for models based on quantitative data"
+                                  help="Benchmark a quantitative prediction: reports MAE, R2_pred, Pearson and "
+                                       "Spearman correlation against --quant_gold_standard (using --quant_gs_null as "
+                                       "the null model) and writes an observed-vs-predicted scatter plot, instead of "
+                                       "the precision-recall / AUPRC analysis."
                                   )
 
     benchmark_parser.add_argument("-c", "--chroms", "--chromosomes",
@@ -834,23 +866,27 @@ def get_parser():
                                   dest="agg_function",
                                   type=str,
                                   default=DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
-                                  help="Aggregation function to use for combining results into bins: \
-                                        max, mean, min, sum"
+                                  choices=["max", "mean", "min", "sum"],
+                                  help="Aggregation function used to combine base-pair values into bins. max is the "
+                                       "binary default; mean is usually more appropriate for quantitative tracks. "
+                                       "Default: " + DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION
                                   )
 
     benchmark_parser.add_argument("--agg_threshold",
                                   dest="agg_threshold",
                                   type=float,
                                   default=DEFAULT_BENCHMARKING_AGGREGATION_THRESHOLD,
-                                  help="Threshold used when --agg sum is selected. The summed value is divided by the \
-                                        bin size and binarized to 1.0 when it is greater than or equal to this value."
+                                  help="Threshold used when --agg sum is selected (binary benchmark only). The summed \
+                                        gold standard value is divided by the bin size and binarized to 1.0 when it \
+                                        is greater than or equal to this value. Default: " + str(DEFAULT_BENCHMARKING_AGGREGATION_THRESHOLD)
                                   )
 
     benchmark_parser.add_argument("--round_predictions",
                                   dest="round_predictions",
                                   type=int,
                                   default=DEFAULT_ROUND,
-                                  help="Round binned values to this number of decimal places"
+                                  help="Round binned prediction values to this number of decimal places (binary "
+                                       "benchmark only). Default: " + str(DEFAULT_ROUND)
                                   )
 
     benchmark_parser.add_argument("-n", "--name", "--prefix",
@@ -893,7 +929,8 @@ def get_parser():
                                   action="store_true",
                                   default=False,
                                   required=False,
-                                  help="Plot PR curve"
+                                  help="Write a precision-recall curve PNG next to the results TSV (binary benchmark "
+                                       "only; the quantitative benchmark always writes a scatter plot)."
                                   )
 
     # Deprecated upstream flag kept as a no-op so older command lines still parse (plotting is off by default)
@@ -1184,7 +1221,9 @@ def get_parser():
     #############################################
     threshold_parser = subparsers.add_parser("threshold",
                                              parents=[parent_parser],
-                                             help="Generate model threshold statistics."
+                                             help="Calibrate prediction-score thresholds against a binary gold standard "
+                                                  "and write the <prefix>_cross_celltype.tsv table used by "
+                                                  "`maxatac predict` and `maxatac peaks`."
                                              )
 
     # Set the default function
@@ -1209,15 +1248,15 @@ def get_parser():
                                   type=str,
                                   nargs="+",
                                   default=DEFAULT_VALIDATE_CHRS,
-                                  help="Chromosomes for thresholding predictions. \
-                                      Default: 1-22,X,Y"
+                                  help="Chromosomes used to calibrate thresholds. Default: " + " ".join(DEFAULT_VALIDATE_CHRS)
                                   )
 
     threshold_parser.add_argument("--bin_size",
                                   dest="bin_size",
                                   type=int,
                                   default=DEFAULT_BENCHMARKING_BIN_SIZE,
-                                  help="Chromosomes for averaging"
+                                  help="Bin size (bp) used to compare predictions with the gold standard. Default: "
+                                       + str(DEFAULT_BENCHMARKING_BIN_SIZE)
                                   )
 
     threshold_parser.add_argument("--output",
@@ -1245,18 +1284,9 @@ def get_parser():
                                   dest="meta_file",
                                   type=str,
                                   required=True,
-                                  help="Meta file containing Prediction signal and GS path for all cell lines (.tsv format)"
-                                  )
-
-    threshold_parser.add_argument("--aggregation",
-                                  dest="aggregation",
-                                  type=str,
-                                  default="pooled",
-                                  choices=["pooled", "median"],
-                                  help="How to combine cell types into one calibration curve. 'pooled' (default) "
-                                       "concatenates every cell type's bins together into one curve. 'median' takes "
-                                       "the per-bin median Prediction/GoldStandard across cell types first, then "
-                                       "computes the curve on that (GoldStandard requires majority cell-type agreement)."
+                                  help="Tab-separated meta file with one row per cell type and columns 'Prediction' "
+                                       "(prediction bigWig, quantitative or binary) and 'Binding_File' (binary gold "
+                                       "standard bigWig)."
                                   )
 
     return general_parser
@@ -1292,10 +1322,31 @@ def parse_arguments(argsl, cwd_abs_path=None):
         argsl.append("")  # otherwise fails with error if empty
 
     # Create the parser
-    args, _ = get_parser().parse_known_args(argsl)
+    parser = get_parser()
+    args, _ = parser.parse_known_args(argsl)
 
     # Update the reference genome paths
     args = update_reference_genome_paths(args)
+
+    if args.func == run_training:
+        # Output activation and loss depend on the model type unless given explicitly
+        if args.output_activation is None:
+            args.output_activation = QUANT_OUTPUT_ACTIVATION if args.quant else BINARY_OUTPUT_ACTIVATION
+
+        if args.loss is None:
+            args.loss = QUANT_LOSS if args.quant else BINARY_LOSS
+
+        if not args.quant and args.loss != BINARY_LOSS:
+            parser.error(f"--loss {args.loss} requires --quant; binary models only support {BINARY_LOSS}")
+
+        if args.quant and args.loss == BINARY_LOSS:
+            parser.error(f"--loss {BINARY_LOSS} is for binary models; choose one of {', '.join(QUANT_LOSSES)} with --quant")
+
+    if args.func == run_benchmarking and args.quant:
+        missing = [flag for flag, value in (("--quant_gold_standard", args.quant_gold_standard),
+                                            ("--quant_gs_null", args.quant_gs_null)) if not value]
+        if missing:
+            parser.error("--quant requires " + " and ".join(missing))
 
     if args.func == run_training:
         args = normalize_args(
