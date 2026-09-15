@@ -71,6 +71,10 @@ Define the chromosome sizes file. The current default file are the chromosome si
 
 The path to the blacklist bigwig file. This file is used to remove all the regions that are considered to have high technical noise. Default: maxATAC publication-defined blacklist.
 
+### `--max_zooms`
+
+The number of zoom levels to compute for the normalized bigWig file. Zoom levels are pre-computed summary statistics that let genome browsers (IGV, UCSC Genome Browser) zoom in and out of a region quickly; fewer levels mean slower loading in browsers, more levels mean more memory during writing. Valid range: `0`-`10`. Default: `10`. Note: a value of `0` produces a bigWig that is not compatible with other bigWig tools (e.g. deepTools) and cannot be visualized in IGV or the UCSC Genome Browser. See the [pyBigWig README](https://github.com/deeptools/pyBigWig/blob/master/README.md) for details.
+
 ### `-o`, `--output`, `--output_dir`
 
 Define the output directory. Default: the current working directory.

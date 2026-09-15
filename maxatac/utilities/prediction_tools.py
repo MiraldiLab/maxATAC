@@ -1,11 +1,10 @@
 import logging
-
 import numpy as np
 import pandas as pd
 import pybedtools
 import tensorflow as tf
 
-from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH, ALL_CHRS
+from maxatac.utilities.constants import INPUT_CHANNELS, INPUT_LENGTH, ALL_CHRS, DEFAULT_MAX_ZOOMS
 from maxatac.utilities.system_tools import Mute
 
 with Mute():
@@ -31,6 +30,7 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
                                 output_filename: str,
                                 chrom_sizes_dictionary: dict,
                                 chromosomes: list,
+                                max_zooms: int = DEFAULT_MAX_ZOOMS,
                                 agg_mean: bool = True
                                 ):
     """Write the predictions dataframe into a bigwig file
@@ -40,10 +40,11 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
         output_filename (str): The output bigwig filename
         chrom_sizes_dictionary (dict): A dictionary of chromosome sizes used to form the bigwig file
         chromosomes (list): A list of chromosomes that you are predicting in
-        agg_mean (bool, optional): use aggregation method of mean. Defaults to True.
+        max_zooms (int, optional): The desired number of zoom levels to be retained in the output bigWig file. Defaults to DEFAULT_MAX_ZOOMS (10).
+        agg_mean (bool, optional): Use aggregation method of mean. Defaults to True.
 
     Returns:
-        Writes a bigwig file
+        Writes a bigWig file
         
     Example:
     
@@ -63,7 +64,7 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
         header = [(x, chrom_sizes_dictionary[x]) for x in chromosomes]
 
         # Add header to bigwig
-        data_stream.addHeader(header)
+        data_stream.addHeader(header, maxZooms = max_zooms)
 
         for chromosome in chromosomes:
             # Create a tmp df from the predictions dataframe for each chrom
@@ -76,9 +77,8 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
             data_stream.addEntries(chroms=tmp_chrom_df["chr"].tolist(),
                                    starts=tmp_chrom_df["start"].tolist(),
                                    ends=tmp_chrom_df["stop"].tolist(),
-                                   values=tmp_chrom_df["score"].tolist()
+                                   values=tmp_chrom_df["score"].astype(np.float16).tolist()
                                    )
-
 
 def import_prediction_regions(bed_file: str,
                               chromosomes: list,
@@ -220,7 +220,6 @@ def create_prediction_regions(chromosomes: list,
 
     return df
 
-
 class PredictionDataGenerator(tf.keras.utils.Sequence):
     def __init__(self,
                  signal,
@@ -334,7 +333,6 @@ class PredictionDataGenerator(tf.keras.utils.Sequence):
                 inputs_batch.append(input_matrix)
 
         return np.array(inputs_batch)
-
 
 def make_stranded_predictions(roi_pool: pd.DataFrame,
                               signal: str,
