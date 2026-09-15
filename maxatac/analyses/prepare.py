@@ -15,7 +15,7 @@ import os
 import pysam
 from maxatac.utilities.system_tools import get_dir, check_prepare_packages_installed
 from maxatac.utilities.prepare_tools import convert_fragments_to_tn5_bed
-from maxatac.utilities.constants import PREPARE_scATAC_SCRIPT, PREPARE_BULK_SCRIPT
+from maxatac.utilities.constants import PREPARE_scATAC_SCRIPT, PREPARE_BULK_SCRIPT, DEFAULT_MAX_ZOOMS
 from maxatac.analyses.normalize import run_normalization
 
 
@@ -154,6 +154,7 @@ def run_prepare(args):
     args.max = False
     args.max_percentile = 99
     args.clip = False
+    args.max_zooms = DEFAULT_MAX_ZOOMS
     
     # Minmax normalize signal tracks
     run_normalization(args)

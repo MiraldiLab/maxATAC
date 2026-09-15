@@ -58,6 +58,10 @@ The chromosomes that are averaged together and written to output. Only the chrom
 chr1 chr2 chr3 chr4 chr5 chr6 chr7 chr8 chr9 chr10 chr11 chr12 chr13 chr14 chr15 chr16 chr17 chr18 chr19 chr20 chr21 chr22
 ```
 
+### `--max_zooms`
+
+The number of zoom levels to compute for the averaged bigWig file. Zoom levels are pre-computed summary statistics that let genome browsers (IGV, UCSC Genome Browser) zoom in and out of a region quickly; fewer levels mean slower loading in browsers, more levels mean more memory during writing. Valid range: `0`-`10`. Default: `10`. Note: a value of `0` produces a bigWig that is not compatible with other bigWig tools (e.g. deepTools) and cannot be visualized in IGV or the UCSC Genome Browser. See the [pyBigWig README](https://github.com/deeptools/pyBigWig/blob/master/README.md) for details.
+
 ### `-o`, `--output`, `--output_dir`
 
 The output directory. If the output directory is not supplied the file will be created in the current working directory.

@@ -64,6 +64,10 @@ The cutoff value for the cutoff type provided; precision, recall, and F1-scores 
 
 Skip peak calling at the end of prediction, even when a calibration table is available.
 
+### `--max_zooms`
+
+The number of zoom levels to compute for the prediction bigWig file. Zoom levels are pre-computed summary statistics that let genome browsers (IGV, UCSC Genome Browser) zoom in and out of a region quickly; fewer levels mean slower loading in browsers, more levels mean more memory during writing. Valid range: `0`-`10`. Default: `10`. Note: a value of `0` produces a bigWig that is not compatible with other bigWig tools (e.g. deepTools) and cannot be visualized in IGV or the UCSC Genome Browser. See the [pyBigWig README](https://github.com/deeptools/pyBigWig/blob/master/README.md) for details.
+
 ### `-o, --output`
 
 Output directory path. Default: `./prediction_results`

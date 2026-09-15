@@ -20,7 +20,7 @@ def export_model_structure(model, file_location, suffix="_model_structure", ext=
 
 
 def export_binary_metrics(history, tf, RR, ARC, file_location, best_epoch, suffix="_model_dice_acc", ext=".png",
-                          style="seaborn-whitegrid", log_base=10, skip_tags="_{epoch}"):
+                          style="seaborn_v0_8-whitegrid", log_base=10, skip_tags="_{epoch}"):
     plt.style.use(style)
     fig, ((ax1, ax2)) = plt.subplots(1, 2, sharex=False, sharey=False, figsize=(18, 6), dpi=200)
     fig.suptitle('Loss and Dice Coefficient with random ratio set at ' + str(RR) + '  for ' + tf + ' using the ' + ARC + ' architecture', fontsize=22)

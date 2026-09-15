@@ -67,7 +67,10 @@ DEFAULT_TEST_CHRS = ["chr1", "chr8"]
 
 DEFAULT_LOG_LEVEL = "info"
 
-DEFAULT_TRAIN_EPOCHS = 20
+DEFAULT_TRAIN_EPOCHS = 100
+
+# Number of pyBigWig zoom levels written to output bigWig files (0-10)
+DEFAULT_MAX_ZOOMS = 10
 
 DEFAULT_TRAIN_BATCHES_PER_EPOCH = 100
 

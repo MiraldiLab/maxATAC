@@ -156,7 +156,7 @@ The weights to use to initialize a model. Default: `do not initialize with weigh
 
 ### `--epochs`
 
-The number of epochs to train the model for. Default: `20`
+The number of epochs to train the model for. Default: `100`
 
 ### `--batches`
 
