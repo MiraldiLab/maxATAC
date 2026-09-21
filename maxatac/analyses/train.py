@@ -1,8 +1,7 @@
 import logging
-import sys
 import timeit
 
-from tensorflow.python.keras.utils.data_utils import OrderedEnqueuer
+from tensorflow.keras.utils import OrderedEnqueuer
 
 from maxatac.utilities.constants import TRAIN_MONITOR, INPUT_LENGTH
 from maxatac.utilities.system_tools import Mute
@@ -247,5 +246,3 @@ def run_training(args):
     hours, mins = divmod(mins, 60)
 
     logging.info("Total training time: %d:%d:%d.\n" % (hours, mins, secs))
-
-    sys.exit()

@@ -56,7 +56,7 @@ def get_genomic_stats(bigwig_path: str,
             minmax_results.append([chromosome,
                                    np.min(chr_vals[blacklist_mask]),
                                    np.max(chr_vals[blacklist_mask]),
-                                   np.median(chr_vals[blacklist_mask] > 0)
+                                   np.median(chr_vals[blacklist_mask][chr_vals[blacklist_mask] > 0])
                                    ])
 
             # Append chrom values to an array with genome-wide values
@@ -142,16 +142,6 @@ def arcsinh_normalize_array(array):
     :return: Arcsinh normalized array
     """
     return np.arcsinh(array)
-
-def log2_normalize_array(array):
-    """
-    log2() normalize the numpy array
-
-    :param array: Input array of bigwig values
-
-    :return: log2 normalized array
-    """
-    return np.log2(array) + 1
 
 def log1p_normalize_array(array):
     """

@@ -51,7 +51,15 @@ def run_prediction(args):
 
     # If the user provides the TF name,
     if args.TF:
-        args.model = glob.glob(os.path.join(args.DATA_PATH, "models", args.TF, args.TF + "*.h5"))[0]
+        model_files = glob.glob(os.path.join(args.DATA_PATH, "models", args.TF, args.TF + "*.h5"))
+
+        if not model_files:
+            raise FileNotFoundError(
+                f"No model (*.h5) found for {args.TF} in {os.path.join(args.DATA_PATH, 'models', args.TF)}. "
+                "Download the models with `maxatac data`, or pass a model with --model."
+            )
+
+        args.model = model_files[0]
 
         # An explicitly provided --cutoff_file wins; only fall back to the bundled table.
         if not args.cutoff_file:

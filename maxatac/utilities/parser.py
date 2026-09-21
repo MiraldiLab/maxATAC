@@ -34,6 +34,7 @@ from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          INPUT_LENGTH,
                                          DEFAULT_TRAIN_CHRS,
                                          DEFAULT_VALIDATE_CHRS,
+                                         DEFAULT_THRESHOLD_CHR,
                                          DEFAULT_ROUND,
                                          DEFAULT_TEST_CHRS,
                                          DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
@@ -781,11 +782,11 @@ def get_parser():
                                   dest="method",
                                   type=str,
                                   default="min-max",
-                                  choices=["min-max", "zscore", "arcsinh", "log2", "log1p", "sqrt",
+                                  choices=["min-max", "zscore", "arcsinh", "log1p", "sqrt",
                                            "three_fourths", "three_eighths"],
                                   help="The method to use for normalization. min-max is the ATAC-seq input "
                                        "normalization used by maxATAC; the variance-stabilizing transforms "
-                                       "(arcsinh, log2, log1p, sqrt, three_fourths, three_eighths) are provided "
+                                       "(arcsinh, log1p, sqrt, three_fourths, three_eighths) are provided "
                                        "for preparing quantitative ChIP-seq target tracks. Default: min-max"
                                   )
 
@@ -1323,8 +1324,10 @@ def get_parser():
                                   dest="chromosomes",
                                   type=str,
                                   nargs="+",
-                                  default=DEFAULT_VALIDATE_CHRS,
-                                  help="Chromosomes used to calibrate thresholds. Default: " + " ".join(DEFAULT_VALIDATE_CHRS)
+                                  default=[DEFAULT_THRESHOLD_CHR],
+                                  help="The single held-out chromosome used to calibrate thresholds. Exactly one "
+                                       "chromosome must be given. Default: "
+                                       + DEFAULT_THRESHOLD_CHR
                                   )
 
     threshold_parser.add_argument("--bin_size",
@@ -1432,6 +1435,11 @@ def parse_arguments(argsl, cwd_abs_path=None):
 
         if args.quant and args.loss == BINARY_LOSS:
             parser.error(f"--loss {BINARY_LOSS} is for binary models; choose one of {', '.join(QUANT_LOSSES)} with --quant")
+
+    if args.func == run_thresholding and len(args.chromosomes) != 1:
+        # parse_known_args would otherwise silently drop the extras with nargs=1
+        parser.error("threshold calibrates on exactly one chromosome; got --chromosomes "
+                     + " ".join(args.chromosomes))
 
     if args.func == run_benchmarking and args.quant:
         missing = [flag for flag, value in (("--quant_gold_standard", args.quant_gold_standard),

@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 import multiprocessing
-from multiprocessing import Pool, Manager
+from multiprocessing import Pool
 import time
 from maxatac.utilities.genome_tools import build_chrom_sizes_dict, get_bigwig_stats
 from maxatac.utilities.system_tools import get_dir
@@ -15,24 +15,23 @@ import logging
 
 
 def extract_pred_gs_bw(bigwig_file, training_data_dict, chrom_name, chrom_length, bin_count):
-    start = time.time()
-    bw_name = bigwig_file.split("/")[-1]
-    chrom_vals = get_bigwig_stats(bigwig_file, chrom_name, chrom_length, bin_count)
-    print(training_data_dict[bigwig_file])
-    
-    
-    predictions = np.empty(1, dtype=np.float64)
-    gold_standard = np.empty(1, dtype=np.float64)
-    goldstandard_array = import_GoldStandard_array(training_data_dict[bigwig_file], chrom_name, chrom_length, bin_count)
-    
-    tot_gs_bins = len(np.argwhere(goldstandard_array == True))
+    """
+    Bin one cell type's prediction bigwig and its binary gold standard on one chromosome.
 
-    predictions = np.concatenate([predictions, chrom_vals])
-    gold_standard = np.concatenate([gold_standard, goldstandard_array])
-    
-    end = time.time()
-    print('total time (s)= ' + str(end-start), "____________", bw_name)
-    
+    :return: (predictions, gold_standard, tot_gs_bins) with predictions and gold_standard
+             both of length bin_count and aligned bin-for-bin.
+    """
+    start = time.time()
+    bw_name = os.path.basename(bigwig_file)
+
+    predictions = get_bigwig_stats(bigwig_file, chrom_name, chrom_length, bin_count)
+    gold_standard = import_GoldStandard_array(training_data_dict[bigwig_file], chrom_name, chrom_length, bin_count)
+
+    tot_gs_bins = int(np.count_nonzero(gold_standard))
+
+    logging.info(f"Binned {bw_name} vs {os.path.basename(training_data_dict[bigwig_file])} "
+                 f"on {chrom_name} in {time.time() - start:.1f} s")
+
     return predictions, gold_standard, tot_gs_bins
 
 def run_thresholding(args):
@@ -40,46 +39,44 @@ def run_thresholding(args):
     :param args:
     :return:
     """
+    # Calibration is done on exactly one held-out chromosome: the per-cell-type arrays,
+    # the blacklist mask and the random-precision denominator all refer to that chromosome.
+    if len(args.chromosomes) != 1:
+        raise ValueError("maxatac threshold calibrates on exactly one chromosome; "
+                         f"got --chromosomes {' '.join(args.chromosomes)}")
+
     # Make the output directory
     output_dir = get_dir(args.output_dir)
 
     chromosome_sizes_dictionary = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
+    (chrom_name, chrom_length), = chromosome_sizes_dictionary.items()
 
     meta_DF = pd.read_table(args.meta_file)
 
     training_data_dict = pd.Series(meta_DF["Binding_File"].values,index=meta_DF["Prediction"]).to_dict()
 
-    # Loop through the chromosomes and average the values across files
-    OUT=[]
-    for chrom_name, chrom_length in chromosome_sizes_dictionary.items():
-        bin_count = int(int(chrom_length) / int(args.bin_size))  # need to floor the number
-        
-        blacklist_mask = import_blacklist_mask(args.blacklist_bw, chrom_name, chrom_length, bin_count)
+    bin_count = int(int(chrom_length) / int(args.bin_size))  # need to floor the number
 
-        lst_of_bws=list(training_data_dict.keys())
-        
-        pool = Pool(int(multiprocessing.cpu_count())) 
+    blacklist_mask = import_blacklist_mask(args.blacklist_bw, chrom_name, chrom_length, bin_count)
+
+    lst_of_bws = list(training_data_dict.keys())
+
+    # Bin every cell type's prediction and gold standard in parallel
+    with Pool(int(multiprocessing.cpu_count())) as pool:
         output = pool.starmap(
             extract_pred_gs_bw,
             [(bigwig, training_data_dict, chrom_name, chrom_length, bin_count) for bigwig in lst_of_bws]
-                            )
-        OUT.append(output)
-
+        )
 
     # Stack each cell type's Prediction/GoldStandard as a pair of columns
-    DF=pd.DataFrame([])
+    DF = pd.DataFrame([])
     total_gs_bins = []
-    for i in range(len(OUT[0])):
-        df = pd.DataFrame([])
-
-        df['Prediction'] = OUT[0][i][0][:bin_count].tolist()
-        df['GoldStandard'] = OUT[0][i][1][:bin_count].tolist()
-
-        gs_bins = OUT[0][i][2]
+    for predictions, gold_standard, gs_bins in output:
+        df = pd.DataFrame({'Prediction': predictions, 'GoldStandard': gold_standard})
         DF = pd.concat([DF, df], axis=1, ignore_index=True)
         total_gs_bins.append(gs_bins)
 
-    num_cell_types = len(OUT[0])
+    num_cell_types = len(output)
 
     # Create a bedtools object that is a windowed genome
     BED_df_bedtool = pybedtools.BedTool().window_maker(g=args.chrom_sizes, w=args.bin_size)
@@ -98,8 +95,8 @@ def run_thresholding(args):
     # Rename the columns
     df.columns = ["chr", "start", "stop"]
 
-    # Find the number of non-blacklisted bins in chr of interest (log2FC denominator)
-    rand_bins = df.query('chr == @args.chromosomes').shape[0]
+    # Find the number of non-blacklisted bins in the chromosome of interest (log2FC denominator)
+    rand_bins = df.query('chr == @chrom_name').shape[0]
 
     logging.info("Building per-cell-type calibration curves")
 

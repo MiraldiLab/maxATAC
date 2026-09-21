@@ -62,6 +62,8 @@ DEFAULT_TRAIN_CHRS = ["chr3", "chr4", "chr5", "chr6",
                       "chr18", "chr20", "chr21", "chr22"]
 
 DEFAULT_VALIDATE_CHRS = ["chr2", "chr19"]
+# maxatac threshold calibrates on exactly one held-out chromosome
+DEFAULT_THRESHOLD_CHR = "chr2"
 
 DEFAULT_TEST_CHRS = ["chr1", "chr8"]
 

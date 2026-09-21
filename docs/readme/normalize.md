@@ -6,7 +6,6 @@ The `normalize` function will normalize an input bigwig file based on the follow
 * `zscore`: Set the mean value to 0 with a standard deviation of 1.
 * Variance-stabilizing transforms, provided for preparing **quantitative ChIP-seq target tracks** for `--quant` training and benchmarking:
   * `arcsinh`: inverse hyperbolic sine, `arcsinh(x)`
-  * `log2`: `log2(x) + 1`
   * `log1p`: natural log of one plus the value, `log(1 + x)`
   * `sqrt`: square root, `x^(1/2)`
   * `three_fourths`: `x^(3/4)`
@@ -37,7 +36,7 @@ The name used to build the output filename. This can be any string; `.bw` is app
 
 ### `--method`
 
-The method to use for normalization: `min-max`, `zscore`, `arcsinh`, `log2`, `log1p`, `sqrt`, `three_fourths` or `three_eighths` (see above). Default: `min-max`
+The method to use for normalization: `min-max`, `zscore`, `arcsinh`, `log1p`, `sqrt`, `three_fourths` or `three_eighths` (see above). Default: `min-max`
 
 ### `--max_percentile`
 

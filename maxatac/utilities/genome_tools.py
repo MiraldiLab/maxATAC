@@ -156,48 +156,6 @@ def get_target_matrix(binding,
     # TODO play with this parameter of 0.5
 
 
-def get_synced_chroms(chroms, ignore_regions=None):
-    """
-    This function will generate a nested dictionary of chromosome sizes and the regions available for training.
-
-        {
-            "chr2": {"length": 243199373, "region": [0, 243199373]},
-            "chr3": {"length": 198022430, "region": [0, 198022430]}
-        }
-
-    If ignore_regions is True, set regions to the whole chromosome length
-    Returns something like this
-
-    """
-    chroms_and_regions = {}
-    for chrom in chroms:
-        chrom_name, *region = chrom.replace(",", "").split(":")  # region is either [] or ["start-end", ...]
-        chroms_and_regions[chrom_name] = None
-        if not ignore_regions:
-            try:
-                chroms_and_regions[chrom_name] = [int(i) for i in region[0].split("-")]
-            except (IndexError, ValueError):
-                pass
-
-    loaded_chroms = set()
-
-    synced_chroms = {}
-    for chrom_name, chrom_length in loaded_chroms:
-        if chrom_name not in chroms_and_regions: continue
-        region = chroms_and_regions[chrom_name]
-        if not region or \
-                region[0] < 0 or \
-                region[1] <= 0 or \
-                region[0] >= region[1] or \
-                region[1] > chrom_length:
-            region = [0, chrom_length]
-        synced_chroms[chrom_name] = {
-            "length": chrom_length,
-            "region": region
-        }
-    return synced_chroms
-
-
 class EmptyStream():
     def __enter__(self):
         return None

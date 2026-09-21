@@ -78,8 +78,11 @@ class MaxATACModel(object):
         self.target_scale_factor = target_scale_factor
         self.loss = loss
 
-        # Set the random seed for the model
+        # Seed every RNG that training draws from: python (ROI sampling), numpy
+        # (shuffles / random regions) and TensorFlow (weight init, dropout)
         random.seed(seed)
+        np.random.seed(seed)
+        tf.random.set_seed(seed)
 
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
@@ -305,9 +308,9 @@ def get_target_matrix(binding_stream,
         if target_vector.shape[0] == 0:
             target_vector = np.zeros(INPUT_LENGTH)
 
-    except:
-        # TODO change length of array
-        target_vector = np.zeros(1024)
+    except (RuntimeError, KeyError, ValueError):
+        # pyBigWig raises RuntimeError when a chromosome is absent from the file
+        target_vector = np.zeros(INPUT_LENGTH)
 
     # change nan to numbers
     target_vector = np.nan_to_num(target_vector, 0.0)
@@ -906,7 +909,12 @@ def model_selection(training_history, output_dir):
 
 def model_selection_v2(training_history, output_dir):
     """
-    This function will take the training history and output the best model based on the dice coefficient value.
+    Select the best epoch for a quantitative model from the training history.
+
+    Starting at the epoch with the minimum validation loss, pick the epoch (at or after it)
+    with the smallest normalized train/validation gap |val_loss - loss| / max(val_loss, loss),
+    so the chosen checkpoint has both low validation loss and little overfitting.
+    Writes best_epoch.txt with the checkpoint path and returns the 1-based epoch number.
     """
     # Create a dataframe from the history object
     df = pd.DataFrame(training_history.history)
