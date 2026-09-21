@@ -6,7 +6,6 @@ The `normalize` function will normalize an input bigwig file based on the follow
 * `zscore`: Set the mean value to 0 with a standard deviation of 1.
 * Variance-stabilizing transforms, provided for preparing **quantitative ChIP-seq target tracks** for `--quant` training and benchmarking:
   * `arcsinh`: inverse hyperbolic sine, `arcsinh(x)`
-  * `log2`: `log2(x) + 1`
   * `log1p`: natural log of one plus the value, `log(1 + x)`
   * `sqrt`: square root, `x^(1/2)`
   * `three_fourths`: `x^(3/4)`
@@ -37,7 +36,7 @@ The name used to build the output filename. This can be any string; `.bw` is app
 
 ### `--method`
 
-The method to use for normalization: `min-max`, `zscore`, `arcsinh`, `log2`, `log1p`, `sqrt`, `three_fourths` or `three_eighths` (see above). Default: `min-max`
+The method to use for normalization: `min-max`, `zscore`, `arcsinh`, `log1p`, `sqrt`, `three_fourths` or `three_eighths` (see above). Default: `min-max`
 
 ### `--max_percentile`
 
@@ -70,6 +69,10 @@ Define the chromosome sizes file. The current default file are the chromosome si
 ### `--blacklist_bw`
 
 The path to the blacklist bigwig file. This file is used to remove all the regions that are considered to have high technical noise. Default: maxATAC publication-defined blacklist.
+
+### `--max_zooms`
+
+The number of zoom levels to compute for the normalized bigWig file. Zoom levels are pre-computed summary statistics that let genome browsers (IGV, UCSC Genome Browser) zoom in and out of a region quickly; fewer levels mean slower loading in browsers, more levels mean more memory during writing. Valid range: `0`-`10`. Default: `10`. Note: a value of `0` produces a bigWig that is not compatible with other bigWig tools (e.g. deepTools) and cannot be visualized in IGV or the UCSC Genome Browser. See the [pyBigWig README](https://github.com/deeptools/pyBigWig/blob/master/README.md) for details.
 
 ### `-o`, `--output`, `--output_dir`
 

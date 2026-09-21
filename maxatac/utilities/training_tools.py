@@ -13,7 +13,7 @@ import glob
 
 from maxatac.architectures.dcnn import get_dilated_cnn
 from maxatac.utilities.constants import BP_RESOLUTION, BATCH_SIZE, CHR_POOL_SIZE, INPUT_LENGTH, INPUT_CHANNELS, \
-    BP_ORDER, TRAIN_SCALE_SIGNAL
+    BP_ORDER, TRAIN_SCALE_SIGNAL, BINARY_TARGET_MIN_PEAK_FRACTION
 from maxatac.utilities.genome_tools import load_bigwig, load_2bit, get_one_hot_encoded, build_chrom_sizes_dict
 from maxatac.utilities.system_tools import get_dir, remove_tags, replace_extension
 
@@ -78,8 +78,11 @@ class MaxATACModel(object):
         self.target_scale_factor = target_scale_factor
         self.loss = loss
 
-        # Set the random seed for the model
+        # Seed every RNG that training draws from: python (ROI sampling), numpy
+        # (shuffles / random regions) and TensorFlow (weight init, dropout)
         random.seed(seed)
+        np.random.seed(seed)
+        tf.random.set_seed(seed)
 
         # Import meta txt as dataframe
         self.meta_dataframe = pd.read_csv(self.meta_path, sep='\t', header=0, index_col=None)
@@ -296,6 +299,13 @@ def get_target_matrix(binding_stream,
                       quant,
                       bp_resolution,
                       target_scale_factor):
+    """
+    Build the per-bin training target for one 1,024 bp window from the Binding_File bigwig.
+
+    quant=True:  mean signal per bp_resolution bin, times target_scale_factor.
+    quant=False: 1.0 where more than BINARY_TARGET_MIN_PEAK_FRACTION of the bin's bases are
+                 inside a peak (Binding_File is a 0/1 peak track), else 0.0 (maxATAC v1 rule).
+    """
     # Some bigwig files do not have signal for some chromosomes because they do not have peaks
     # in those regions
     # Our workaround for issue#42 is to provide a zero matrix for that position
@@ -305,9 +315,9 @@ def get_target_matrix(binding_stream,
         if target_vector.shape[0] == 0:
             target_vector = np.zeros(INPUT_LENGTH)
 
-    except:
-        # TODO change length of array
-        target_vector = np.zeros(1024)
+    except (RuntimeError, KeyError, ValueError):
+        # pyBigWig raises RuntimeError when a chromosome is absent from the file
+        target_vector = np.zeros(INPUT_LENGTH)
 
     # change nan to numbers
     target_vector = np.nan_to_num(target_vector, 0.0)
@@ -327,9 +337,9 @@ def get_target_matrix(binding_stream,
         bin_vector = bin_vector * target_scale_factor
 
     else:
-        # TODO we might want to test what happens if we change the
+        # Number of peak bases per bin; bound if more than the configured fraction of the bin
         bin_sums = np.sum(split_targets, axis=1)
-        bin_vector = np.where(bin_sums > 0.5 * bp_resolution, 1.0, 0.0)
+        bin_vector = np.where(bin_sums > BINARY_TARGET_MIN_PEAK_FRACTION * bp_resolution, 1.0, 0.0)
 
     return bin_vector
 
@@ -906,7 +916,12 @@ def model_selection(training_history, output_dir):
 
 def model_selection_v2(training_history, output_dir):
     """
-    This function will take the training history and output the best model based on the dice coefficient value.
+    Select the best epoch for a quantitative model from the training history.
+
+    Starting at the epoch with the minimum validation loss, pick the epoch (at or after it)
+    with the smallest normalized train/validation gap |val_loss - loss| / max(val_loss, loss),
+    so the chosen checkpoint has both low validation loss and little overfitting.
+    Writes best_epoch.txt with the checkpoint path and returns the 1-based epoch number.
     """
     # Create a dataframe from the history object
     df = pd.DataFrame(training_history.history)

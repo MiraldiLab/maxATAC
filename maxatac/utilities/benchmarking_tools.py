@@ -16,15 +16,24 @@ import tqdm
 
 
 def Precision_for_Recall(df, percent_recall):
-    percent_recall = percent_recall
-    upper_lim_recall = df.iloc[(df['Recall'] - percent_recall).abs().argsort()[:2]].Recall.tolist()[0]
-    lower_lim_recall = df.iloc[(df['Recall'] - percent_recall).abs().argsort()[:2]].Recall.tolist()[1]
-    upper_lim_precision = df.iloc[(df['Recall'] - percent_recall).abs().argsort()[:2]].Precision.tolist()[0]
-    lower_lim_precision = df.iloc[(df['Recall'] - percent_recall).abs().argsort()[:2]].Precision.tolist()[1]
-    val = (upper_lim_precision * abs(percent_recall - upper_lim_recall) + lower_lim_precision * abs(
-        percent_recall - lower_lim_recall)) / 2
-    sp_precision = lower_lim_precision + val
-    return sp_precision
+    """
+    Precision at a given recall, linearly interpolated between the two points of the
+    precision-recall curve that bracket percent_recall. Outside the curve's recall range the
+    nearest endpoint's precision is returned.
+
+    :param df: DataFrame with 'Recall' and 'Precision' columns (any order)
+    :param percent_recall: recall at which to evaluate precision, e.g. 0.1
+    """
+    curve = df[['Recall', 'Precision']].dropna().sort_values('Recall')
+    recall = curve['Recall'].to_numpy()
+    precision = curve['Precision'].to_numpy()
+
+    # Collapse duplicate recall values (a PR curve is a step function) to their max precision
+    # so np.interp sees strictly increasing x.
+    unique_recall, first_idx = np.unique(recall, return_index=True)
+    max_precision = np.maximum.reduceat(precision, first_idx)
+
+    return float(np.interp(percent_recall, unique_recall, max_precision))
 
 def calculate_sse(vector1, vector2):
     """
@@ -282,16 +291,18 @@ class calculate_R2_pearson_spearman(object):
         x = plot_df.y_obs
         y = plot_df.y_pred
 
-        # Fit a line of best fit
-        (m, b), (SSE,), *_ = np.polyfit(x, y, deg=1, full=True)
-        # set y-intercept = 0
-        b=0
+        # Least-squares fit of y = m * x through the origin, and the SSE of that line
+        x_arr = np.asarray(x, dtype=float)
+        y_arr = np.asarray(y, dtype=float)
+        m = float(np.dot(x_arr, y_arr) / np.dot(x_arr, x_arr))
+        b = 0
+        SSE = float(np.sum((y_arr - m * x_arr) ** 2))
         from matplotlib.ticker import MaxNLocator
         import matplotlib.ticker as ticker
 
         # Generate values for the line of best fit
         xseq = np.linspace(min(x) - 1, max(x) + 1, num=100)
-        ax.plot(xseq, m * xseq + b, color='r', lw=2.5, label=f'Best Fit: y = {m:.2f}x + {b:.2f}\nSSE = {SSE:.2f}')
+        ax.plot(xseq, m * xseq + b, color='r', lw=2.5, label=f'Best Fit: y = {m:.2f}x\nSSE = {SSE:.2f}')
 
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
         ax.xaxis.set_major_locator(MaxNLocator(integer=True))

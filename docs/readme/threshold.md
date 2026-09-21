@@ -8,7 +8,7 @@ Because quantitative models output predicted ChIP-seq signal rather than probabi
 
 For every cell type listed in the meta file:
 
-1. The prediction bigwig and the binary gold standard bigwig are binned at `--bin_size` (max per bin) on `--chromosomes`, excluding blacklisted bins.
+1. The prediction bigwig and the binary gold standard bigwig are binned at `--bin_size` (max per bin) on the single held-out chromosome given by `--chromosomes`, excluding blacklisted bins.
 2. A precision-recall curve is computed from the binned prediction scores against the binned gold standard, giving precision, recall, F1 and log2(precision / random precision) for every threshold.
 3. The curve is re-binned on a 0.01 grid of Precision, Recall and F1 values so that each metric value maps to the threshold that achieves it.
 
@@ -23,12 +23,12 @@ A tab-separated file with one row per cell type:
 | `Prediction`   | Path to the prediction bigwig for this cell type (from `maxatac predict`, quantitative or binary)    |
 | `Binding_File` | Path to the binary gold standard bigwig for this cell type (1 = TF bound, 0 = unbound)               |
 
-Additional columns (e.g. `Cell_Line`, `TF`) are ignored. Use validation cell types / chromosomes that were not used to train the model.
+Additional columns (e.g. `Cell_Line`, `TF`) are ignored. Use validation cell types and a chromosome that were not used to train the model.
 
 ## Example
 
 ```bash
-maxatac threshold --prefix CTCF --meta_file CTCF_threshold_meta.tsv --chromosomes chr2 chr19 --bin_size 200 --output ./threshold
+maxatac threshold --prefix CTCF --meta_file CTCF_threshold_meta.tsv --chromosomes chr2 --bin_size 200 --output ./threshold
 ```
 
 ## Outputs
@@ -53,7 +53,7 @@ The meta file described above.
 
 ### `--chromosomes`
 
-The chromosomes used to calibrate the thresholds. Default: `chr2 chr19` (the default validation chromosomes).
+The single held-out chromosome used to calibrate the thresholds. Exactly one chromosome must be given; `threshold` exits with an error otherwise. Default: `chr2`.
 
 ### `--bin_size`
 

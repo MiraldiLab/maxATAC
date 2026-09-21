@@ -51,7 +51,15 @@ def run_prediction(args):
 
     # If the user provides the TF name,
     if args.TF:
-        args.model = glob.glob(os.path.join(args.DATA_PATH, "models", args.TF, args.TF + "*.h5"))[0]
+        model_files = glob.glob(os.path.join(args.DATA_PATH, "models", args.TF, args.TF + "*.h5"))
+
+        if not model_files:
+            raise FileNotFoundError(
+                f"No model (*.h5) found for {args.TF} in {os.path.join(args.DATA_PATH, 'models', args.TF)}. "
+                "Download the models with `maxatac data`, or pass a model with --model."
+            )
+
+        args.model = model_files[0]
 
         # An explicitly provided --cutoff_file wins; only fall back to the bundled table.
         if not args.cutoff_file:
@@ -128,12 +136,18 @@ def run_prediction(args):
                  "Chromosomes in final prediction set: \n   - " + "\n    -".join(chrom_list) + "\n" +
                  f"Output directory: {output_directory} \n" +
                  f"Batch Size: {args.batch_size} \n" +
+                 f"Threads: {args.threads} \n" +
                  f"Ablation type: {args.ablation_type} \n" +
                  f"Ablation value: {args.ablation_value} \n" +
                  f"Output filename: {outfile_name_bigwig}"
                  )
 
-    with Pool(int(multiprocessing.cpu_count())) as p:
+    # One worker per chromosome, capped by --threads: every worker loads the full model and the
+    # 2bit genome, so the pool is bounded by memory rather than by cores.
+    n_workers = max(1, min(args.threads, len(chrom_list), multiprocessing.cpu_count()))
+    logging.info(f"Predicting {len(chrom_list)} chromosome(s) with {n_workers} process(es) (--threads {args.threads})")
+
+    with Pool(n_workers) as p:
         forward_strand_predictions = p.starmap(make_stranded_predictions,
                                                [(regions_pool,
                                                  args.signal,
@@ -155,7 +169,8 @@ def run_prediction(args):
     write_predictions_to_bigwig(prediction_bedgraph,
                                 output_filename=outfile_name_bigwig,
                                 chrom_sizes_dictionary=chrom_sizes_dict,
-                                chromosomes=chrom_list
+                                chromosomes=chrom_list,
+                                max_zooms = args.max_zooms
                                 )
 
     # If a cutoff file is provided, call peaks
@@ -191,7 +206,6 @@ def run_prediction(args):
                   sep="\t",
                   index=False,
                   header=False)
-
 
     # Measure end time of training
     stopTime = timeit.default_timer()

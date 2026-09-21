@@ -7,7 +7,7 @@ import os
 from maxatac.utilities.system_tools import get_dir, Mute
 from maxatac.utilities.genome_tools import build_chrom_sizes_dict, chromosome_blacklist_mask
 from maxatac.utilities.normalization_tools import minmax_normalize_array, zscore_normalize_array, get_genomic_stats, \
-    arcsinh_normalize_array, log2_normalize_array, log1p_normalize_array, sqrt_normalize_array, three_fourth_normalize_array, \
+    arcsinh_normalize_array, log1p_normalize_array, sqrt_normalize_array, three_fourth_normalize_array, \
     three_eighths_normalize_array
 
 
@@ -31,7 +31,7 @@ def run_normalization(args):
     3) Find the genomic min and max values by looping through each chromosome
     5) Loop through each chromosome and minmax normalize the values based on the genomic values.
 
-    :param args: signal, output_dir, chromosome_sizes, chromosomes, max_percentile, method, blacklist
+    :param args: signal, output_dir, chromosome_sizes, chromosomes, max_percentile, method, blacklist, max_zooms
 
     :return: A minmax normalized bigwig file
     """
@@ -84,7 +84,7 @@ def run_normalization(args):
     with pyBigWig.open(args.signal) as input_bw, pyBigWig.open(output_filename, "w") as output_bw:
         header = [(x, chromosome_length_dictionary[x]) for x in sorted(args.chromosomes)]
 
-        output_bw.addHeader(header)
+        output_bw.addHeader(header, maxZooms = args.max_zooms)
 
         # For every chromosome in header, perform normalization
         for chrom_name, chrom_length in header:
@@ -98,9 +98,6 @@ def run_normalization(args):
 
             elif args.method == "arcsinh":
                 normalized_signal = arcsinh_normalize_array(chr_vals)
-
-            elif args.method == "log2":
-                normalized_signal = log2_normalize_array(chr_vals)
 
             elif args.method == "log1p":
                 normalized_signal = log1p_normalize_array(chr_vals)
@@ -131,7 +128,7 @@ def run_normalization(args):
                                  ends=chrom_length,
                                  span=1,
                                  step=1,
-                                 values=normalized_signal.tolist()
+                                 values=normalized_signal.astype(np.float16).tolist()
                                  )
 
     # Measure time of averaging

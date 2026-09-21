@@ -27,12 +27,15 @@ from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
                                          DEFAULT_LOG_LEVEL,
                                          DEFAULT_TRAIN_EPOCHS,
+                                         DEFAULT_MAX_ZOOMS,
                                          DEFAULT_TRAIN_BATCHES_PER_EPOCH,
                                          BATCH_SIZE,
                                          VAL_BATCH_SIZE,
                                          INPUT_LENGTH,
                                          DEFAULT_TRAIN_CHRS,
                                          DEFAULT_VALIDATE_CHRS,
+                                         DEFAULT_THRESHOLD_CHR,
+                                         DEFAULT_PREDICT_THREADS,
                                          DEFAULT_ROUND,
                                          DEFAULT_TEST_CHRS,
                                          DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
@@ -195,6 +198,23 @@ def get_parser():
                                 help="Chromosomes for averaging. Default: 1-22"
                                 )
 
+    average_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="The reference genome build to which the input file was aligned."
+                                )
+  
+    average_parser.add_argument("--max_zooms",
+                                dest="max_zooms",
+                                type=int,
+                                default=DEFAULT_MAX_ZOOMS,
+                                required=False,
+                                help="The number of zoom levels that should be computed for the averaged bigWig file. "
+                                     "Default: " + str(DEFAULT_MAX_ZOOMS)
+                                )
+    
     average_parser.add_argument("-o", "--output", "--output_dir",
                                 dest="output_dir",
                                 type=str,
@@ -256,6 +276,23 @@ def get_parser():
                                 dest="sequence",
                                 type=str,
                                 help="Genome sequence 2bit file."
+                                )
+    
+    predict_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="The reference genome build to which the input file was aligned."
+                               )
+  
+    predict_parser.add_argument("--max_zooms",
+                                dest="max_zooms",
+                                type=int,
+                                default=DEFAULT_MAX_ZOOMS,
+                                required=False,
+                                help="The number of zoom levels that should be computed for the output bigWig file. "
+                                     "Default: " + str(DEFAULT_MAX_ZOOMS)
                                 )
 
     predict_parser.add_argument("-i", "-s", "--signal",
@@ -390,6 +427,16 @@ def get_parser():
                                 required=False,
                                 help="Skip calling peaks on prediction tracks"
                                 )
+    
+    predict_parser.add_argument("--threads",
+                                dest="threads",
+                                type=int,
+                                default=DEFAULT_PREDICT_THREADS,
+                                help="Maximum number of chromosomes to predict in parallel. Each process loads "
+                                     "the full model and genome, so lower this if you run out of memory. "
+                                     "Capped by the number of chromosomes and available CPUs. Default: "
+                                     + str(DEFAULT_PREDICT_THREADS)
+                                )
 
     #############################################
     # Train parser
@@ -437,7 +484,7 @@ def get_parser():
                               type=str,
                               default="hg38",
                               required=False,
-                              help="The reference genome build to use."
+                              help="The reference genome build to which the input file was aligned."
                               )
 
     train_parser.add_argument("--sequence",
@@ -673,35 +720,43 @@ def get_parser():
                                   type=str,
                                   required=True,
                                   help="Input .bigwig file."
-                                  )
+                                 )
 
     normalize_parser.add_argument("-n", "--name", "--prefix",
                                   required=True,
                                   dest="name",
                                   type=str,
                                   help="Name to use for filename"
-                                  )
+                                 )
 
     normalize_parser.add_argument("-cs", "--chrom_sizes", "--chromosome_sizes",
                                   dest="chrom_sizes",
                                   type=str,
                                   help="Chrom sizes file"
-                                  )
+                                 )
 
     normalize_parser.add_argument("-c", "--chroms", "--chromosomes",
                                   dest="chromosomes",
                                   type=str,
                                   nargs="+",
                                   default=AUTOSOMAL_CHRS,
-                                  help="Chromosomes for normalization. Default: 1-22"
+                                  help="Chromosomes for normalization. Default: 1-22 from the hg38 genome"
                                   )
+
+    normalize_parser.add_argument("--genome",
+                                  dest="genome",
+                                  type=str,
+                                  default="hg38",
+                                  required=False,
+                                  help="The reference genome build to use."
+                                )
 
     normalize_parser.add_argument("-o", "--output", "--output_dir",
                                   dest="output_dir",
                                   type=str,
                                   default=os.getcwd(),
                                   help="Output directory. Default: Output to current working directory."
-                                  )
+                                 )
 
     normalize_parser.add_argument("--min",
                                   dest="min",
@@ -709,7 +764,7 @@ def get_parser():
                                   type=int,
                                   default=0,
                                   help="The minimum value to use for normalization"
-                                  )
+                                 )
 
     normalize_parser.add_argument("--max",
                                   dest="max",
@@ -717,7 +772,7 @@ def get_parser():
                                   required=False,
                                   default=False,
                                   help="The maximum value to use for normalization"
-                                  )
+                                 )
 
     normalize_parser.add_argument("--clip",
                                   dest="clip",
@@ -730,12 +785,21 @@ def get_parser():
                                   dest="method",
                                   type=str,
                                   default="min-max",
-                                  choices=["min-max", "zscore", "arcsinh", "log2", "log1p", "sqrt",
+                                  choices=["min-max", "zscore", "arcsinh", "log1p", "sqrt",
                                            "three_fourths", "three_eighths"],
                                   help="The method to use for normalization. min-max is the ATAC-seq input "
                                        "normalization used by maxATAC; the variance-stabilizing transforms "
-                                       "(arcsinh, log2, log1p, sqrt, three_fourths, three_eighths) are provided "
+                                       "(arcsinh, log1p, sqrt, three_fourths, three_eighths) are provided "
                                        "for preparing quantitative ChIP-seq target tracks. Default: min-max"
+                                  )
+
+    normalize_parser.add_argument("--max_zooms",
+                                  dest="max_zooms",
+                                  type=int,
+                                  default=DEFAULT_MAX_ZOOMS,
+                                  required=False,
+                                  help="The number of zoom levels that should be computed for the normalized bigWig file. "
+                                       "Default: " + str(DEFAULT_MAX_ZOOMS)
                                   )
 
     normalize_parser.add_argument("--max_percentile",
@@ -743,7 +807,7 @@ def get_parser():
                                   type=int,
                                   default=99,
                                   help="The maximum percentile to use for normalization"
-                                  )
+                                 )
 
     normalize_parser.add_argument("--loglevel",
                                   dest="loglevel",
@@ -751,13 +815,13 @@ def get_parser():
                                   default="info",
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
-                                  )
+                                 )
 
     normalize_parser.add_argument("--blacklist_bw",
                                   dest="blacklist_bw",
                                   type=str,
                                   help="The blacklisted regions to exclude (BigWig file format)"
-                                  )
+                                 )
 
     #############################################
     # Benchmark subparser
@@ -881,6 +945,14 @@ def get_parser():
                                         is greater than or equal to this value. Default: " + str(DEFAULT_BENCHMARKING_AGGREGATION_THRESHOLD)
                                   )
 
+    benchmark_parser.add_argument("--genome",
+                                  dest="genome",
+                                  type=str,
+                                  default="hg38",
+                                  required=False,
+                                  help="The reference genome build to which the input file was aligned."
+                                 )
+    
     benchmark_parser.add_argument("--round_predictions",
                                   dest="round_predictions",
                                   type=int,
@@ -1067,7 +1139,7 @@ def get_parser():
                                  type=str,
                                  default="hg38",
                                  required=False,
-                                 help="The reference genome build to use."
+                                 help="The reference genome build to which the input file was aligned."
                                  )
 
     variants_parser.add_argument("-s", "--sequence",
@@ -1195,6 +1267,14 @@ def get_parser():
                                 help="The chromosomes to include in the final output."
                                 )
 
+    prepare_parser.add_argument("--genome",
+                                dest="genome",
+                                type=str,
+                                default="hg38",
+                                required=False,
+                                help="The reference genome build to which the input file was aligned."
+                                )
+
     prepare_parser.add_argument("-t", "-threads", "--threads",
                                 dest="threads",
                                 type=int,
@@ -1247,8 +1327,10 @@ def get_parser():
                                   dest="chromosomes",
                                   type=str,
                                   nargs="+",
-                                  default=DEFAULT_VALIDATE_CHRS,
-                                  help="Chromosomes used to calibrate thresholds. Default: " + " ".join(DEFAULT_VALIDATE_CHRS)
+                                  default=[DEFAULT_THRESHOLD_CHR],
+                                  help="The single held-out chromosome used to calibrate thresholds. Exactly one "
+                                       "chromosome must be given. Default: "
+                                       + DEFAULT_THRESHOLD_CHR
                                   )
 
     threshold_parser.add_argument("--bin_size",
@@ -1273,9 +1355,24 @@ def get_parser():
                                   choices=LOG_LEVELS.keys(),
                                   help="Logging level. Default: " + DEFAULT_LOG_LEVEL
                                   )
+    
+    threshold_parser.add_argument("--genome",
+                                  dest="genome",
+                                  type=str,
+                                  default="hg38",
+                                  required=False,
+                                  help="The reference genome build to which the input BAM file was aligned."
+                                 )
 
     threshold_parser.add_argument("--blacklist_bw",
                                   dest="blacklist_bw",
+                                  type=str,
+                                  help="The blacklisted regions to exclude in bigwig format."
+                                  )
+    
+    # TODO: inherited from upstream main but unused; run_thresholding derives the BED path from --blacklist_bw
+    threshold_parser.add_argument("--blacklist_bed",
+                                  dest="blacklist_bed",
                                   type=str,
                                   help="The blacklisted regions to exclude in bigwig format."
                                   )
@@ -1341,6 +1438,11 @@ def parse_arguments(argsl, cwd_abs_path=None):
 
         if args.quant and args.loss == BINARY_LOSS:
             parser.error(f"--loss {BINARY_LOSS} is for binary models; choose one of {', '.join(QUANT_LOSSES)} with --quant")
+
+    if args.func == run_thresholding and len(args.chromosomes) != 1:
+        # parse_known_args would otherwise silently drop the extras with nargs=1
+        parser.error("threshold calibrates on exactly one chromosome; got --chromosomes "
+                     + " ".join(args.chromosomes))
 
     if args.func == run_benchmarking and args.quant:
         missing = [flag for flag, value in (("--quant_gold_standard", args.quant_gold_standard),

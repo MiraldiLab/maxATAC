@@ -79,8 +79,11 @@ setup(
             "tests"
         ]
     ),
+    python_requires=">=3.9",
     install_requires=[
-        "tensorflow",
+        # Keras 2 API: tf.keras.utils.OrderedEnqueuer and Adam(weight_decay=) need >=2.11,
+        # and both were dropped with Keras 3 in TF 2.16
+        "tensorflow>=2.14,<2.16",
         "tensorboard",
         "biopython",
         "py2bit",
@@ -88,6 +91,7 @@ setup(
         "pydot",
         "matplotlib",
         "scikit-learn",
+        "scipy",
         "pybedtools",
         "pandas",
         "pyfiglet",
@@ -98,6 +102,10 @@ setup(
         "tqdm",
         "ushuffle"
     ],
+    extras_require={
+        # Only the multinomialnll* losses need it
+        "multinomial": ["tensorflow-probability>=0.22,<0.24"],
+    },
     zip_safe=False,
     scripts=["maxatac/bin/maxatac"],
     classifiers=[]
