@@ -35,6 +35,7 @@ from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          DEFAULT_TRAIN_CHRS,
                                          DEFAULT_VALIDATE_CHRS,
                                          DEFAULT_THRESHOLD_CHR,
+                                         DEFAULT_PREDICT_THREADS,
                                          DEFAULT_ROUND,
                                          DEFAULT_TEST_CHRS,
                                          DEFAULT_BENCHMARKING_AGGREGATION_FUNCTION,
@@ -427,12 +428,14 @@ def get_parser():
                                 help="Skip calling peaks on prediction tracks"
                                 )
     
-    # TODO: inherited from upstream main but unused; run_prediction sizes its Pool with multiprocessing.cpu_count()
     predict_parser.add_argument("--threads",
                                 dest="threads",
                                 type=int,
-                                default=24,
-                                help="Number of processes to run prediction in parallel. Default: 24."
+                                default=DEFAULT_PREDICT_THREADS,
+                                help="Maximum number of chromosomes to predict in parallel. Each process loads "
+                                     "the full model and genome, so lower this if you run out of memory. "
+                                     "Capped by the number of chromosomes and available CPUs. Default: "
+                                     + str(DEFAULT_PREDICT_THREADS)
                                 )
 
     #############################################

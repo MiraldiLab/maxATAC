@@ -52,11 +52,14 @@ def get_genomic_stats(bigwig_path: str,
                                                        chrom_sizes_dict[chromosome]
                                                        )
 
-            # Append minmax results to list
+            # Per-chromosome stats over non-blacklisted bases; median is of the non-zero signal,
+            # matching the genome-wide median below, and 0 for a chromosome with no signal at all
+            chr_vals_masked = chr_vals[blacklist_mask]
+            chr_nonzero = chr_vals_masked[chr_vals_masked > 0]
             minmax_results.append([chromosome,
-                                   np.min(chr_vals[blacklist_mask]),
-                                   np.max(chr_vals[blacklist_mask]),
-                                   np.median(chr_vals[blacklist_mask][chr_vals[blacklist_mask] > 0])
+                                   np.min(chr_vals_masked),
+                                   np.max(chr_vals_masked),
+                                   np.median(chr_nonzero) if chr_nonzero.size else 0.0
                                    ])
 
             # Append chrom values to an array with genome-wide values

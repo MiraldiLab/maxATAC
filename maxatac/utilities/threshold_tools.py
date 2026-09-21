@@ -5,6 +5,20 @@ from sklearn import metrics
 from sklearn.metrics import precision_recall_curve
 
 
+def f1_from_precision_recall(precision, recall):
+    """
+    F1 = 2PR / (P + R), defined as 0 where P = R = 0 (e.g. a cell type with no reachable bins)
+    instead of NaN, so a single degenerate row cannot propagate through the binning, the
+    cross-cell-type medians, or the max-F1 lookups.
+    """
+    precision = np.asarray(precision, dtype=float)
+    recall = np.asarray(recall, dtype=float)
+    denominator = precision + recall
+
+    return np.divide(2 * precision * recall, denominator,
+                     out=np.zeros_like(denominator), where=denominator > 0)
+
+
 def import_blacklist_mask(bigwig_path, chromosome, chromosome_length, bin_count):
     """
         Import the chromosome signal from a blacklist bigwig file and convert to a numpy array to use to mask out
@@ -71,7 +85,7 @@ def compute_calibration_curve(goldstandard, prediction, gs_bins=None, rand_bins=
         random_precision = gs_bins / rand_bins
         curve_df['log2FC'] = np.log2(curve_df['Precision'] / random_precision)
 
-    curve_df['F1'] = 2 * (curve_df['Precision'] * curve_df['Recall']) / (curve_df['Precision'] + curve_df['Recall'])
+    curve_df['F1'] = f1_from_precision_recall(curve_df['Precision'], curve_df['Recall'])
 
     return curve_df
 
@@ -114,7 +128,7 @@ def extend_bins_to_full_grid(binned_df, full_bins=None):
     extended['Metric'] = extended['Metric'].ffill().bfill()
 
     # Recompute F1 from interpolated P/R for internal consistency
-    extended['F1'] = 2 * extended['Precision'] * extended['Recall'] / (extended['Precision'] + extended['Recall'])
+    extended['F1'] = f1_from_precision_recall(extended['Precision'], extended['Recall'])
 
     return extended[['Metric', 'Bin', 'Precision', 'Recall', 'Threshold', 'F1']]
 
@@ -141,7 +155,7 @@ def recompute_f1(median_table):
     consistent (medians taken per column need not satisfy F1 = 2PR/(P+R)).
     """
     out = median_table.copy()
-    out['F1'] = 2 * out['Precision'] * out['Recall'] / (out['Precision'] + out['Recall'])
+    out['F1'] = f1_from_precision_recall(out['Precision'], out['Recall'])
     return out
 
 

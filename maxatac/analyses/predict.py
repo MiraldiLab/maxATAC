@@ -136,12 +136,18 @@ def run_prediction(args):
                  "Chromosomes in final prediction set: \n   - " + "\n    -".join(chrom_list) + "\n" +
                  f"Output directory: {output_directory} \n" +
                  f"Batch Size: {args.batch_size} \n" +
+                 f"Threads: {args.threads} \n" +
                  f"Ablation type: {args.ablation_type} \n" +
                  f"Ablation value: {args.ablation_value} \n" +
                  f"Output filename: {outfile_name_bigwig}"
                  )
 
-    with Pool(int(multiprocessing.cpu_count())) as p:
+    # One worker per chromosome, capped by --threads: every worker loads the full model and the
+    # 2bit genome, so the pool is bounded by memory rather than by cores.
+    n_workers = max(1, min(args.threads, len(chrom_list), multiprocessing.cpu_count()))
+    logging.info(f"Predicting {len(chrom_list)} chromosome(s) with {n_workers} process(es) (--threads {args.threads})")
+
+    with Pool(n_workers) as p:
         forward_strand_predictions = p.starmap(make_stranded_predictions,
                                                [(regions_pool,
                                                  args.signal,

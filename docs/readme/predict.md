@@ -88,6 +88,10 @@ The windows to use for prediction. These windows must be 1,024 bp wide and have 
 
 The number of regions to predict on per batch. Default: `10000`. Decrease this value if you are having memory issues.
 
+### `--threads`
+
+The maximum number of chromosomes to predict in parallel. Each process loads the full model and the 2bit genome, so memory, not CPU count, usually sets the practical limit; lower this value if prediction runs out of memory. The pool is also capped by the number of chromosomes requested and the available CPUs. Default: `24`
+
 ### `--step_size`
 
 The step size to use for building the prediction intervals. Overlapping prediction bins will be averaged together. Default: `INPUT_LENGTH/4` = 256 bp, where `INPUT_LENGTH` is the maxATAC model input size of 1,024 bp.
