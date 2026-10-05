@@ -22,6 +22,7 @@ with Mute():
     from maxatac.analyses.prepare import run_prepare
     from maxatac.analyses.threshold import run_thresholding
     from maxatac.analyses.data import run_data
+    from maxatac.analyses.compress import change_bigWig_compression_level
 
 from maxatac.utilities.constants import (DEFAULT_TRAIN_VALIDATE_CHRS,
                                          LOG_LEVELS,
@@ -69,7 +70,7 @@ def get_parser():
     
     There are currently parsers for the following subcommands:
     average, train, predict, normalize, data, variants, benchmark,
-    threshold, peaks, prepare
+    threshold, peaks, prepare, compress
     
     Returns:
         argparse object
@@ -1182,6 +1183,79 @@ def get_parser():
                                   help="Meta file containing Prediction signal and GS path for all cell lines (.tsv format)"
                                   )
 
+    #############################################
+    # Compress subparser
+    #############################################
+    compress_parser = subparsers.add_parser("compress",
+                                            parents = [parent_parser],
+                                            help = "Change compression level of maxATAC-generated bigWig files."
+                                            )
+
+    # Set the default function to be run when "compress" is invoked.
+    compress_parser.set_defaults(func = change_bigWig_compression_level)
+
+    # Add arguments to the parser.
+    compress_parser.add_argument("-i", "--input",
+                                 dest = "input_bigWig",
+                                 type = str,
+                                 required = True,
+                                 help = "The path to the bigWig file to be (de)compressed."
+                                )
+
+    compress_parser.add_argument("-cs", "--chrom_sizes",
+                                 dest = "chrom_sizes",
+                                 type = str,
+                                 required = False,
+                                 help = "The path to a chromosome sizes file matching the genome build of the input bigWig file (default: hg38 chrom.sizes file)."
+                                )
+    
+    compress_parser.add_argument("-c", "--chroms", "--chromosomes",
+                                 dest = "chroms",
+                                 nargs = "+",
+                                 type = str,
+                                 default = AUTOSOMAL_CHRS,
+                                 required = False,
+                                 help = "The chromosomes that should be included in the output bigWig file (default: all human autosomal chromosomes)."
+                            )
+    
+    compress_parser.add_argument("-o", "--output", "--output_dir",
+                                 dest = "output_dir",
+                                 type = str,
+                                 default = os.getcwd(),
+                                 required = False,
+                                 help = "The path to the desired output directory (default: the current working directory)."
+                                )
+    
+    compress_parser.add_argument("--prefix",
+                                 dest = "prefix",
+                                 type = str,
+                                 required = True,
+                                 help = "The desired output filename."
+                                  )
+    
+    compress_parser.add_argument("--max_zooms", 
+                                 dest = "max_zooms",
+                                 type = int,
+                                 required = True,
+                                 help = "The number of zoom levels that should be computed for the input bigWig file. See: https://github.com/deeptools/pyBigWig/blob/master/README.md for additional details."
+                                )
+
+    compress_parser.add_argument("--genome",
+                                 dest = "genome",
+                                 type = str,
+                                 default = "hg38",
+                                 required = False,
+                                 help = "The genome build corresponding to the input bigWig file (default: hg38)."
+                                )
+    
+    compress_parser.add_argument("--loglevel",
+                                 dest = "loglevel",
+                                 type = str,
+                                 default = "info",
+                                 choices = LOG_LEVELS.keys(),
+                                 help = "The logging level (default: " + DEFAULT_LOG_LEVEL + ")."
+                                )
+  
     return general_parser
 
 
