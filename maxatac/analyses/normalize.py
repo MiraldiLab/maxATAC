@@ -115,7 +115,7 @@ def run_normalization(args):
                                  ends=chrom_length,
                                  span=1,
                                  step=1,
-                                 values=normalized_signal.astype(np.float16).tolist()
+                                 values=normalized_signal.tolist()
                                  )
 
     # Measure time of averaging
