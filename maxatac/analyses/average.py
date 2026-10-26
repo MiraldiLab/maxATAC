@@ -86,7 +86,7 @@ def run_averaging(args):
                 ends=chrom_length,
                 span=1,
                 step=1,
-                values=chrom_vals.astype(np.float16).tolist()
+                values=chrom_vals.tolist()
             )
 
     # Measure time of averaging
