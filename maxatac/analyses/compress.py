@@ -48,8 +48,7 @@ def change_bigWig_compression_level(args):
         header = [(x, chromosome_length_dictionary[x]) for x in sorted(chromosomes)]
         output_bigWig.addHeader(header, maxZooms = max_zooms)
 
-        # For every chromosome in the header, add the corresponding signal values from the input bigWig file
-        # as quantized float16 values for a slightly higher amount of compression.
+        # For every chromosome in the header, add the corresponding signal values from the input bigWig file.
         for chromosome, chromosome_length in header:
             logging.info("Now adding bigWig entries for: " + chromosome)
             signal_values = np.nan_to_num(input_bigWig.values(chromosome, 0, chromosome_length, numpy = True))            
@@ -58,7 +57,7 @@ def change_bigWig_compression_level(args):
                                      ends = chromosome_length,
                                      span = 1,
                                      step = 1,
-                                     values = signal_values.astype(np.float16).tolist()
+                                     values = signal_values.tolist()
                                      )
         
         # Measure the amount of time required for bigWig (de)compression. Output it in a nice format.
