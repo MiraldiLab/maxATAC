@@ -77,7 +77,7 @@ def write_predictions_to_bigwig(df: pd.DataFrame,
             data_stream.addEntries(chroms=tmp_chrom_df["chr"].tolist(),
                                    starts=tmp_chrom_df["start"].tolist(),
                                    ends=tmp_chrom_df["stop"].tolist(),
-                                   values=tmp_chrom_df["score"].astype(np.float16).tolist()
+                                   values=tmp_chrom_df["score"].tolist()
                                    )
 
 def import_prediction_regions(bed_file: str,
