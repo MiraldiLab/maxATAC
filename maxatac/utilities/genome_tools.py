@@ -1,5 +1,7 @@
+import logging
 import pandas as pd
 import numpy as np
+from scipy.stats import rankdata
 import pyBigWig
 import py2bit
 import random
@@ -214,13 +216,51 @@ def import_bigwig_stats_array(bigwig_stream, chromosome, chromosome_length, agg_
                     dtype=float)
 
 
+def _pct_rank(array):
+    """
+    Percentile rank of each bin across the whole array: rankdata(method="min") / number of bins.
+    NaN (missing) bins are set to 0 first, and every zero-valued bin gets percentile 0, so the
+    many zero bins of a sparse track cannot outrank low but nonzero bins of the other track.
+    """
+    array = np.nan_to_num(np.asarray(array, dtype=float))
+    if array.size == 0:
+        return array
+
+    percentile = rankdata(array, method="min") / array.size
+    percentile[array == 0] = 0.0
+
+    return percentile
+
+
+def _log_max_source(primary_array, alternative_array, combine_operation):
+    """
+    Sanity check for a max combine: how often each track supplies the max. Near 0% or 100% means
+    the ensemble is effectively just one of the two inputs.
+    """
+    n_bins = primary_array.size
+    if n_bins == 0:
+        return
+
+    primary_wins = np.count_nonzero(primary_array > alternative_array) / n_bins
+    alternative_wins = np.count_nonzero(alternative_array > primary_array) / n_bins
+
+    logging.info("%s combine: primary supplies the max in %.2f%% of bins, alternative in %.2f%%, tied in %.2f%%",
+                 combine_operation, 100 * primary_wins, 100 * alternative_wins,
+                 100 * (1 - primary_wins - alternative_wins))
+
+
 def combine_prediction_arrays(primary_array, alternative_array=None, combine_operation="mean"):
     """
     Combine two prediction arrays element-wise.
 
-    Whenever both arrays contain values for the same bin, combine them using either the
+    mean / max: whenever both arrays contain values for the same bin, combine them using either the
     element-wise mean or max. If only one array has a value for a bin, use the available
     value. If neither has a value, return 0 for that position.
+
+    rank_max: convert each array to percentile ranks across all of its bins (_pct_rank), then take the
+    element-wise max. Missing bins get percentile 0, so the other track's value is used, which is the
+    same missing-value rule as max. Rank before any masking: the result does not depend on the
+    blacklist or whitelist.
     """
     primary_array = np.array(primary_array, dtype=float)
     if alternative_array is None:
@@ -231,8 +271,15 @@ def combine_prediction_arrays(primary_array, alternative_array=None, combine_ope
     if primary_array.shape != alternative_array.shape:
         raise ValueError("Prediction arrays must have the same shape to be combined.")
 
-    if combine_operation not in {"mean", "max"}:
-        raise ValueError("combine_operation must be either 'mean' or 'max'.")
+    if combine_operation not in {"mean", "max", "rank_max"}:
+        raise ValueError("combine_operation must be one of 'mean', 'max' or 'rank_max'.")
+
+    if combine_operation == "rank_max":
+        primary_percentile = _pct_rank(primary_array)
+        alternative_percentile = _pct_rank(alternative_array)
+        _log_max_source(primary_percentile, alternative_percentile, combine_operation)
+
+        return np.maximum(primary_percentile, alternative_percentile)
 
     primary_available = ~np.isnan(primary_array)
     alternative_available = ~np.isnan(alternative_array)
@@ -246,6 +293,8 @@ def combine_prediction_arrays(primary_array, alternative_array=None, combine_ope
         combined[both_available] = (primary_array[both_available] + alternative_array[both_available]) / 2.0
     else:
         combined[both_available] = np.maximum(primary_array[both_available], alternative_array[both_available])
+        _log_max_source(np.nan_to_num(primary_array, nan=-np.inf), np.nan_to_num(alternative_array, nan=-np.inf),
+                        combine_operation)
 
     return np.nan_to_num(combined)
 

@@ -24,7 +24,7 @@ def run_averaging(args):
     4) Loop through each entry in the chromosome sizes dictionary and calculate the average across all inputs
     5) Write the bigwig file
 
-    :param args: bigwig_files, output_dir, name, chromosomes, chromosome_sizes, max_zooms
+    :param args: bigwig_files, output_dir, name, chromosomes, chrom_sizes, max_zooms
 
     :return: A bigwig file
     """
@@ -50,7 +50,7 @@ def run_averaging(args):
 
     # Build a dictionary of chromosomes sizes using the chromosomes and chromosome sizes files provided
     # The function will filter the dictionary based on the input list
-    chromosome_sizes_dictionary = build_chrom_sizes_dict(args.chromosomes, args.chromosome_sizes)
+    chromosome_sizes_dictionary = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
 
     # Open the bigwig file for writing
     with pyBigWig.open(output_bigwig_filename, "w") as output_bw:

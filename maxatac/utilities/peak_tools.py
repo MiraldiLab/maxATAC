@@ -74,8 +74,9 @@ def get_threshold(cutoff_file, cutoff_type, cutoff_val):
         cutoff_type (str): Which metric's bin grid to look the threshold up on.
             One of Precision, Recall, F1, Peak_Recall (fraction of unique ChIP-seq peaks
             recovered).
-        cutoff_val (float): Target value on that metric's grid. Optional for F1, where
-            omitting it selects the threshold with the highest F1.
+        cutoff_val (float): Target value of that metric. The row used must achieve it in its
+            metric column (not only in its Bin label). Optional for F1, where omitting it
+            selects the threshold with the highest F1.
 
     Returns:
         float: The threshold to apply to prediction scores.
@@ -106,16 +107,18 @@ def get_threshold(cutoff_file, cutoff_type, cutoff_val):
         if cutoff_val is None:
             raise ValueError(f"A cutoff value is required for cutoff type {cutoff_type}.")
 
-        # Ceiling on the bin grid: the lowest bin that still meets the requested value.
-        reachable = rows[rows["Bin"] >= cutoff_val].sort_values("Bin")
+        # The achieved value must meet the request: grid bins past a curve's range hold its
+        # nearest real row, so the Bin label alone can promise a value no threshold reaches.
+        reachable = rows[rows[cutoff_type] >= cutoff_val]
 
         if reachable.empty:
             raise ValueError(
                 f"{cutoff_file} does not reach {cutoff_type} {cutoff_val}; "
-                f"its highest {cutoff_type} bin is {rows['Bin'].max()}."
+                f"the highest {cutoff_type} it reaches is {rows[cutoff_type].max():.3f}."
             )
 
-        selected = reachable.iloc[0]
+        # Closest to the request; ties go to the higher F1
+        selected = reachable.sort_values([cutoff_type, "F1"], ascending=[True, False]).iloc[0]
 
     achieved_peak_recall = (f"\n Achieved Peak_Recall: {selected['Peak_Recall']}"
                             if "Peak_Recall" in selected.index else "")

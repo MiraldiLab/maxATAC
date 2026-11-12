@@ -1,5 +1,5 @@
 import logging
-import pkg_resources
+from importlib import metadata
 import os
 import sys
 import subprocess
@@ -58,8 +58,12 @@ def get_rootname(l):
 
 
 def get_version():
-    pkg = pkg_resources.require("maxatac")
-    return pkg[0].version if pkg else "unknown version"
+    # importlib.metadata: pkg_resources was removed from recent setuptools releases
+    try:
+        return metadata.version("maxatac")
+
+    except metadata.PackageNotFoundError:
+        return "unknown version"
 
 
 def remove_tags(l, tags):

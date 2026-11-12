@@ -4,9 +4,69 @@ import os
 import sys
 import stat
 import logging
+import re
 import subprocess
-from maxatac.utilities.system_tools import get_dir, check_data_packages_installed
+from maxatac.utilities.system_tools import get_dir, check_data_packages_installed, get_version
 from maxatac.utilities.constants import V1_MODELS_WISHLIST_URL
+
+# Release and pre-release versions (2.0.0, 2.0.0b1, 2.0.0rc1, 2.0.0.post1) have a data repository tag of the
+# same name; development versions (2.0.0.dev0, local versions such as 2.0.0+g1234abc) do not
+RELEASE_VERSION = re.compile(r"\d+(\.\d+)*((a|b|rc)\d+)?(\.post\d+)?")
+
+
+def remote_ref_exists(data_repo, ref):
+    """Check whether a git repository has a tag or branch with this name
+
+    Args:
+        data_repo (str): Git repository URL or path
+        ref (str): Tag or branch name
+
+    Returns:
+        bool: True if the tag or branch exists
+    """
+    result = subprocess.run(["git", "ls-remote", "--tags", "--heads", data_repo, ref],
+                            capture_output=True, text=True, check=True)
+
+    return any(line.split("\t")[1] in (f"refs/tags/{ref}", f"refs/heads/{ref}")
+               for line in result.stdout.splitlines())
+
+
+def resolve_data_version(data_repo, data_version):
+    """Pick the data repository tag or branch to install
+
+    Args:
+        data_repo (str): Git repository URL or path
+        data_version (str): --data_version: a tag or branch, "latest", or None for the tag matching this
+        quant-maxATAC version
+
+    Returns:
+        str: Tag or branch to clone, or None to clone the latest commit on the default branch
+    """
+    if data_version == "latest":
+        return None
+
+    if data_version:
+        if not remote_ref_exists(data_repo, data_version):
+            raise ValueError(f"{data_repo} has no tag or branch named {data_version}. "
+                             "Use --data_version latest for the newest data.")
+
+        return data_version
+
+    version = get_version()
+
+    if not RELEASE_VERSION.fullmatch(version):
+        logging.warning(f"quant-maxATAC {version} is a development version: installing the latest data from "
+                        f"{data_repo}. Use --data_version to install a specific release.")
+        return None
+
+    tag = f"v{version}"
+
+    if not remote_ref_exists(data_repo, tag):
+        logging.warning(f"{data_repo} has no {tag} tag matching quant-maxATAC {version}: installing the latest "
+                        "data instead. Use --data_version to install a specific release.")
+        return None
+
+    return tag
 
 
 def remove_tree(path):
@@ -48,8 +108,9 @@ def describe_existing_data(data_dir):
     if model_files:
         n_tfs = len({os.path.dirname(model_file) for model_file in model_files})
 
-        # quant-maxATAC model files carry "quant" in their name; anything else is most likely a v1 (binary) model
-        n_v1 = len([model_file for model_file in model_files if "quant" not in os.path.basename(model_file).lower()])
+        # quant-maxATAC ships a <TF>_cross_celltype.tsv calibration table next to each model; v1 (binary) models do not
+        n_v1 = len([model_file for model_file in model_files
+                    if not glob.glob(os.path.join(os.path.dirname(model_file), "*_cross_celltype.tsv"))])
 
         lines.append(f"  Models: {len(model_files)} .h5 files for {n_tfs} TFs" +
                      (f", {n_v1} of which look like maxATAC v1 (binary) models" if n_v1 else ""))
@@ -95,14 +156,16 @@ def run_data(args):
 
     Workflow overview
 
-    1) If a data directory already exists, ask the user to confirm it will be overwritten (v1 models included)
-    2) Clone the data repository into a temporary directory, so a failed clone leaves the old data in place
-    3) Replace the old data directory with the new clone, keeping any downloaded .2bit files
-    4) Download the UCSC .2bit genome sequence for each requested genome
+    1) Pick the data version: --data_version, or the data repository tag matching this quant-maxATAC version
+    2) If a data directory already exists, ask the user to confirm it will be overwritten (v1 models included)
+    3) Clone that version of the data repository into a temporary directory, so a failed clone leaves the old
+       data in place
+    4) Replace the old data directory with the new clone, keeping any downloaded .2bit files
+    5) Download the UCSC .2bit genome sequence for each requested genome
 
     Args:
-        args (Namespace): Arguments list for the reference genome, output directory, data repository, --yes and the
-        log level.
+        args (Namespace): Arguments list for the reference genome, output directory, data repository, data version,
+        --yes and the log level.
     """
     check_data_packages_installed()
 
@@ -126,6 +189,10 @@ def run_data(args):
     genomes = ["hg38", "hg19", "mm10"] if args.genome == ['all'] else args.genome
 
     ############### Body ###############
+    # Resolve the version first, so a bad --data_version fails before anything is asked or changed
+    data_ref = resolve_data_version(args.data_repo, args.data_version)
+    data_label = data_ref or "latest"
+
     if os.path.isdir(maxatac_final_dir) and os.listdir(maxatac_final_dir):
         if not confirm_overwrite(maxatac_final_dir, args.yes):
             logging.info("Aborted: nothing was changed.")
@@ -136,11 +203,15 @@ def run_data(args):
         if os.path.exists(leftover_dir):
             remove_tree(leftover_dir)
 
-    logging.info(f"Cloning {args.data_repo} \n" +
+    logging.info(f"Cloning {args.data_repo} ({data_label}) \n" +
                  f"Final data will be placed in: {maxatac_final_dir}")
 
+    branch = ["--branch", data_ref] if data_ref else []
+
     try:
-        subprocess.run(["git", "clone", "--depth", "1", args.data_repo, maxatac_tmp_dir], check=True)
+        # advice.detachedHead=false: cloning a tag is expected, not worth git's detached HEAD notice
+        subprocess.run(["git", "-c", "advice.detachedHead=false", "clone", "--depth", "1", *branch,
+                        args.data_repo, maxatac_tmp_dir], check=True)
 
     except subprocess.CalledProcessError:
         if os.path.exists(maxatac_tmp_dir):
@@ -166,7 +237,7 @@ def run_data(args):
     commit = subprocess.run(["git", "rev-parse", "HEAD"], cwd=maxatac_final_dir,
                             capture_output=True, text=True).stdout.strip()
 
-    logging.info(f"Installed {args.data_repo} at commit {commit}")
+    logging.info(f"Installed {args.data_repo} {data_label} at commit {commit}")
 
     for genome in genomes:
         genome_dir = os.path.join(maxatac_final_dir, genome)

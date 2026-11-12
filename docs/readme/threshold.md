@@ -9,11 +9,18 @@ Because quantitative models output predicted ChIP-seq signal rather than probabi
 For every cell type listed in the meta file:
 
 1. The prediction bigwig and the binary gold standard bigwig are binned at `--bin_size` (max per bin) on the single held-out chromosome given by `--chromosomes`, excluding blacklisted bins.
-2. A precision-recall curve is computed from the binned prediction scores against the binned gold standard, giving precision, recall, F1 and log2(precision / random precision) for every threshold.
-3. Alongside the bin-level Recall, a peak-level **Peak_Recall** is computed per threshold: the fraction of unique ChIP-seq peaks with at least one non-blacklisted bin whose prediction is ≥ the threshold. Peaks are the unique intervals of the optional `ChIP_peaks` BED, or runs of consecutive gold-standard bins when it is not given. Fully blacklisted peaks are not counted.
-4. The curve is re-binned on a 0.01 grid of Precision, Recall, F1 and Peak_Recall values so that each metric value maps to the threshold that achieves it.
+2. A precision-recall curve is computed from the binned prediction scores against the binned gold standard: for every threshold, the precision, recall, F1 and log2(precision / random precision) **actually achieved at that threshold**.
+3. Only thresholds worth using are kept. A threshold is dropped when a lower threshold reaches the same or a higher precision, because that lower threshold also has at least the recall (and Peak_Recall). On the kept rows, precision rises and recall falls as the threshold increases, and every row is a real threshold with the metrics it achieves: no value is carried over from another threshold. The final point of a precision-recall curve (Precision = 1, Recall = 0) belongs to no threshold and is not included, so a precision of 1 only appears if some threshold really reaches it.
+4. Alongside the bin-level Recall, a peak-level **Peak_Recall** is computed per kept threshold: the fraction of unique ChIP-seq peaks with at least one non-blacklisted bin whose prediction is ≥ the threshold. Peaks are the unique intervals of the optional `ChIP_peaks` BED, or runs of consecutive gold-standard bins when it is not given. Fully blacklisted peaks are not counted.
+5. The curve is re-binned on a 0.01 grid of Precision, Recall and Peak_Recall values, keeping the highest-F1 row in each bin.
 
-The per-metric grids are then combined across cell types by taking the median threshold per grid bin (only thresholds are aggregated, never raw signal), producing the cross-cell-type table. `predict`/`peaks` look up the lowest grid bin that still meets the requested `--cutoff_value` (or the max-F1 bin when `--cutoff_type F1` is used without a value).
+The per-cell-type grids are then combined into the cross-cell-type table:
+
+* Each cell type's grid is first extended to every bin from 0.00 to 1.00, so all cell types cover the same bins. Bins between two values the curve reaches are linearly interpolated. Bins beyond the curve's range repeat its nearest real row, so their `Precision`/`Recall` columns show what the cell type actually reaches, not the bin value.
+* Per bin, the median `Precision`, `Recall`, `Threshold` and `Peak_Recall` across cell types is taken (only these per-threshold values are aggregated, never raw signal), and F1 is recomputed from the median precision and recall. A row therefore describes a typical cell type, not one particular cell type.
+* The F1 grid is built from the Recall table by re-binning its rows on F1.
+
+`predict`/`peaks` look up a threshold by the **achieved** value of the requested metric, not by the bin label: among the rows of `--cutoff_type` whose achieved `Precision`, `Recall`, `F1` or `Peak_Recall` is ≥ `--cutoff_value`, they use the one closest to the request (ties go to the higher F1). If no row reaches the value, they stop with an error naming the highest value the table reaches. With `--cutoff_type F1` and no `--cutoff_value`, the max-F1 row is used.
 
 ## Meta file
 
@@ -37,7 +44,7 @@ maxatac threshold --prefix CTCF --meta_file CTCF_threshold_meta.tsv --chromosome
 
 | Filename                                            | Description                                                                                                              |
 |-----------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------|
-| `<prefix>_cross_celltype.tsv`                       | The calibration table used by `predict`/`peaks`. Columns: `Metric` (`Precision`, `Recall`, `F1` or `Peak_Recall`), `Bin` (metric value on the 0.01 grid), `Precision`, `Recall`, `Threshold`, `F1`, `Peak_Recall` (fraction of unique ChIP-seq peaks recovered at that threshold) |
+| `<prefix>_cross_celltype.tsv`                       | The calibration table used by `predict`/`peaks`. Columns: `Metric` (`Precision`, `Recall`, `F1` or `Peak_Recall`), `Bin` (position on the 0.01 grid of that metric), `Precision`, `Recall`, `Threshold`, `F1`, `Peak_Recall` (fraction of unique ChIP-seq peaks recovered at that threshold). The `Precision`/`Recall`/`F1`/`Peak_Recall` columns are the values achieved at `Threshold`; past the range a curve reaches they can be lower than `Bin` |
 | `<prediction basename>.tsv`                         | The same table for each individual cell type in the meta file                                                            |
 | `<prefix>_peak_recovery.tsv`                        | Per cell type: peak source, number of unique peaks, and `Peak_Recall` at that cell type's own max-F1 threshold and at the cross-cell-type max-F1 threshold |
 | `*_validationPerformance_vs_thresholdCalibration.png` | Precision, recall, F1 and fraction of unique peaks recovered vs. threshold for every cell type, with the cross-cell-type median in black |

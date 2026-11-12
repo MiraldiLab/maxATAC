@@ -6,7 +6,7 @@ from matplotlib.collections import LineCollection
 from maxatac.utilities.genome_tools import load_bigwig, chromosome_blacklist_mask, chromosome_whitelist_mask, import_prediction_array_fn, import_quant_goldstandard_array_fn
 from sklearn import metrics
 from sklearn.metrics import precision_recall_curve, r2_score, mean_absolute_error
-from scipy import stats
+from scipy import stats, special
 from scipy.stats import pearsonr, spearmanr
 from maxatac.utilities.system_tools import remove_tags
 import pybedtools
@@ -99,6 +99,10 @@ class calculate_R2_pearson_spearman(object):
         self.agg_function = agg_function
         self.quant_gs_null = quant_gs_null # change to quant_null_model
         self.prediction_combine_operation = prediction_combine_operation
+
+        if prediction_combine_operation == "rank_max":
+            raise ValueError("prediction_combine_operation rank_max is for the precision-recall benchmark only; "
+                             "R2, Pearson and Spearman need prediction values, not percentile ranks")
 
         # This has been modified
         self.blacklist_mask = chromosome_blacklist_mask(blacklist_bw,
@@ -441,6 +445,73 @@ def precision_recall_curve_peak_based(y_member, y_score):
     #
     return precision, recall, thresholds
 
+def random_ucper_curve(y_member, n_points=2000):
+    """
+    Expected precision vs unique-peak recall curve of a random ranking, built the same way as
+    precision_recall_curve_peak_based.
+
+    Unlike bin-level AUPRC the random curve is not flat. A peak counts once however many of its bins
+    are called, so precision starts at positive bins / bins (P/N) and falls to M/(M+Q) as peaks
+    saturate (M peaks, Q negative bins).
+
+    After k randomly ranked bins (drawn without replacement), a peak of s bins is hit with probability
+    1 - C(N-s, k)/C(N, k), so E[TP_k] = sum over peaks of that, and E[FP_k] = k*Q/N.
+
+    :param y_member: member array from peak_gs_array_to_member_array (peak ids > 0, negative bins < 0)
+    :param n_points: number of k values, geometrically spaced from 1 to N
+    :return: DataFrame with 'Precision' and 'Recall' columns in increasing recall, None when there are no peaks
+    """
+    y_member = np.asarray(y_member)
+    n_bins = len(y_member)
+    n_negative = np.count_nonzero(y_member < 0)
+
+    _, peak_sizes = np.unique(y_member[y_member > 0], return_counts=True)
+    n_peaks = len(peak_sizes)
+    if n_peaks == 0:
+        return None
+
+    # Peaks of the same size share the same hit probability
+    sizes, size_counts = np.unique(peak_sizes, return_counts=True)
+
+    k = np.unique(np.geomspace(1, n_bins, n_points).astype(int)).astype(float)
+
+    # log C(N-s, k) - log C(N, k); a peak is certainly hit once k > N - s
+    remaining = n_bins - sizes[:, None] - k[None, :]
+    log_miss = (special.gammaln(n_bins - sizes[:, None] + 1) - special.gammaln(np.maximum(remaining, 0) + 1)
+                - special.gammaln(n_bins + 1) + special.gammaln(n_bins - k[None, :] + 1))
+    miss = np.where(remaining >= 0, np.exp(log_miss), 0.0)
+
+    expected_tp = (size_counts[:, None] * (1 - miss)).sum(axis=0)
+    expected_fp = k * n_negative / n_bins
+
+    return pd.DataFrame({'Precision': expected_tp / (expected_tp + expected_fp),
+                         'Recall': expected_tp / n_peaks})
+
+def random_aup_ucper(y_member, n_points=2000):
+    """
+    Expected AUP-UCPeR of a random ranking: the area under random_ucper_curve.
+
+    :return: random AUP-UCPeR, NaN when there are no peaks
+    """
+    curve = random_ucper_curve(y_member, n_points)
+    if curve is None:
+        return np.nan
+
+    return metrics.auc(x=curve['Recall'], y=curve['Precision'])
+
+def random_precision_at_ucper(y_member, percent_recall, n_points=2000):
+    """
+    Expected precision of a random ranking at a given unique-peak recall, read off random_ucper_curve
+    with the same interpolation as Precision_for_Recall.
+
+    :return: random precision at percent_recall, NaN when there are no peaks
+    """
+    curve = random_ucper_curve(y_member, n_points)
+    if curve is None:
+        return np.nan
+
+    return Precision_for_Recall(curve, percent_recall)
+
 class ChromosomeAUPRC(object):
     """
     Benchmark maxATAC binary predictions against a gold standard using AUPRC.
@@ -466,7 +537,8 @@ class ChromosomeAUPRC(object):
                  plot=False,
                  peak_based=False,
                  alternative_prediction_bw=None,
-                 prediction_combine_operation="mean"
+                 prediction_combine_operation="mean",
+                 random_only=False
                  ):
         """
         :param prediction_bw: Path to bigwig file containing maxATAC predictions
@@ -475,11 +547,16 @@ class ChromosomeAUPRC(object):
         :param chromosome: Chromosome to benchmark
         :param bin_size: Resolution to bin the results to
         :param agg_function: Method to use to aggregate multiple signals in the same bin
+        :param random_only: With peak_based, only write the random AUP-UCPeR and P@10%UCPeR; the prediction is not read
         """
+        if random_only and not peak_based:
+            raise ValueError("random_only requires peak_based")
+
         self.results_location = results_location
 
-        self.prediction_stream = load_bigwig(prediction_bw)
-        self.alternative_prediction_stream = load_bigwig(alternative_prediction_bw) if alternative_prediction_bw else None
+        if not random_only:
+            self.prediction_stream = load_bigwig(prediction_bw)
+            self.alternative_prediction_stream = load_bigwig(alternative_prediction_bw) if alternative_prediction_bw else None
         self.goldstandard_stream = load_bigwig(goldstandard_bw)
 
         self.chromosome = chromosome
@@ -507,6 +584,12 @@ class ChromosomeAUPRC(object):
             )
 
         self.peak_based=peak_based
+
+        if random_only:
+            self.__import_goldstandard_array__()
+            self.__random_UCPeR__()
+            return
+
         self.__import_prediction_array__(round_prediction=round_predictions)
         self.__import_goldstandard_array__()
         self.__AUPRC__()
@@ -514,6 +597,19 @@ class ChromosomeAUPRC(object):
         if plot:
             logging.info("Plotting AUPRC Curves")
             self.__plot()
+
+    def __random_UCPeR__(self):
+        """
+        Write only the random baselines of the peak-based benchmark: Random AUP-UCPeR and Random P@10%UCPeR.
+        Both depend on the gold standard, bin size and mask alone, so no prediction is needed.
+        """
+        logging.info("Calculate random AUP-UCPeR and P@10%UCPeR for " + self.chromosome)
+
+        member_array = peak_gs_array_to_member_array(self.goldstandard_array[self.blacklist_mask])
+
+        pd.DataFrame({'Random_AUPRC': [random_aup_ucper(member_array)],
+                      'Random_Precision_at_10_Percent_Recall': [random_precision_at_ucper(member_array, 0.1)]}
+                     ).to_csv(self.results_location, sep='\t', index=False)
 
     def __import_prediction_array__(self, round_prediction=6):
         """
@@ -535,8 +631,10 @@ class ChromosomeAUPRC(object):
                                                          combine_operation=self.prediction_combine_operation)
 
         # Under "sum" the bin value is a base-pair total; divide by bin_size to stay on the
-        # same per-base scale as max/mean.
-        if self.agg_function == "sum":
+        # same per-base scale as max/mean. rank_max is already a percentile, and dividing it would let
+        # the rounding below merge neighbouring ranks into ties
+        if self.agg_function == "sum" and not (self.alternative_prediction_stream is not None
+                                               and self.prediction_combine_operation == "rank_max"):
             self.prediction_array = self.prediction_array / self.bin_size
 
         self.prediction_array = np.round(self.prediction_array, round_prediction)
@@ -571,7 +669,7 @@ class ChromosomeAUPRC(object):
             self.goldstandard_array = self.goldstandard_array > 0
 
         self.random_precision = np.count_nonzero(self.goldstandard_array[self.blacklist_mask]) / \
-                                np.size(self.prediction_array[self.blacklist_mask])
+                                np.count_nonzero(self.blacklist_mask)
 
     def __get_true_positives__(self, threshold):
         """
@@ -646,8 +744,9 @@ class ChromosomeAUPRC(object):
             )
         else:
             # generate member array from gs
+            member_array = peak_gs_array_to_member_array(self.goldstandard_array[self.blacklist_mask])
             self.precision, self.recall, self.thresholds = precision_recall_curve_peak_based(
-                peak_gs_array_to_member_array(self.goldstandard_array[self.blacklist_mask]),
+                member_array,
                 self.prediction_array[self.blacklist_mask]
             )
         logging.info("Making DataFrame from results")
@@ -668,22 +767,37 @@ class ChromosomeAUPRC(object):
         self.PR_CURVE_DF["AUPRC"] = self.AUPRC
 
         if self.peak_based==False:
-            # Calculate the total gold standard bins
+            # Count gold standard bins with the same mask as the PR curve (blacklist removed, whitelist applied).
+            # Counting them chromosome wide while dividing by the evaluated bins inflates the random baseline,
+            # above 1 with a small whitelist
             logging.info("Calculate Total GoldStandard Bins")
 
-            self.PR_CURVE_DF["Total_GoldStandard_Bins"] = len(np.argwhere(self.goldstandard_array == True))
+            self.PR_CURVE_DF["Total_GoldStandard_Bins"] = np.count_nonzero(self.goldstandard_array[self.blacklist_mask])
 
-            # Find the number of non-blacklisted bins in chr of interest
-            rand_bins = len(np.argwhere(self.blacklist_mask == True))
-
-            # Random Precision
-            self.PR_CURVE_DF['Random_AUPRC'] = self.PR_CURVE_DF['Total_GoldStandard_Bins'] / rand_bins
+            # Random Precision: gold standard bins / evaluated bins, i.e. self.random_precision
+            self.PR_CURVE_DF['Random_AUPRC'] = self.random_precision
 
             # Log2FC
+            self.PR_CURVE_DF['log2FC_AUPRC_Random_AUPRC'] = np.log2(self.PR_CURVE_DF["AUPRC"] / self.PR_CURVE_DF["Random_AUPRC"])
+        else:
+            # Peaks and bins counted with the same mask as the AUP-UCPeR curve
+            self.PR_CURVE_DF["Total_GoldStandard_Bins"] = np.count_nonzero(member_array > 0)
+            self.PR_CURVE_DF["Total_GoldStandard_Peaks"] = len(np.unique(member_array[member_array > 0]))
+
+            # Random AUP-UCPeR: area under the expected random curve, not the flat bin-level ratio
+            self.PR_CURVE_DF['Random_AUPRC'] = random_aup_ucper(member_array)
+
             self.PR_CURVE_DF['log2FC_AUPRC_Random_AUPRC'] = np.log2(self.PR_CURVE_DF["AUPRC"] / self.PR_CURVE_DF["Random_AUPRC"])
 
         # Precision at 10% Recall
         self.PR_CURVE_DF['Precision_at_10_Percent_Recall']=Precision_for_Recall(self.PR_CURVE_DF, 0.1)
+
+        if self.peak_based:
+            # Random P@10%UCPeR: the expected random curve read at 10% unique-peak recall
+            self.PR_CURVE_DF['Random_Precision_at_10_Percent_Recall'] = random_precision_at_ucper(member_array, 0.1)
+
+            self.PR_CURVE_DF['log2FC_Precision_at_10_Percent_Recall_Random'] = np.log2(
+                self.PR_CURVE_DF['Precision_at_10_Percent_Recall'] / self.PR_CURVE_DF['Random_Precision_at_10_Percent_Recall'])
 
         logging.info("Write results for " + self.chromosome)
 

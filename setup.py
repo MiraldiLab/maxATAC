@@ -1,46 +1,50 @@
 #! /usr/bin/env python3
 import os
-import time
 import subprocess
 from setuptools import setup, find_packages
 
 GIT_VERSION_FILE = os.path.join("maxatac", "git_version")
 HERE = os.path.abspath(os.path.dirname(__file__))
 
+# Version of an untagged commit. A development version makes `maxatac data` install the latest data
+DEV_VERSION = "2.0.0.dev0"
 
-def get_git_tag():
-    return subprocess.check_output(["git", "describe", "--contains"], text=True).split("^")[0].strip()
 
-
-def get_git_timestamp():
-    gitinfo = subprocess.check_output(
-        ["git", "log", "--first-parent", "--max-count=1", "--format=format:%ct", "."], text=True).strip()
-    return time.strftime("%Y%m%d%H%M%S", time.gmtime(int(gitinfo)))
+def git(*args):
+    return subprocess.check_output(["git", *args], cwd=HERE, text=True, stderr=subprocess.DEVNULL).strip()
 
 
 def get_version():
     """
     Tries to get package version with following order:
-    0. default version
-    1. from git_version file - when installing from pip, this is the only source to get version
-    2. from tag
-    3. from commit timestamp
+    1. in a git checkout: the tag on the current commit without its leading "v" (v2.0.0b1 -> 2.0.0b1),
+       or DEV_VERSION if the commit is not tagged
+    2. outside git (installing from an sdist): the git_version file written when the sdist was built
+    3. DEV_VERSION
+    Tags must be PEP 440 versions: `maxatac data` installs the data repository tag of the same name.
     Updates/creates git_version file with the package version
     Returns package version
     """
 
-    version = "1.9.2"                                       # default version
-    try:
-        with open(GIT_VERSION_FILE, "r") as input_stream:   # try to get version info from file
-            version = input_stream.read()
-    except Exception:
-        pass
+    version = DEV_VERSION
 
     try:
-        version = get_git_tag()                             # try to get version info from the closest tag
+        git("rev-parse", "--git-dir")
+        in_git = True
     except Exception:
+        in_git = False
+
+    if in_git:
         try:
-            version = "1.9.2"          # try to get version info from commit date
+            tag = git("describe", "--tags", "--exact-match")
+            version = tag[1:] if tag.startswith("v") else tag
+        except Exception:
+            pass
+
+    else:
+        try:
+            with open(GIT_VERSION_FILE, "r") as input_stream:
+                version = input_stream.read().strip() or DEV_VERSION
         except Exception:
             pass
 
@@ -54,7 +58,7 @@ def get_version():
 
 def get_description():
     README = os.path.join(HERE, "README.md")
-    with open(README, "r") as f:
+    with open(README, "r", encoding="utf-8") as f:
         return f.read()
 
 setup(

@@ -149,6 +149,17 @@ def get_parser():
                                   "Default: " + MAXATAC_DATA_REPO
                              )
 
+    data_parser.add_argument("--data_version",
+                             dest="data_version",
+                             type=str,
+                             default=None,
+                             required=False,
+                             help="Tag or branch of the data repository to install (e.g. v2.0.0b1), or 'latest' "
+                                  "for the newest commit on its default branch. Default: the tag matching this "
+                                  "quant-maxATAC version (" + get_version() + "); development versions and "
+                                  "versions without a matching tag install the latest data."
+                             )
+
     data_parser.add_argument("-y", "--yes",
                              dest="yes",
                              action="store_true",
@@ -203,10 +214,11 @@ def get_parser():
 
 
     # Add optional arguments to the parser
+    # dest must be chrom_sizes: update_reference_genome_paths fills that attribute from --genome when unset
     average_parser.add_argument("-cs", "--chrom_sizes", "--chromosome_sizes",
-                                dest="chromosome_sizes",
+                                dest="chrom_sizes",
                                 type=str,
-                                help="Input chromosome sizes file"
+                                help="Input chromosome sizes file. Default: the chromosome sizes of --genome"
                                 )
 
     average_parser.add_argument("-c", "--chroms", "--chromosomes",
@@ -856,7 +868,8 @@ def get_parser():
 
     # Add arguments to the parser
     # Add arguments to the parser
-    benchmark_prediction_filetype = benchmark_parser.add_mutually_exclusive_group(required=True)
+    # Required unless --random (checked in parse_arguments): the random baselines do not read the prediction
+    benchmark_prediction_filetype = benchmark_parser.add_mutually_exclusive_group(required=False)
 
     benchmark_prediction_filetype.add_argument("-bed", "--bed",
                                                dest="prediction",
@@ -880,9 +893,12 @@ def get_parser():
     benchmark_parser.add_argument("--prediction_combine_operation",
                                   dest="prediction_combine_operation",
                                   type=str,
-                                  choices=["mean", "max"],
+                                  choices=["mean", "max", "rank_max"],
                                   default="mean",
-                                  help="How to combine bins from the primary and alternative prediction bigWig files when both provide a value. Default: mean"
+                                  help="How to combine bins from the primary and alternative prediction bigWig files. "
+                                       "mean / max combine raw values where both provide one. rank_max converts each "
+                                       "track to per-chromosome percentile ranks (zero and missing bins get 0) and "
+                                       "takes the max; precision-recall benchmark only, not with --quant. Default: mean"
                                   )
 
     benchmark_parser.add_argument("--quant_gold_standard",
@@ -916,6 +932,16 @@ def get_parser():
                                   help="Compute the precision-recall curve on gold-standard peak membership (a peak "
                                        "counts as recovered once any of its bins is predicted) instead of per bin. "
                                        "Binary benchmark only."
+                                  )
+
+    benchmark_parser.add_argument("--random",
+                                  dest="random",
+                                  action='store_true',
+                                  default=False,
+                                  help="With --peak_based, compute only the random baselines, Random AUP-UCPeR and "
+                                       "Random P@10%%UCPeR, from the gold standard, bin size and blacklist/whitelist. "
+                                       "The prediction is not read, so --bw/--bed is optional. Writes "
+                                       "<prefix>_<chromosome>_<bin_size>bp_random_UCPeR.tsv instead of the PRC file."
                                   )
 
     benchmark_parser.add_argument("--quant",
@@ -1405,7 +1431,7 @@ def get_parser():
                                   help="Tab-separated meta file with one row per cell type and columns 'Prediction' "
                                        "(prediction bigWig, quantitative or binary) and 'Binding_File' (binary gold "
                                        "standard bigWig). Optional column 'ChIP_peaks' (ChIP-seq peak BED) defines the "
-                                       "unique peaks for the Peak_Recall (% of peaks recovered) metric; without it, "
+                                       "unique peaks for the Peak_Recall (%% of peaks recovered) metric; without it, "
                                        "runs of consecutive gold-standard bins are used."
                                   )
 
@@ -1466,6 +1492,20 @@ def parse_arguments(argsl, cwd_abs_path=None):
         # parse_known_args would otherwise silently drop the extras with nargs=1
         parser.error("threshold calibrates on exactly one chromosome; got --chromosomes "
                      + " ".join(args.chromosomes))
+
+    if args.func == run_benchmarking:
+        if args.random and not args.peak_based:
+            parser.error("--random requires --peak_based")
+
+        if args.quant and args.prediction_combine_operation == "rank_max":
+            parser.error("--prediction_combine_operation rank_max is for the precision-recall benchmark; "
+                         "it cannot be combined with --quant")
+
+        if args.random and args.quant:
+            parser.error("--random is for the peak-based binary benchmark; it cannot be combined with --quant")
+
+        if not args.random and not args.prediction:
+            parser.error("one of the arguments -bed/--bed --bw/--bigwig/-bw is required")
 
     if args.func == run_benchmarking and args.quant:
         missing = [flag for flag, value in (("--quant_gold_standard", args.quant_gold_standard),

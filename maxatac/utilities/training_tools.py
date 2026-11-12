@@ -13,7 +13,7 @@ import glob
 
 from maxatac.architectures.dcnn import get_dilated_cnn
 from maxatac.utilities.constants import BP_RESOLUTION, BATCH_SIZE, CHR_POOL_SIZE, INPUT_LENGTH, INPUT_CHANNELS, \
-    BP_ORDER, TRAIN_SCALE_SIGNAL, BINARY_TARGET_MIN_PEAK_FRACTION
+    BP_ORDER, BINARY_TARGET_MIN_PEAK_FRACTION
 from maxatac.utilities.genome_tools import load_bigwig, load_2bit, get_one_hot_encoded, build_chrom_sizes_dict
 from maxatac.utilities.system_tools import get_dir, remove_tags, replace_extension
 
@@ -38,7 +38,7 @@ class MaxATACModel(object):
                  meta_path,
                  weights,
                  dense=False,
-                 target_scale_factor=TRAIN_SCALE_SIGNAL,
+                 target_scale_factor=1,
                  output_activation="sigmoid",
                  quant=False,
                  interpret=False,
@@ -95,7 +95,7 @@ class MaxATACModel(object):
         self.nn_model = self.__get_model()
 
         if interpret:
-            assert (interpret_cell_type is not None, "Set the interpretation cell type argument")
+            assert interpret_cell_type is not None, "Set the interpretation cell type argument"
             self.interpret_cell_type = interpret_cell_type
             self.__get_interpretation_attributes()
 

@@ -18,6 +18,8 @@ mkdir -p ~/opt/maxatac
 git clone --depth 1 https://github.com/MiraldiLab/quant-maxATAC_data.git ~/opt/maxatac/data
 ```
 
+To match a quant-maxATAC release, clone the data tag of the same name, e.g. `git clone --depth 1 --branch v2.0.0b1 ...`. `maxatac data` does this for you.
+
 ### 3. Then download the hg38.2bit file from UCSC next to the hg38 reference files
 
 ```bash

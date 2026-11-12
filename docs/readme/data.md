@@ -23,6 +23,8 @@ If you are still interested in using the maxATAC v1 models with quant-maxATAC, l
 maxatac data
 maxatac data --genome hg38 hg19
 maxatac data --yes
+maxatac data --data_version v2.0.0b1
+maxatac data --data_version latest
 ```
 
 ## Optional Arguments
@@ -38,6 +40,12 @@ Base directory to install into; data is placed in `<output>/maxatac/data`. Defau
 ### `--data_repo`
 
 Git repository to install the reference data and models from, e.g. a fork or mirror of quant-maxATAC_data. Default: `https://github.com/MiraldiLab/quant-maxATAC_data.git`
+
+### `--data_version`
+
+Tag or branch of the data repository to install, e.g. `v2.0.0b1`, or `latest` for the newest commit on its default branch. Default: the data tag matching the installed quant-maxATAC version (`maxatac --version`), so code and models from the same release are used together. Development installs (versions ending in `.dev0`) and versions without a matching tag install the latest data, with a warning.
+
+Releases are tagged with the same name in both repositories, following [PEP 440](https://peps.python.org/pep-0440/): `v2.0.0b1`, `v2.0.0b2`, … for previews, `v2.0.0rc1` for release candidates and `v2.0.0` for the release.
 
 ### `-y`, `--yes`
 

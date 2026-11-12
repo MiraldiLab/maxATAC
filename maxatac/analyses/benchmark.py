@@ -38,7 +38,7 @@ def run_benchmarking(args):
 
     logging.info(
         "Benchmarking" +
-        "\n  Prediction file: " + args.prediction +
+        "\n  Prediction file: " + str(args.prediction) +
         "\n  Alternative prediction file: " + str(args.alternative_prediction) +
         "\n  Prediction combine operation: " + args.prediction_combine_operation +
         "\n  Gold standard file: " + args.gold_standard +
@@ -71,9 +71,10 @@ def run_benchmarking(args):
     else:
         for chromosome in args.chromosomes:
             logging.info("Benchmarking " + chromosome)
-            # Build the results filename
+            # Build the results filename; --random writes only the random baselines to their own file
+            results_suffix = "bp_random_UCPeR.tsv" if args.random else "bp_PRC.tsv"
             results_filename = os.path.join(output_dir,
-                                            args.prefix + "_" + chromosome + "_" + str(args.bin_size) + "bp_PRC.tsv")
+                                            args.prefix + "_" + chromosome + "_" + str(args.bin_size) + results_suffix)
 
             ChromosomeAUPRC(args.prediction,
                             args.gold_standard,
@@ -88,7 +89,8 @@ def run_benchmarking(args):
                             plot=args.plot,
                             peak_based=args.peak_based,
                             alternative_prediction_bw=args.alternative_prediction,
-                            prediction_combine_operation=args.prediction_combine_operation
+                            prediction_combine_operation=args.prediction_combine_operation,
+                            random_only=args.random
                             )
 
     # Measure End Time of Training

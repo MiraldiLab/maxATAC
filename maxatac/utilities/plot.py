@@ -302,7 +302,10 @@ def plot_threshold_calibration_stats(median_curve, cell_type_curves, file_locati
             ct_curve = ct["curves"][metric_key]
             ax.plot(ct_curve["Threshold"], ct_curve[col], c=color, lw=1.2, alpha=0.85, label=ct["name"])
         if metric_filter is not None:
-            panel_median = median_curve[median_curve["Metric"] == metric_filter].sort_values("Threshold")
+            # Bins past some cell types' range can share a median Threshold; break ties on Bin in
+            # the metric's own direction (Precision rises, Recall/Peak_Recall fall with threshold)
+            panel_median = median_curve[median_curve["Metric"] == metric_filter].sort_values(
+                ["Threshold", "Bin"], ascending=[True, metric_filter == "Precision"], kind="mergesort")
             ax.plot(panel_median["Threshold"], panel_median[col], c="black", lw=3, label="Median")
         ax.set_title(f"{chrom_name} Validation {label} v. Thresholds", size="medium")
         ax.set_xlabel("Threshold", size="medium")

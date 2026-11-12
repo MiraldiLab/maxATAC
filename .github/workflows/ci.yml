@@ -1,0 +1,80 @@
+name: CI
+
+# Fast checks on every push and pull request: install, CLI smoke test, lint for errors, unit tests.
+# The data -> predict -> benchmark run lives in e2e.yml.
+
+on:
+  push:
+    # Branches only: release tags run this through release.yml
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+concurrency:
+  # github.workflow is the caller's name when called from release.yml, so a release never cancels a branch run
+  group: ${{ github.workflow }}-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TF_CPP_MIN_LOG_LEVEL: "2"
+  CUDA_VISIBLE_DEVICES: ""
+
+jobs:
+  test:
+    name: Unit tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        # setup.py pins tensorflow>=2.14,<2.16, which has wheels for Python 3.9-3.11
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: setup.py
+
+      - name: Install system dependencies
+        # pybedtools calls the bedtools binary
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bedtools
+
+      - name: Install ushuffle
+        # The PyPI release of ushuffle (a quant-maxATAC dependency) does not build; install it from source first.
+        # --no-build-isolation needs the build tools already installed. If the build fails, retry with Cython < 3.
+        run: |
+          # setuptools 82 removed pkg_resources, which older dependencies (e.g. TF 2.15-era tensorboard) still import
+          python -m pip install --upgrade pip "setuptools<82" wheel
+          pip install --no-build-isolation git+https://github.com/guma44/ushuffle.git || {
+            echo "::warning::ushuffle build failed; retrying with Cython < 3"
+            pip install "cython<3"
+            pip install --no-build-isolation git+https://github.com/guma44/ushuffle.git
+          }
+          python -c "from ushuffle import shuffle; print(shuffle(b'ACGTACGTAC', 2))"
+
+      - name: Install quant-maxATAC
+        run: |
+          pip install -e . pytest flake8
+
+      - name: CLI smoke test
+        run: |
+          maxatac -h
+          for command in data predict benchmark threshold train; do
+            maxatac "$command" -h > /dev/null
+          done
+
+      - name: Lint (errors only)
+        # Syntax errors and undefined names; style is not enforced
+        run: flake8 maxatac tests --count --select=E9,F63,F7,F82 --show-source --statistics
+
+      - name: Unit tests
+        # data -> predict -> benchmark on real data is covered by e2e.yml
+        run: pytest -v tests --ignore=tests/e2e

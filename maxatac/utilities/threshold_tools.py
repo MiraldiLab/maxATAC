@@ -166,28 +166,32 @@ def calculate_AUC_per_rank(PR_CURVE_DF, threshold):
 
 def compute_calibration_curve(goldstandard, prediction, gs_bins=None, rand_bins=None, peak_max=None):
     """
-    Build a monotonic Precision/Recall/Threshold calibration curve (plus F1) for one
-    goldstandard/prediction pair. log2FC is added only when gs_bins and rand_bins are given;
-    Peak_Recall (fraction of unique ChIP-seq peaks recovered) only when peak_max, the
-    per-peak max prediction from peak_max_predictions(), is given.
+    Build a Precision/Recall/Threshold calibration curve (plus F1) for one goldstandard/prediction
+    pair. Every row is a real threshold with the metrics it actually achieves. log2FC is added only
+    when gs_bins and rand_bins are given; Peak_Recall (fraction of unique ChIP-seq peaks recovered)
+    only when peak_max, the per-peak max prediction from peak_max_predictions(), is given.
+
+    Only thresholds on the precision-recall frontier are kept: a threshold is dropped when a lower
+    threshold reaches the same or a higher precision, since that one also has at least the recall
+    (and Peak_Recall). The kept rows are monotonic in threshold without changing any value.
+    sklearn's terminal (Precision=1, Recall=0) point has no threshold and is dropped.
     """
     precision, recall, thresholds = precision_recall_curve(goldstandard, prediction)
 
-    P = np.maximum.accumulate(np.array(precision))
-    R = np.minimum.accumulate(np.array(recall))
+    # precision/recall have one more entry than thresholds: the terminal sentinel
+    precision = np.asarray(precision[:-1])
+    recall = np.asarray(recall[:-1])
 
-    # sklearn returns one fewer threshold than precision/recall; label the terminal
-    # sentinel row (P=1, R=0) with the last real threshold.
-    threshold_col = np.append(thresholds, thresholds[-1])
-    curve_df = pd.DataFrame({'Precision': P, 'Recall': R, "Threshold": threshold_col})
+    # Thresholds ascend: keep a point only if it beats the precision of every lower threshold
+    best_below = np.concatenate(([-np.inf], np.maximum.accumulate(precision)[:-1]))
+    keep = precision > best_below
+
+    curve_df = pd.DataFrame({'Precision': precision[keep],
+                             'Recall': recall[keep],
+                             'Threshold': np.asarray(thresholds)[keep]})
+
     if peak_max is not None:
-        peak_recall = peak_recall_at_thresholds(peak_max, threshold_col)
-        # The sentinel row stands for "above every threshold" (Recall=0); match it
-        peak_recall[-1] = 0.0
-        curve_df[PEAK_RECALL] = peak_recall
-    # Duplicate the last row rather than forcing Threshold=1 (quant predictions can exceed 1)
-    new_row = curve_df.tail(n=1)
-    curve_df = pd.concat([curve_df, new_row], ignore_index=True)
+        curve_df[PEAK_RECALL] = peak_recall_at_thresholds(peak_max, curve_df['Threshold'])
 
     if gs_bins is not None and rand_bins is not None:
         random_precision = gs_bins / rand_bins

@@ -115,3 +115,7 @@ snakemake/dag.svg
 
 # Readme Swp file
 *.INSTALL.md.swp
+
+# End-to-end test (tests/e2e/run_e2e.sh)
+test_data/
+e2e_out/
