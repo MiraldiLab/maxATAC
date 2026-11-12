@@ -1,0 +1,187 @@
+name: Release
+
+# Push a version tag to release, e.g.
+#   git tag -a v2.0.0b2 -m "q-maxATAC v2 preview 2" && git push xc v2.0.0b2
+#
+# 1. Runs CI and the end-to-end test on the tagged commit, the latter with the data repository tag of the same
+#    name (`maxatac data --data_version <tag>`): tag MiraldiLab/quant-maxATAC_data first, or the release fails
+# 2. Builds the sdist and wheel and checks their version matches the tag
+# 3. Once CI and the end-to-end test pass, builds the Docker image from the tagged commit, checks the version
+#    inside it and pushes it to ghcr.io/<repository owner>/quant-maxatac:<version> (and :latest for final releases)
+# 4. Creates a GitHub Release with the packages, the e2e metrics and the image in the notes and the benchmark
+#    files attached. a/b/rc tags (v2.0.0b2, v2.0.0rc1) are marked as pre-releases
+#
+# The first image pushed to a repository owner's GHCR is private: make it public once in the package settings.
+#
+# Tags must be PEP 440 versions with a leading "v": v2.0.0, v2.0.0b1, v2.0.0rc1. Never move or reuse a tag.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  e2e:
+    uses: ./.github/workflows/e2e.yml
+    with:
+      data_version: ${{ github.ref_name }}
+
+  build:
+    name: Build packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history and tags: setup.py reads the version from the tag on this commit
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          twine check dist/*
+
+      - name: Check the version matches the tag
+        # Catches tags that are not PEP 440 versions (e.g. v2.0.0-preview.1 would be built as 2.0.0rc1)
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          ls dist
+          if [ ! -f "dist/maxatac-${version}.tar.gz" ]; then
+            echo "::error::Built packages do not have version ${version} from tag ${GITHUB_REF_NAME}"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist
+          retention-days: 14
+
+  image:
+    name: Docker image
+    # Only publish an image of code that passed the checks
+    needs: [ci, e2e]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.name.outputs.image }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Image name and version
+        id: name
+        # GHCR names must be lowercase; the owner follows the repository, so this works unchanged upstream
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "repo=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/quant-maxatac" >> "$GITHUB_OUTPUT"
+          echo "image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/quant-maxatac:${version}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # The image has no .git: the version comes from the tag of the commit it is built from
+          build-args: |
+            MAXATAC_VERSION=${{ steps.name.outputs.version }}
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+          load: true
+          tags: ${{ steps.name.outputs.image }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Test the image
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+          VERSION: ${{ steps.name.outputs.version }}
+        run: |
+          docker run --rm "${IMAGE}" maxatac -h > /dev/null
+          installed=$(docker run --rm "${IMAGE}" python -c "from importlib import metadata; print(metadata.version('maxatac'))")
+          if [ "${installed}" != "${VERSION}" ]; then
+            echo "::error::The image has maxatac ${installed}, expected ${VERSION}"
+            exit 1
+          fi
+          docker run --rm "${IMAGE}" python -c "from ushuffle import shuffle; shuffle(b'ACGTACGTAC', 2)"
+          docker images "${IMAGE}"
+
+      - name: Push
+        env:
+          IMAGE: ${{ steps.name.outputs.image }}
+          REPO: ${{ steps.name.outputs.repo }}
+        run: |
+          docker push "${IMAGE}"
+          # :latest only moves to final releases, never to a/b/rc pre-releases
+          if [[ ! "${GITHUB_REF_NAME}" =~ (a|b|rc)[0-9]+$ ]]; then
+            docker tag "${IMAGE}" "${REPO}:latest"
+            docker push "${REPO}:latest"
+          fi
+
+  release:
+    name: GitHub Release
+    needs: [ci, e2e, build, image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: e2e-outputs
+          path: e2e_out
+
+      - name: Write release notes
+        env:
+          IMAGE: ${{ needs.image.outputs.image }}
+        run: |
+          {
+            echo "quant-maxATAC ${GITHUB_REF_NAME}, tested with [quant-maxATAC_data ${GITHUB_REF_NAME}](https://github.com/MiraldiLab/quant-maxATAC_data/tree/${GITHUB_REF_NAME})."
+            echo
+            echo "Install: \`pip install https://github.com/${GITHUB_REPOSITORY}/releases/download/${GITHUB_REF_NAME}/$(cd dist && ls *.whl)\`, then \`maxatac data\` installs the matching models."
+            echo
+            echo "Docker: \`docker pull ${IMAGE}\` (no data inside: mount ~/opt/maxatac, see the [Dockerfile](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/Dockerfile))."
+            echo
+            cat e2e_out/metrics.md
+          } > notes.md
+          cat notes.md
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          shopt -s nullglob
+          prerelease=""
+          if [[ "${GITHUB_REF_NAME}" =~ (a|b|rc)[0-9]+$ ]]; then prerelease="--prerelease"; fi
+
+          gh release create "${GITHUB_REF_NAME}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --title "quant-maxATAC ${GITHUB_REF_NAME}" \
+            --notes-file notes.md \
+            --generate-notes \
+            ${prerelease} \
+            dist/* \
+            e2e_out/metrics.json \
+            e2e_out/benchmark/*.tsv \
+            e2e_out/benchmark/*.png

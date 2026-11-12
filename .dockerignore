@@ -1,0 +1,16 @@
+# Only the package source goes into the image (see Dockerfile)
+.git
+.github
+.idea
+**/__pycache__
+**/*.pyc
+*.egg-info
+build
+dist
+docs
+tests
+packaging
+test_data
+e2e_out
+maxatac/git_version
+.Rhistory

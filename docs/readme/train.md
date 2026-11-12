@@ -33,7 +33,7 @@ General Steps:
 Every 1,024 bp training example is split into 32 bins of 32 bp. The per-bin target depends on the model type:
 
 * **`--quant` (quantitative model):** the target is the *mean* ChIP-seq signal of `Binding_File` across the 32 bp, multiplied by `--target_scale_factor`. The model uses a `softplus` output layer and a regression loss (`--loss`, default `mse`). Predictions are therefore on the same (scaled) units as the ChIP-seq targets.
-* **Binary model (default):** the target is `1` if more than half of the 32 bp overlap a ChIP-seq peak in `Binding_File`, else `0`. The model uses a `sigmoid` output layer and cross-entropy loss (maxATAC v1 behaviour).
+* **Binary model (default):** the target is `1` if more than half of the 32 bp overlap a ChIP-seq peak in `Binding_File` (the fraction is `BINARY_TARGET_MIN_PEAK_FRACTION = 0.5` in `maxatac/utilities/constants.py`; `Binding_File` must be a 0/1 peak track), else `0`. The model uses a `sigmoid` output layer and cross-entropy loss (maxATAC v1 behaviour).
 
 ### Model selection
 
@@ -156,7 +156,7 @@ The weights to use to initialize a model. Default: `do not initialize with weigh
 
 ### `--epochs`
 
-The number of epochs to train the model for. Default: `20`
+The number of epochs to train the model for. Default: `100`
 
 ### `--batches`
 

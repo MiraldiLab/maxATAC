@@ -1,4 +1,4 @@
-import pandas as pd
+import logging
 
 from maxatac.utilities.system_tools import Mute
 import tensorflow as tf
@@ -88,7 +88,7 @@ class pearsonr_mse(tf.keras.losses.Loss):
         super().__init__(name=name)
         self.alpha = kwargs.get('loss_params')
         if not self.alpha:
-            print('ALPHA SET TO DEFAULT VALUE!')
+            logging.info('loss_params not provided, using the default alpha')
             self.alpha = 0.001 #best
     def call(self, y_true, y_pred):
         #multinomial part of loss function
@@ -104,7 +104,7 @@ class pearsonr_poisson(tf.keras.losses.Loss):
         super().__init__(name=name)
         self.alpha = kwargs.get('loss_params')
         if not self.alpha:
-            print('ALPHA SET TO DEFAULT VALUE!')
+            logging.info('loss_params not provided, using the default alpha')
             self.alpha = 0.1 ###TODO: SET TO 0.001
     def call(self, y_true, y_pred):
         #multinomial part of loss function
@@ -129,7 +129,6 @@ class mse(tf.keras.losses.Loss):
         super().__init__(name=name)
 
     def call(self, y_true, y_pred):
-        print("value: ", tf.keras.losses.MSE(y_true,y_pred))
         return tf.keras.losses.MSE(y_true,y_pred)
 
 class multinomialnll(tf.keras.losses.Loss):
@@ -140,11 +139,11 @@ class multinomialnll(tf.keras.losses.Loss):
         logits_perm = y_pred
         true_counts_perm = y_true
 
-        #import numpy
-        #np.savetxt("/Users/war9qi/Project_Data/maxATAC_sample/ELK1_quantitative_output/true_counts_perm.tsv", true_counts_perm, delimiter='\t')
-        #np.savetxt("/Users/war9qi/Project_Data/maxATAC_sample/ELK1_quantitative_output/logits_perm.tsv", logits_perm, delimiter='\t')
-        
-        import tensorflow_probability as tfp  # optional dependency, only needed for multinomial losses
+        try:
+            import tensorflow_probability as tfp  # optional dependency, only needed for multinomial losses
+        except ImportError as err:
+            raise ImportError("The multinomial losses need tensorflow-probability: "
+                              "pip install 'maxatac[multinomial]'") from err
 
         counts_per_example = tf.reduce_sum(true_counts_perm, axis=-1)
         dist = tfp.distributions.Multinomial(total_count=counts_per_example,
@@ -161,9 +160,8 @@ class multinomialnll_mse(tf.keras.losses.Loss):
         super().__init__(name=name)
         self.alpha = kwargs.get('loss_params')
         if not self.alpha:
-            print('ALPHA SET TO DEFAULT VALUE!')
+            logging.info('loss_params not provided, using the default alpha')
             self.alpha = 0.0000001
-            self.counter=1
     def call(self, y_true, y_pred):
 
         # GOPHER implementation of loss
@@ -176,7 +174,11 @@ class multinomialnll_mse(tf.keras.losses.Loss):
         true_counts_perm = y_true
 
 
-        import tensorflow_probability as tfp  # optional dependency, only needed for multinomial losses
+        try:
+            import tensorflow_probability as tfp  # optional dependency, only needed for multinomial losses
+        except ImportError as err:
+            raise ImportError("The multinomial losses need tensorflow-probability: "
+                              "pip install 'maxatac[multinomial]'") from err
 
         counts_per_example = tf.reduce_sum(true_counts_perm, axis=-1)
         dist = tfp.distributions.Multinomial(total_count=counts_per_example,
@@ -221,13 +223,6 @@ class multinomialnll_mse(tf.keras.losses.Loss):
         # multinomial loss
         multinomial_loss = multinomialnll()(y_true, logits)
 
-        '''
-        np.savetxt("/Users/war9qi/Project_Data/maxATAC_sample/ELK1_quantitative_output/y_true.tsv", y_true,
-                   delimiter='\t')
-        np.savetxt("/Users/war9qi/Project_Data/maxATAC_sample/ELK1_quantitative_output/y_pred.tsv", y_pred,
-                   delimiter='\t')
-        '''
-
         MSE_loss = tf.keras.losses.MSE([K.log(1 + K.sum(y_true, axis=(-2, -1)))],
                                        [K.log(1 + K.sum(y_pred, axis=(-2, -1)))])
 
@@ -236,27 +231,6 @@ class multinomialnll_mse(tf.keras.losses.Loss):
 
         total_loss = bpnet_loss
 
-        '''
-        if self.counter in range(0,40):
-            epoch = 1
-        elif self.counter in range(40,80):
-            epoch = 2
-        elif self.counter in range(80,120):
-            epoch = 3
-        elif self.counter in range(120,160):
-            epoch = 4
-        else:
-            epoch = 5
-
-        tf.print("epoch: ", epoch, "multinomialnll_GOPHER: ", total_loss, "multinomialnll_BPnet: ", bpnet_loss)
-        self.counter = self.counter +1
-
-        if self.counter == 39 or self.counter ==79 or self.counter == 119 or self.counter == 159 or self.counter==199:
-
-            df=pd.DataFrame([[total_loss.numpy(), bpnet_loss.numpy()]], columns=['GOPHER_multinomialnll', 'BPnet_multinomialnll'])
-
-            df.to_csv("/Users/war9qi/Project_Data/maxATAC_sample/ELK1_quantitative_output/Epoch_"+str(epoch)+"_loss_comp.tsv", sep = '\t')'''
-
         return total_loss
 
 class multinomialnll_mse_bpnet(tf.keras.losses.Loss):
@@ -264,7 +238,7 @@ class multinomialnll_mse_bpnet(tf.keras.losses.Loss):
         super().__init__(name=name)
         self.alpha = kwargs.get('loss_params')
         if not self.alpha:
-            print('ALPHA SET TO DEFAULT VALUE!')
+            logging.info('loss_params not provided, using the default alpha')
             self.alpha = 0.0000001
 
     def call(self, y_true, y_pred):
@@ -275,11 +249,6 @@ class multinomialnll_mse_bpnet(tf.keras.losses.Loss):
 
         # multinomial loss
         multinomial_loss = multinomialnll()(y_true, logits)
-
-        np.savetxt("/Users/war9qi/Project_Data/maxATAC_sample/ELK1_quantitative_output/y_true.tsv", y_true,
-                   delimiter='\t')
-        np.savetxt("/Users/war9qi/Project_Data/maxATAC_sample/ELK1_quantitative_output/y_pred.tsv", y_pred,
-                   delimiter='\t')
 
         mse_loss = tf.keras.losses.MSE([K.log(1 + K.sum(y_true, axis=(-2, -1)))],
                              [K.log(1 + K.sum(y_pred, axis=(-2, -1)))])
@@ -293,7 +262,7 @@ class multinomialnll_mse_reg(tf.keras.losses.Loss):
         super().__init__(name=name)
         self.alpha = kwargs.get('loss_params')
         if not self.alpha:
-            print('ALPHA SET TO DEFAULT VALUE!')
+            logging.info('loss_params not provided, using the default alpha')
             self.alpha = 0.0000001
         # self.alpha=0.001
     def call(self, y_true, y_pred):
@@ -347,16 +316,8 @@ class r2 (tf.keras.losses.Loss):
         super().__init__(name=name)
 
     def call(self, y_true, y_pred):
-        print(y_true)
-        print(y_pred)
         y_true = tf.cast(y_true, 'float32')
         y_pred = tf.cast(y_pred, 'float32')
-        print("y_true shape")
-        print(y_true.shape)
-        print(y_true)
-        print("y_pred shape")
-        print(y_pred.shape)
-        print(y_pred)
 
         shape = y_true.shape[-1]
         true_sum = tf.reduce_sum(y_true, axis=[0,1])
@@ -367,18 +328,14 @@ class r2 (tf.keras.losses.Loss):
         count = tf.reduce_sum(count, axis=[0,1])
 
         true_mean = tf.divide(true_sum, count)
-        print(true_mean)
         true_mean2 = tf.math.square(true_mean)
-        print(true_mean2)
 
         total = true_sumsq - tf.multiply(count, true_mean2)
-        print(total)
 
         resid1 = pred_sumsq
         resid2 = -2*product
         resid3 = true_sumsq
         resid = resid1 + resid2 + resid3
-        print(resid)
 
         r2 = tf.ones_like(shape, dtype=tf.float32) - tf.divide(resid, total)
         return -tf.reduce_mean(r2)
@@ -406,34 +363,31 @@ class kl_divergence(tf.keras.losses.Loss):
         super().__init__(name=name)
 
     def call(self, y_true, y_pred):
-        from sklearn.preprocessing import normalize
-
-        # KLD call
-
-        '''loss  = tf.keras.losses.KLDivergence().call(y_true=tf.linalg.normalize(y_true, ord=1, axis=1)[0],
-                                                    y_pred=tf.linalg.normalize(y_pred, ord=1, axis=1)[0])'''
-
+        """
+        KL(p || q) = sum_i p_i * (log p_i - log q_i), with p = y_true and q = y_pred each
+        L1-normalized along the output axis so every example is treated as a distribution
+        over bins. Averaged over the batch.
+        """
         epsilon = 1e-8
-        y_true = tf.where(tf.math.is_nan(y_true), epsilon * tf.ones_like(y_true), y_true)
-        y_pred = tf.where(tf.math.is_nan(y_pred), epsilon * tf.ones_like(y_pred), y_pred)
+        y_true = tf.cast(y_true, 'float32')
+        y_pred = tf.cast(y_pred, 'float32')
 
-        y_true = tf.where(tf.math.is_inf(y_true), epsilon * tf.ones_like(y_true), y_true)
-        y_pred = tf.where(tf.math.is_inf(y_pred), epsilon * tf.ones_like(y_pred), y_pred)
+        # Replace NaN/inf and keep the inputs strictly positive before normalizing. No upper
+        # clip here: quantitative targets are unbounded signal, not probabilities.
+        y_true = tf.where(tf.math.is_finite(y_true), y_true, epsilon * tf.ones_like(y_true))
+        y_pred = tf.where(tf.math.is_finite(y_pred), y_pred, epsilon * tf.ones_like(y_pred))
+        y_true = tf.maximum(y_true, epsilon)
+        y_pred = tf.maximum(y_pred, epsilon)
 
-        y_true = tf.clip_by_value(y_true, epsilon, 1.0)
-        y_pred = tf.clip_by_value(y_pred, epsilon, 1.0)
+        p = tf.linalg.normalize(y_true, ord=1, axis=1)[0]
+        q = tf.linalg.normalize(y_pred, ord=1, axis=1)[0]
 
-        y_true_normalized = tf.linalg.normalize(y_true, ord=1, axis=1)[0]
-        y_pred_normalized = tf.linalg.normalize(y_pred, ord=1, axis=1)[0]
+        p = tf.clip_by_value(p, epsilon, 1.0)
+        q = tf.clip_by_value(q, epsilon, 1.0)
 
+        kl = tf.reduce_sum(p * (tf.math.log(p) - tf.math.log(q)), axis=1)
 
-        log_y_pred = tf.math.log(y_pred_normalized)
-
-        # Compute the KL divergence manually
-        loss = tf.reduce_sum(y_true_normalized * log_y_pred, axis=1)
-
-
-        return loss
+        return tf.reduce_mean(kl)
 
 class cauchy_lf(tf.keras.losses.Loss):
     def __init__(self, name="cauchy_lf", **kwargs):

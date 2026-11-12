@@ -16,7 +16,7 @@ def run_call_peaks(args):
         chromosomes: The list of chromosomes to call peaks for
         BIN_SIZE: The size of the bin to use for peak calling
         prefix: The prefix for the output filename
-        cutoff_type: Choose between Precision, Recall, and F1 to choose your cutoffs
+        cutoff_type: Choose between Precision, Recall, F1, and Peak_Recall to choose your cutoffs
         cutoff_value: The value associated to cutoff type, i.e. Precision 0.75
         cutoff_file: Threshold calibration table written by `maxatac threshold`, i.e.
             /maxATAC/data/models/YOUR_TF_MODEL/YOUR_TF_MODEL_cross_celltype.tsv

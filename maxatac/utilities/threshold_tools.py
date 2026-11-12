@@ -5,6 +5,121 @@ from sklearn import metrics
 from sklearn.metrics import precision_recall_curve
 
 
+def f1_from_precision_recall(precision, recall):
+    """
+    F1 = 2PR / (P + R), defined as 0 where P = R = 0 (e.g. a cell type with no reachable bins)
+    instead of NaN, so a single degenerate row cannot propagate through the binning, the
+    cross-cell-type medians, or the max-F1 lookups.
+    """
+    precision = np.asarray(precision, dtype=float)
+    recall = np.asarray(recall, dtype=float)
+    denominator = precision + recall
+
+    return np.divide(2 * precision * recall, denominator,
+                     out=np.zeros_like(denominator), where=denominator > 0)
+
+
+PEAK_RECALL = 'Peak_Recall'
+
+
+def curve_value_columns(df):
+    """
+    Value columns carried through binning/medians: always Precision/Recall/Threshold/F1,
+    plus Peak_Recall when the curve was built with per-peak predictions.
+    """
+    columns = ['Precision', 'Recall', 'Threshold', 'F1']
+    if PEAK_RECALL in df.columns:
+        columns.append(PEAK_RECALL)
+    return columns
+
+
+def _intervals_to_peak_bin_pairs(start_bins, end_bins):
+    """
+    Expand half-open bin intervals [start, end) into flat (peak_idx, bin_idx) pairs.
+    Pairs rather than a label array, because overlapping peaks can share a bin.
+    """
+    start_bins = np.asarray(start_bins, dtype=np.int64)
+    lengths = np.asarray(end_bins, dtype=np.int64) - start_bins
+
+    peak_idx = np.repeat(np.arange(len(lengths)), lengths)
+    offsets = np.arange(lengths.sum()) - np.repeat(np.cumsum(lengths) - lengths, lengths)
+    bin_idx = np.repeat(start_bins, lengths) + offsets
+
+    return peak_idx, bin_idx
+
+
+def import_peak_bed_bins(peaks_bed, chrom_name, chrom_length, bin_count):
+    """
+    Map the unique (chr, start, end) intervals of a ChIP-seq peak BED on chrom_name onto the
+    bin grid used by get_bigwig_stats (nBins=bin_count over [0, chrom_length), so each bin is
+    chrom_length / bin_count bp wide). Peaks falling entirely past the last bin are dropped.
+
+    :return: (peak_idx, bin_idx) pairs, one per bin a peak touches
+    """
+    bed = pd.read_csv(peaks_bed, sep="\t", header=None, usecols=[0, 1, 2],
+                      names=['chr', 'start', 'end'], dtype={'chr': str}, comment='#')
+    # Coercing drops track/browser header lines
+    bed['start'] = pd.to_numeric(bed['start'], errors='coerce')
+    bed['end'] = pd.to_numeric(bed['end'], errors='coerce')
+    bed = bed.dropna()
+    bed = bed[bed['chr'] == chrom_name].drop_duplicates(subset=['chr', 'start', 'end'])
+
+    start = bed['start'].to_numpy(dtype=np.int64)
+    end = bed['end'].to_numpy(dtype=np.int64)
+
+    start_bins = start * bin_count // chrom_length
+    end_bins = np.minimum(-(-end * bin_count // chrom_length), bin_count)
+
+    keep = end_bins > start_bins
+    return _intervals_to_peak_bin_pairs(start_bins[keep], end_bins[keep])
+
+
+def gold_standard_run_bins(gold_standard):
+    """
+    Fallback peak definition when no ChIP-seq peak BED is given: each run of consecutive
+    gold-standard bins is one peak (peaks closer than one bin apart merge).
+
+    :return: (peak_idx, bin_idx) pairs, one per gold-standard bin
+    """
+    gs = np.asarray(gold_standard, dtype=bool).astype(np.int8)
+    edges = np.diff(np.concatenate(([0], gs, [0])))
+
+    return _intervals_to_peak_bin_pairs(np.flatnonzero(edges == 1), np.flatnonzero(edges == -1))
+
+
+def peak_max_predictions(predictions, peak_idx, bin_idx, keep_mask=None):
+    """
+    Max prediction per peak over its kept (e.g. non-blacklisted) bins. Peaks with no kept
+    bin are dropped, so they do not count toward the Peak_Recall denominator.
+    """
+    predictions = np.asarray(predictions, dtype=float)
+    if keep_mask is not None:
+        keep = np.asarray(keep_mask, dtype=bool)[bin_idx]
+        peak_idx, bin_idx = peak_idx[keep], bin_idx[keep]
+
+    if len(peak_idx) == 0:
+        return np.array([], dtype=float)
+
+    peak_max = np.full(int(peak_idx.max()) + 1, -np.inf)
+    np.maximum.at(peak_max, peak_idx, predictions[bin_idx])
+
+    return peak_max[np.isfinite(peak_max)]
+
+
+def peak_recall_at_thresholds(peak_max, thresholds):
+    """
+    Fraction of peaks recovered at each threshold T: a peak counts when any of its bins has
+    prediction >= T (the same >= rule sklearn uses for bin-level Recall).
+    """
+    thresholds = np.asarray(thresholds, dtype=float)
+    n_peaks = len(peak_max)
+    if n_peaks == 0:
+        return np.zeros_like(thresholds)
+
+    sorted_max = np.sort(peak_max)
+    return (n_peaks - np.searchsorted(sorted_max, thresholds, side='left')) / n_peaks
+
+
 def import_blacklist_mask(bigwig_path, chromosome, chromosome_length, bin_count):
     """
         Import the chromosome signal from a blacklist bigwig file and convert to a numpy array to use to mask out
@@ -49,29 +164,40 @@ def calculate_AUC_per_rank(PR_CURVE_DF, threshold):
             return metrics.auc(y=tmp_df["Precision"], x=tmp_df["Recall"])
 
 
-def compute_calibration_curve(goldstandard, prediction, gs_bins=None, rand_bins=None):
+def compute_calibration_curve(goldstandard, prediction, gs_bins=None, rand_bins=None, peak_max=None):
     """
-    Build a monotonic Precision/Recall/Threshold calibration curve (plus F1) for one
-    goldstandard/prediction pair. log2FC is added only when gs_bins and rand_bins are given.
+    Build a Precision/Recall/Threshold calibration curve (plus F1) for one goldstandard/prediction
+    pair. Every row is a real threshold with the metrics it actually achieves. log2FC is added only
+    when gs_bins and rand_bins are given; Peak_Recall (fraction of unique ChIP-seq peaks recovered)
+    only when peak_max, the per-peak max prediction from peak_max_predictions(), is given.
+
+    Only thresholds on the precision-recall frontier are kept: a threshold is dropped when a lower
+    threshold reaches the same or a higher precision, since that one also has at least the recall
+    (and Peak_Recall). The kept rows are monotonic in threshold without changing any value.
+    sklearn's terminal (Precision=1, Recall=0) point has no threshold and is dropped.
     """
     precision, recall, thresholds = precision_recall_curve(goldstandard, prediction)
 
-    P = np.maximum.accumulate(np.array(precision))
-    R = np.minimum.accumulate(np.array(recall))
+    # precision/recall have one more entry than thresholds: the terminal sentinel
+    precision = np.asarray(precision[:-1])
+    recall = np.asarray(recall[:-1])
 
-    # sklearn returns one fewer threshold than precision/recall; label the terminal
-    # sentinel row (P=1, R=0) with the last real threshold.
-    threshold_col = np.append(thresholds, thresholds[-1])
-    curve_df = pd.DataFrame({'Precision': P, 'Recall': R, "Threshold": threshold_col})
-    # Duplicate the last row rather than forcing Threshold=1 (quant predictions can exceed 1)
-    new_row = curve_df.tail(n=1)
-    curve_df = pd.concat([curve_df, new_row], ignore_index=True)
+    # Thresholds ascend: keep a point only if it beats the precision of every lower threshold
+    best_below = np.concatenate(([-np.inf], np.maximum.accumulate(precision)[:-1]))
+    keep = precision > best_below
+
+    curve_df = pd.DataFrame({'Precision': precision[keep],
+                             'Recall': recall[keep],
+                             'Threshold': np.asarray(thresholds)[keep]})
+
+    if peak_max is not None:
+        curve_df[PEAK_RECALL] = peak_recall_at_thresholds(peak_max, curve_df['Threshold'])
 
     if gs_bins is not None and rand_bins is not None:
         random_precision = gs_bins / rand_bins
         curve_df['log2FC'] = np.log2(curve_df['Precision'] / random_precision)
 
-    curve_df['F1'] = 2 * (curve_df['Precision'] * curve_df['Recall']) / (curve_df['Precision'] + curve_df['Recall'])
+    curve_df['F1'] = f1_from_precision_recall(curve_df['Precision'], curve_df['Recall'])
 
     return curve_df
 
@@ -90,7 +216,7 @@ def bin_curve_by_metric(curve_df, metric):
     binned = binned.rename(columns={'_bin': 'Bin'})
     binned['Metric'] = metric
 
-    return binned[['Metric', 'Bin', 'Precision', 'Recall', 'Threshold', 'F1']].reset_index(drop=True)
+    return binned[['Metric', 'Bin'] + curve_value_columns(binned)].reset_index(drop=True)
 
 
 def extend_bins_to_full_grid(binned_df, full_bins=None):
@@ -106,17 +232,17 @@ def extend_bins_to_full_grid(binned_df, full_bins=None):
     binned_df = binned_df.drop_duplicates(subset='Bin').sort_values('Bin').reset_index(drop=True)
     grid = pd.DataFrame({'Bin': np.sort(np.unique(full_bins))})
 
+    value_columns = curve_value_columns(binned_df)
+
     extended = grid.merge(binned_df, on='Bin', how='left')
     # Row position equals Bin position on the evenly spaced grid, so linear is exact
-    extended[['Precision', 'Recall', 'Threshold', 'F1']] = extended[
-        ['Precision', 'Recall', 'Threshold', 'F1']
-    ].interpolate(method='linear', limit_direction='both')
+    extended[value_columns] = extended[value_columns].interpolate(method='linear', limit_direction='both')
     extended['Metric'] = extended['Metric'].ffill().bfill()
 
     # Recompute F1 from interpolated P/R for internal consistency
-    extended['F1'] = 2 * extended['Precision'] * extended['Recall'] / (extended['Precision'] + extended['Recall'])
+    extended['F1'] = f1_from_precision_recall(extended['Precision'], extended['Recall'])
 
-    return extended[['Metric', 'Bin', 'Precision', 'Recall', 'Threshold', 'F1']]
+    return extended[['Metric', 'Bin'] + value_columns]
 
 
 def median_bins_across_samples(binned_tables, full_bins=None):
@@ -129,7 +255,7 @@ def median_bins_across_samples(binned_tables, full_bins=None):
     extended_tables = [extend_bins_to_full_grid(t, full_bins) for t in binned_tables]
 
     merged = pd.concat(extended_tables, ignore_index=True)
-    combined = merged.groupby('Bin', as_index=False)[['Precision', 'Recall', 'Threshold', 'F1']].median()
+    combined = merged.groupby('Bin', as_index=False)[curve_value_columns(merged)].median()
     combined.insert(0, 'Metric', metric)
 
     return combined.sort_values('Bin').reset_index(drop=True)
@@ -141,7 +267,7 @@ def recompute_f1(median_table):
     consistent (medians taken per column need not satisfy F1 = 2PR/(P+R)).
     """
     out = median_table.copy()
-    out['F1'] = 2 * out['Precision'] * out['Recall'] / (out['Precision'] + out['Recall'])
+    out['F1'] = f1_from_precision_recall(out['Precision'], out['Recall'])
     return out
 
 
@@ -158,16 +284,17 @@ def bin_median_table_by_f1(median_tables):
     binned = pooled.loc[pooled.groupby('Bin')['F1'].idxmax()].copy()
     binned['Metric'] = 'F1'
 
-    return binned[['Metric', 'Bin', 'Precision', 'Recall', 'Threshold', 'F1']].sort_values('Bin').reset_index(drop=True)
+    return binned[['Metric', 'Bin'] + curve_value_columns(binned)].sort_values('Bin').reset_index(drop=True)
 
 
 def merge_binned_metrics(median_tables):
     """
-    Concatenate the Precision/Recall/F1 tables, ordered by Metric then Bin. No
-    deduplication across metrics: F1 rows legitimately coincide with Precision/Recall rows.
+    Concatenate the Precision/Recall/F1 (+ Peak_Recall) tables, ordered by Metric then Bin.
+    No deduplication across metrics: F1 rows legitimately coincide with Precision/Recall rows.
     """
     merged = pd.concat(median_tables, ignore_index=True)
-    merged['Metric'] = pd.Categorical(merged['Metric'], categories=['Precision', 'Recall', 'F1'], ordered=True)
+    merged['Metric'] = pd.Categorical(merged['Metric'], categories=['Precision', 'Recall', 'F1', PEAK_RECALL],
+                                      ordered=True)
     merged = merged.sort_values(['Metric', 'Bin']).reset_index(drop=True)
     merged['Metric'] = merged['Metric'].astype(str)
 
@@ -178,7 +305,8 @@ def build_cross_cell_type_threshold_table(curves):
     """
     Given one calibration curve per cell type: bin each by Precision and Recall, take the
     median across cell types per bin, recompute F1, derive the F1 grid from the Recall
-    table, and merge the three metrics' tables.
+    table, and merge the metrics' tables. When every curve carries Peak_Recall, it gets its
+    own grid too (binned and median-aggregated exactly like Recall).
     """
     precision_tables = [bin_curve_by_metric(curve, 'Precision') for curve in curves]
     recall_tables = [bin_curve_by_metric(curve, 'Recall') for curve in curves]
@@ -188,7 +316,12 @@ def build_cross_cell_type_threshold_table(curves):
 
     f1_binned = bin_median_table_by_f1([recall_median])
 
-    return merge_binned_metrics([precision_median, recall_median, f1_binned])
+    tables = [precision_median, recall_median, f1_binned]
+    if all(PEAK_RECALL in curve.columns for curve in curves):
+        peak_recall_tables = [bin_curve_by_metric(curve, PEAK_RECALL) for curve in curves]
+        tables.append(recompute_f1(median_bins_across_samples(peak_recall_tables)))
+
+    return merge_binned_metrics(tables)
 
 
 def sample_curve_at_thresholds(curve_df, threshold_values):

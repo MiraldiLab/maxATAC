@@ -24,7 +24,7 @@ def run_averaging(args):
     4) Loop through each entry in the chromosome sizes dictionary and calculate the average across all inputs
     5) Write the bigwig file
 
-    :param args: bigwig_files, output_dir, name, chromosomes, chromosome_sizes
+    :param args: bigwig_files, output_dir, name, chromosomes, chrom_sizes, max_zooms
 
     :return: A bigwig file
     """
@@ -50,7 +50,7 @@ def run_averaging(args):
 
     # Build a dictionary of chromosomes sizes using the chromosomes and chromosome sizes files provided
     # The function will filter the dictionary based on the input list
-    chromosome_sizes_dictionary = build_chrom_sizes_dict(args.chromosomes, args.chromosome_sizes)
+    chromosome_sizes_dictionary = build_chrom_sizes_dict(args.chromosomes, args.chrom_sizes)
 
     # Open the bigwig file for writing
     with pyBigWig.open(output_bigwig_filename, "w") as output_bw:
@@ -60,7 +60,7 @@ def run_averaging(args):
         header = [(x, chromosome_sizes_dictionary[x]) for x in sorted(args.chromosomes)]
 
         # Write the header to the file
-        output_bw.addHeader(header)
+        output_bw.addHeader(header, maxZooms = args.max_zooms)
 
         # TODO Use parallel processing to speed up. Must write chromosomes in same order as header
         # Loop through the chromosomes and average the values across files
@@ -89,7 +89,7 @@ def run_averaging(args):
                 ends=chrom_length,
                 span=1,
                 step=1,
-                values=chrom_vals.tolist()
+                values=chrom_vals.astype(np.float16).tolist()
             )
 
     # Measure time of averaging

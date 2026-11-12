@@ -22,6 +22,13 @@ CPP_LOG_LEVEL = {
 # build maxatac data path
 maxatac_data_path = os.path.join(os.path.expanduser('~'), "opt", "maxatac", "data")
 
+# Reference data + quant-maxATAC models installed by `maxatac data`. It replaces MiraldiLab/maxATAC_data,
+# which holds the binary maxATAC v1 models.
+MAXATAC_DATA_REPO = "https://github.com/MiraldiLab/quant-maxATAC_data.git"
+
+# Where users can ask for the maxATAC v1 (binary) models to be supported again
+V1_MODELS_WISHLIST_URL = "https://github.com/MiraldiLab/quant-maxATAC/issues"
+
 # build processing script path names
 prepare_atac_script_dir = os.path.join(maxatac_data_path, "scripts", "ATAC",
                                        "ATAC_bowtie2_pipeline.sh")  # bulk processing script
@@ -62,12 +69,20 @@ DEFAULT_TRAIN_CHRS = ["chr3", "chr4", "chr5", "chr6",
                       "chr18", "chr20", "chr21", "chr22"]
 
 DEFAULT_VALIDATE_CHRS = ["chr2", "chr19"]
+# maxatac threshold calibrates on exactly one held-out chromosome
+DEFAULT_THRESHOLD_CHR = "chr2"
+
+# maxatac predict: upper bound on chromosomes predicted in parallel (one model + genome per process)
+DEFAULT_PREDICT_THREADS = 24
 
 DEFAULT_TEST_CHRS = ["chr1", "chr8"]
 
 DEFAULT_LOG_LEVEL = "info"
 
-DEFAULT_TRAIN_EPOCHS = 20
+DEFAULT_TRAIN_EPOCHS = 100
+
+# Number of pyBigWig zoom levels written to output bigWig files (0-10)
+DEFAULT_MAX_ZOOMS = 10
 
 DEFAULT_TRAIN_BATCHES_PER_EPOCH = 100
 
@@ -94,6 +109,11 @@ CONV_BLOCKS = 6
 DNA_INPUT_CHANNELS = 4
 DILATION_RATE = [1, 1, 2, 4, 8, 16]
 BP_RESOLUTION = 32
+
+# Binary-model training target: a 32 bp bin is labelled bound (1) when more than this fraction
+# of its bases fall inside a ChIP-seq peak in Binding_File (maxATAC v1 rule; Binding_File must be
+# a 0/1 peak track for this to mean 'fraction of bases'). Quant models ignore it and use the bin mean.
+BINARY_TARGET_MIN_PEAK_FRACTION = 0.5
 OUTPUT_FILTERS = 1
 OUTPUT_KERNEL_SIZE = 1
 POOL_SIZE = 2

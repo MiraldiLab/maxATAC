@@ -14,7 +14,7 @@ def run_variants(args):
     Args:
         args ([type]): input_bigwig, sequence, models, chromosomes, variant_start_pos, nucleotide, overhang, output, name
     """
-    output_directory = get_dir(args.output)
+    output_directory = get_dir(args.output_dir)
     output_bw = os.path.join(output_directory, args.name + ".bw")
     output_bg = os.path.join(output_directory, args.name + ".bg")
     output_windows = os.path.join(output_directory, args.name + "_windows.bed")
@@ -42,7 +42,8 @@ def run_variants(args):
         bed_df = create_prediction_regions(chromosomes=args.chromosomes,
                                            chrom_sizes=args.chrom_sizes,
                                            blacklist=args.blacklist,
-                                           step_size=args.step_size
+                                           peaks=None,
+                                           windows=None
                                            )
 
         regions_pool = pybedtools.BedTool.from_dataframe(bed_df)

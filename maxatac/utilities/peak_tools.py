@@ -61,7 +61,7 @@ def call_peaks_per_chromosome(bigwig_path, chrom_name, threshold, bin_size=200):
     return pd.DataFrame(BIN_list, columns=["chr", "start", "end", "score"])
 
 
-CUTOFF_TYPES = ("Precision", "Recall", "F1")
+CUTOFF_TYPES = ("Precision", "Recall", "F1", "Peak_Recall")
 
 
 def get_threshold(cutoff_file, cutoff_type, cutoff_val):
@@ -70,11 +70,13 @@ def get_threshold(cutoff_file, cutoff_type, cutoff_val):
     Args:
         cutoff_file (str): Threshold calibration table written by `maxatac threshold`
             (`<prefix>_cross_celltype.tsv` or a per-sample `<sample>.tsv`), with columns
-            Metric/Bin/Precision/Recall/Threshold/F1.
+            Metric/Bin/Precision/Recall/Threshold/F1 (+ Peak_Recall).
         cutoff_type (str): Which metric's bin grid to look the threshold up on.
-            One of Precision, Recall, F1.
-        cutoff_val (float): Target value on that metric's grid. Optional for F1, where
-            omitting it selects the threshold with the highest F1.
+            One of Precision, Recall, F1, Peak_Recall (fraction of unique ChIP-seq peaks
+            recovered).
+        cutoff_val (float): Target value of that metric. The row used must achieve it in its
+            metric column (not only in its Bin label). Optional for F1, where omitting it
+            selects the threshold with the highest F1.
 
     Returns:
         float: The threshold to apply to prediction scores.
@@ -94,7 +96,9 @@ def get_threshold(cutoff_file, cutoff_type, cutoff_val):
     rows = df[df["Metric"] == cutoff_type]
 
     if rows.empty:
-        raise ValueError(f"{cutoff_file} has no {cutoff_type} rows to calibrate a threshold against.")
+        hint = (" Tables written before Peak_Recall was added lack these rows; regenerate it with "
+                "`maxatac threshold`.") if cutoff_type == "Peak_Recall" else ""
+        raise ValueError(f"{cutoff_file} has no {cutoff_type} rows to calibrate a threshold against.{hint}")
 
     if cutoff_type == "F1" and cutoff_val is None:
         selected = rows.loc[rows["F1"].idxmax()]
@@ -103,20 +107,25 @@ def get_threshold(cutoff_file, cutoff_type, cutoff_val):
         if cutoff_val is None:
             raise ValueError(f"A cutoff value is required for cutoff type {cutoff_type}.")
 
-        # Ceiling on the bin grid: the lowest bin that still meets the requested value.
-        reachable = rows[rows["Bin"] >= cutoff_val].sort_values("Bin")
+        # The achieved value must meet the request: grid bins past a curve's range hold its
+        # nearest real row, so the Bin label alone can promise a value no threshold reaches.
+        reachable = rows[rows[cutoff_type] >= cutoff_val]
 
         if reachable.empty:
             raise ValueError(
                 f"{cutoff_file} does not reach {cutoff_type} {cutoff_val}; "
-                f"its highest {cutoff_type} bin is {rows['Bin'].max()}."
+                f"the highest {cutoff_type} it reaches is {rows[cutoff_type].max():.3f}."
             )
 
-        selected = reachable.iloc[0]
+        # Closest to the request; ties go to the higher F1
+        selected = reachable.sort_values([cutoff_type, "F1"], ascending=[True, False]).iloc[0]
 
+    achieved_peak_recall = (f"\n Achieved Peak_Recall: {selected['Peak_Recall']}"
+                            if "Peak_Recall" in selected.index else "")
     logging.info(f"Threshold calibrated on {cutoff_type} bin {selected['Bin']}: {selected['Threshold']}" +
                  f"\n Achieved Precision: {selected['Precision']}" +
                  f"\n Achieved Recall: {selected['Recall']}" +
-                 f"\n Achieved F1: {selected['F1']}")
+                 f"\n Achieved F1: {selected['F1']}" +
+                 achieved_peak_recall)
 
     return float(selected["Threshold"])

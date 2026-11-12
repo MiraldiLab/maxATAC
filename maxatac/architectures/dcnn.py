@@ -43,9 +43,22 @@ def pearson(y_true, y_pred):
     return score
 
 def spearman(y_true, y_pred):
+    """
+    Spearman correlation over all values in the batch, as a scalar metric. scipy's spearmanr
+    on 2-D inputs returns a (correlation matrix, p-value matrix) pair, so flatten first.
+    """
     from scipy.stats import spearmanr
-    
-    return ( tf.py_function(spearmanr, [tf.cast(y_pred, tf.float32), tf.cast(y_true, tf.float32)], Tout = tf.float32) )
+    import numpy as np
+
+    def _spearman(a, b):
+        rho = spearmanr(a.numpy().ravel(), b.numpy().ravel())[0]
+        # A constant batch has no rank correlation; report 0 rather than NaN so one
+        # degenerate batch does not poison the epoch mean.
+        return np.float32(0.0 if np.isnan(rho) else rho)
+
+    score = tf.py_function(_spearman, [tf.cast(y_true, tf.float32), tf.cast(y_pred, tf.float32)], Tout=tf.float32)
+    score.set_shape(())
+    return score
 
 def dice_coef(
         y_true,
@@ -356,9 +369,8 @@ def get_dilated_cnn(
                 beta_2=adam_beta_2,
                 weight_decay=adam_decay
             ),
-            run_eagerly=True, # TODO: for debugging loss fn remove
             loss=loss_function,
-            metrics=[loss_function, coeff_determination, pearson, spearman] #mse
+            metrics=[coeff_determination, pearson, spearman]
             # tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.Precision(), tf.keras.metrics.Recall(),
             # Can not use Precision and Recall metrics with quant models and a softplus activation since values will
             # go greater than 1, will kick back an error

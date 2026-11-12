@@ -1,0 +1,143 @@
+name: End-to-end
+
+# The user path on real data: `maxatac data` -> `maxatac predict` -> `maxatac benchmark`
+#   inputs: https://github.com/XiaotingChen/quant-maxATAC_test_data (Git LFS)
+#   models: https://github.com/MiraldiLab/quant-maxATAC_data (installed by `maxatac data`)
+# The steps themselves are in tests/e2e/run_e2e.sh so they can be run outside GitHub too.
+
+on:
+  push:
+    branches: [main, "quant*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      data_version:
+        description: "Data repository tag or branch (`maxatac data --data_version`); empty = match the code version"
+        required: false
+        default: ""
+  workflow_call:
+    # release.yml passes the release tag, so a release is tested with the data of the same tag
+    inputs:
+      data_version:
+        type: string
+        required: false
+        default: ""
+  schedule:
+    # Weekly, to catch changes in the data repositories and in unpinned dependencies
+    - cron: "0 6 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  # github.workflow is the caller's name when called from release.yml, so a release never cancels a branch run
+  group: ${{ github.workflow }}-e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TEST_DATA_REPO: XiaotingChen/quant-maxATAC_test_data
+  DATA_VERSION: ${{ inputs.data_version }}
+  TF_CPP_MIN_LOG_LEVEL: "2"
+  CUDA_VISIBLE_DEVICES: ""
+
+jobs:
+  e2e:
+    name: data -> predict -> benchmark (GM12878 CTCF, chr1 slice)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: setup.py
+
+      - name: Install system dependencies
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends bedtools wget
+
+      - name: Install ushuffle
+        # The PyPI release of ushuffle (a quant-maxATAC dependency) does not build; install it from source first.
+        # --no-build-isolation needs the build tools already installed. If the build fails, retry with Cython < 3.
+        run: |
+          # setuptools 82 removed pkg_resources, which older dependencies (e.g. TF 2.15-era tensorboard) still import
+          python -m pip install --upgrade pip "setuptools<82" wheel
+          pip install --no-build-isolation git+https://github.com/guma44/ushuffle.git || {
+            echo "::warning::ushuffle build failed; retrying with Cython < 3"
+            pip install "cython<3"
+            pip install --no-build-isolation git+https://github.com/guma44/ushuffle.git
+          }
+          python -c "from ushuffle import shuffle; print(shuffle(b'ACGTACGTAC', 2))"
+
+      - name: Install quant-maxATAC
+        run: |
+          pip install -e .
+
+      # ---- Test inputs: Git LFS files, cached per commit of the test data repository so each
+      #      commit is downloaded once (LFS bandwidth is metered on the repository owner's account)
+      - name: Resolve test data commit
+        id: test-data
+        run: echo "sha=$(git ls-remote "https://github.com/${TEST_DATA_REPO}.git" HEAD | cut -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore test data
+        id: test-data-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: test_data/data
+          key: test-data-${{ steps.test-data.outputs.sha }}
+
+      - name: Download test data
+        if: steps.test-data-cache.outputs.cache-hit != 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.TEST_DATA_REPO }}
+          ref: ${{ steps.test-data.outputs.sha }}
+          path: test_data
+          lfs: true
+
+      - name: Save test data
+        if: steps.test-data-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: test_data/data
+          key: test-data-${{ steps.test-data.outputs.sha }}
+
+      # ---- hg38.2bit (~800 MB from UCSC). Restored into the data directory before `maxatac data`,
+      #      which carries an existing .2bit over into the fresh clone instead of downloading it again
+      - name: Restore hg38.2bit
+        id: twobit-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/opt/maxatac/data/hg38/hg38.2bit
+          key: hg38-2bit-v1
+
+      - name: Run data -> predict -> benchmark
+        run: bash tests/e2e/run_e2e.sh
+        env:
+          TEST_DATA: test_data/data
+          OUT: e2e_out
+
+      - name: Check for a downloaded hg38.2bit
+        id: twobit
+        if: always() && steps.twobit-cache.outputs.cache-hit != 'true'
+        # hashFiles() only sees the workspace, so test for the file directly
+        run: |
+          if [ -s ~/opt/maxatac/data/hg38/hg38.2bit ]; then echo "present=true" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Save hg38.2bit
+        if: always() && steps.twobit.outputs.present == 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: ~/opt/maxatac/data/hg38/hg38.2bit
+          key: hg38-2bit-v1
+
+      - name: Upload outputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-outputs
+          path: e2e_out
+          retention-days: 14
+          if-no-files-found: ignore

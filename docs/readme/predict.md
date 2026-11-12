@@ -54,7 +54,7 @@ The threshold calibration table (`<prefix>_cross_celltype.tsv`) written by [`max
 
 ### `-cutoff_type, --cutoff_type`
 
-The metric whose calibration grid is used to pick the threshold (`Precision`, `Recall`, or `F1`). Default: `F1`.
+The metric whose calibration grid is used to pick the threshold (`Precision`, `Recall`, `F1`, or `Peak_Recall`, the fraction of unique ChIP-seq peaks recovered). `Peak_Recall` needs a table written by a `maxatac threshold` version that includes it. Default: `F1`.
 
 ### `-cutoff_value, --cutoff_value`
 
@@ -63,6 +63,10 @@ The cutoff value for the cutoff type provided; precision, recall, and F1-scores 
 ### `-skip_call_peaks, --skip_call_peaks`
 
 Skip peak calling at the end of prediction, even when a calibration table is available.
+
+### `--max_zooms`
+
+The number of zoom levels to compute for the prediction bigWig file. Zoom levels are pre-computed summary statistics that let genome browsers (IGV, UCSC Genome Browser) zoom in and out of a region quickly; fewer levels mean slower loading in browsers, more levels mean more memory during writing. Valid range: `0`-`10`. Default: `10`. Note: a value of `0` produces a bigWig that is not compatible with other bigWig tools (e.g. deepTools) and cannot be visualized in IGV or the UCSC Genome Browser. See the [pyBigWig README](https://github.com/deeptools/pyBigWig/blob/master/README.md) for details.
 
 ### `-o, --output`
 
@@ -83,6 +87,10 @@ The windows to use for prediction. These windows must be 1,024 bp wide and have 
 ### `--batch_size`
 
 The number of regions to predict on per batch. Default: `10000`. Decrease this value if you are having memory issues.
+
+### `--threads`
+
+The maximum number of chromosomes to predict in parallel. Each process loads the full model and the 2bit genome, so memory, not CPU count, usually sets the practical limit; lower this value if prediction runs out of memory. The pool is also capped by the number of chromosomes requested and the available CPUs. Default: `24`
 
 ### `--step_size`
 

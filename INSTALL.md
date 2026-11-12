@@ -5,21 +5,25 @@ below with the PyPI package name/version once quant-maxATAC is published. The do
 
 ## Install Instructions
 
-### 1. To install maxATAC begin by downloading the data reopository located on github: maxATAC_data
+The reference data and models are installed with `maxatac data` once quant-maxATAC is installed (step 4). To install them by hand instead, follow steps 1-3.
 
- `git clone https://github.com/MiraldiLab/maxATAC_data.git`
+### 1. Download the data repository located on github: [quant-maxATAC_data](https://github.com/MiraldiLab/quant-maxATAC_data)
 
-### 2. To ensure that the data is located in a central location copy maxATAC_data to local location:
+This replaces the maxATAC v1 [maxATAC_data](https://github.com/MiraldiLab/maxATAC_data) repository, whose binary models quant-maxATAC does not use. If you have an existing `~/opt/maxatac/data`, move it out of the way first.
+
+### 2. Clone it into the location quant-maxATAC looks in by default:
 
 ```bash
-mkdir -p /opt/maxatac/data/
-cp -r ./maxATAC_data /opt/maxatac/
+mkdir -p ~/opt/maxatac
+git clone --depth 1 https://github.com/MiraldiLab/quant-maxATAC_data.git ~/opt/maxatac/data
 ```
 
-### 3. Then Download hg38.2bit file from UCSC in a location of your choice
+To match a quant-maxATAC release, clone the data tag of the same name, e.g. `git clone --depth 1 --branch v2.0.0b1 ...`. `maxatac data` does this for you.
+
+### 3. Then download the hg38.2bit file from UCSC next to the hg38 reference files
 
 ```bash
-wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit
+wget https://hgdownload.soe.ucsc.edu/goldenPath/hg38/bigZips/hg38.2bit -O ~/opt/maxatac/data/hg38/hg38.2bit
 ```
 
 ### 4. Installing maxATAC

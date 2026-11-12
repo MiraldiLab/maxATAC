@@ -1,0 +1,13 @@
+{
+  "_comment": "Reference metrics for tests/e2e/run_e2e.sh (GM12878 CTCF, chr1:1,000,000-11,000,000). null = not seeded yet: copy the values from the metrics.json artifact of a green run. A run fails when a metric drops below baseline - tolerance.",
+  "metrics": {
+    "AUPRC": null,
+    "pearson": null,
+    "spearman": null
+  },
+  "tolerance": {
+    "AUPRC": 0.02,
+    "pearson": 0.03,
+    "spearman": 0.03
+  }
+}

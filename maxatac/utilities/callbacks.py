@@ -1,5 +1,7 @@
 from tensorflow.keras.callbacks import ModelCheckpoint, CSVLogger, TensorBoard
-from .batch_logger import BatchLossLogger  # import your custom logger
+import os
+
+from .batch_logger import BatchLossLogger
 
 def get_callbacks(model_location,
                   log_location,
@@ -10,7 +12,7 @@ def get_callbacks(model_location,
                   append_log=False,
                   tensor_board_write_images=False,
                   tensor_board_write_graph=True,
-                  batch_log_location=False,  # new argument
+                  batch_log_location=False,  # True: also write a per-batch loss log next to log_location
                   ):
     callbacks = [
         ModelCheckpoint(filepath=model_location,
@@ -27,9 +29,9 @@ def get_callbacks(model_location,
     ]
 
     if batch_log_location:
-        list = log_location.split("/")[:-1]
-        list.append('ELK1_quant_batch_log.csv')
-        batch_log_location = "/".join(list)
+        # Name the batch log after the run's epoch log, e.g. <prefix>.csv -> <prefix>_batch.csv
+        stem, ext = os.path.splitext(log_location)
+        batch_log_location = stem + "_batch" + (ext or ".csv")
         callbacks.append(BatchLossLogger(batch_log_location))
 
     return callbacks
