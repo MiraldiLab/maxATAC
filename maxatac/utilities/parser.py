@@ -248,7 +248,7 @@ def get_parser():
                                 help="The reference genome build to which the input file was aligned."
                                )
   
-    average_parser.add_argument("--max_zooms",
+    predict_parser.add_argument("--max_zooms",
                                 dest="max_zooms",
                                 type=int,
                                 default=5,
