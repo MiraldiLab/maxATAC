@@ -19,13 +19,13 @@ def run_data(args):
     maxatac_dir = get_dir(os.path.join(base_dir, "maxatac"))
     
     # Path the repo directory and the final directory. Default: ~/opt/maxatac/maxATAC_data
-    maxatac_repo_dir = os.path.join(maxatac_dir, "maxATAC_data")
+    maxatac_repo_dir = os.path.join(maxatac_dir, "quant-maxATAC_data")
     
     # Path final directory (it is renamed for simplicity). Default: ~/opt/maxatac/data
     maxatac_final_dir = os.path.join(maxatac_dir, "data")
 
     # Command to clone the data repo
-    clone = "git clone --depth 1 https://github.com/MiraldiLab/maxATAC_data.git"
+    clone = "git clone --depth 1 https://github.com/MiraldiLab/quant-maxATAC_data.git"
 
     os.chdir(maxatac_dir) # Change to the directory where the repo should be cloned
     
