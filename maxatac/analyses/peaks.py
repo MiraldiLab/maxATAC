@@ -24,8 +24,8 @@ def run_call_peaks(args):
     Return:
         Write BED file
     """
-    if args.name:
-        prefix = args.name
+    if args.prefix:
+        prefix = args.prefix
 
     else:
         prefix = os.path.basename(args.input_bigwig).replace(".bw", "")
@@ -35,7 +35,7 @@ def run_call_peaks(args):
         from maxatac.utilities.constants import AUTOSOMAL_CHRS as all_chr
         args.chromosomes = all_chr
 
-    output_dir = get_dir(args.output_directory)
+    output_dir = get_dir(args.output)
 
     results_filename = os.path.join(output_dir, prefix + "_" + str(args.BIN_SIZE) + "bp.bed")
 
